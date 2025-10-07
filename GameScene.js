@@ -165,6 +165,23 @@ export class GameScene extends Phaser.Scene {
         this.defendText.setText(`${defendType}: ${defendScore}`);
         this.attackText.setText(`${attackType}: ${attackScore}`);
 
+        // Ensure visible
+        this.defendText.setAlpha(1);
+        this.attackText.setAlpha(1);
+
+        // Fade the combo texts above the zones over 4 seconds, then destroy them
+        this.tweens.add({
+            targets: [ this.defendText, this.attackText ],
+            alpha: 0,
+            duration: 2000,
+            delay: 2000,
+            ease: 'Cubic',
+            onComplete: () => {
+                if (this.defendText) { this.defendText.destroy(); this.defendText = null; }
+                if (this.attackText) { this.attackText.destroy(); this.attackText = null; }
+            }
+        });
+
         const diceToResolve = this.getDiceInPlay();
         const finishResolution = () => {
             this.applyDamage(10);
@@ -239,29 +256,53 @@ export class GameScene extends Phaser.Scene {
 
             const inZone = this.defendDice.includes(die) || this.attackDice.includes(die);
 
+            let fadeTween = null;
+
+            const completeResolution = () => {
+                if (fadeTween && fadeTween.isPlaying()) {
+                    fadeTween.stop();
+                }
+
+                if (die.active) {
+                    die.destroy();
+                }
+
+                resolve();
+            };
+
             if (inZone) {
-                // Launch any dice in zones upwards to a single point
+                // Move (launch) upward then complete
+                const moveTarget = {
+                    x: target.x,
+                    y: target.y - upwardOffset
+                };
+
                 this.tweens.add({
                     targets: die,
-                    x: target.x,
-                    y: target.y - upwardOffset,
+                    ...moveTarget,
                     duration: 500,
                     ease: 'Cubic.easeOut',
-                    onComplete: () => {
-                        die.destroy();
-                        resolve();
-                    }
+                    onComplete: completeResolution
+                });
+
+                // Fade out in parallel
+                fadeTween = this.tweens.add({
+                    targets: die,
+                    alpha: 0,
+                    duration: 400,
+                    delay: 100,
+                    ease: 'Quad.easeIn'
+                });
+            } else {
+                // Not in a zone — do not move, just fade (then destroy)
+                fadeTween = this.tweens.add({
+                    targets: die,
+                    alpha: 0,
+                    duration: 350,
+                    ease: 'Quad.easeIn',
+                    onComplete: completeResolution
                 });
             }
-
-            // Fade out in parallel
-            this.tweens.add({
-                targets: die,
-                alpha: 0,
-                duration: 400,
-                delay: 100,
-                ease: 'Quad.easeIn'
-            });
         });
     }
 
