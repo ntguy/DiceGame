@@ -36,6 +36,7 @@ export function setupButtons(scene) {
     resolveButton.on("pointerdown", () => {
         scene.resolveDice();
     });
+    scene.resolveButton = resolveButton;
 }
 
 export function setupHealthBar(scene) {

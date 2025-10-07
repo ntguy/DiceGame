@@ -7,7 +7,9 @@ export function createDie(scene, slotIndex) {
     const y = CONSTANTS.GRID_Y;
     const container = scene.add.container(x, y);
 
-    const bg = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE, 0x444444).setOrigin(0.5);
+    const bg = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE, 0x444444)
+        .setOrigin(0.5)
+        .setStrokeStyle(2, 0xffffff, 0.35);
     container.add(bg);
     container.bg = bg;
 
