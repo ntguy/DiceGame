@@ -11,7 +11,7 @@ export const COMBO_POINTS = {
     "Straight Penta": 15,
     "Straight Quad": 10,
     "Straight Tri": 5,
-    "No valid combo": 0
+    "No combo": 0
 };
 
 export function evaluateCombo(diceArray) {
@@ -61,8 +61,8 @@ export function evaluateCombo(diceArray) {
         }
     }
 
-    // --- No valid combo ---
-    return { type: "No valid combo" };
+    // --- No combo ---
+    return { type: "No combo" };
 }
 
 export function scoreCombo(comboType) {

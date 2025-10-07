@@ -231,40 +231,35 @@ export class GameScene extends Phaser.Scene {
 
     animateDieResolution(die, target) {
         return new Promise(resolve => {
-            const upwardOffset = 120;
-            const horizontalOffset = Phaser.Math.Between(-40, 40);
+            const upwardOffset = 180;
 
             die.disableInteractive();
             die.setDepth(10);
             die.setAlpha(1);
 
-            this.tweens.timeline({
-                targets: die,
-                tweens: [
-                    {
-                        duration: 500,
-                        x: target.x + horizontalOffset,
-                        y: target.y - upwardOffset,
-                        ease: 'Cubic.easeOut'
-                    },
-                    {
-                        duration: 500,
-                        x: target.x,
-                        y: target.y,
-                        ease: 'Cubic.easeIn'
-                    }
-                ],
-                onComplete: () => {
-                    die.destroy();
-                    resolve();
-                }
-            });
+            const inZone = this.defendDice.includes(die) || this.attackDice.includes(die);
 
+            if (inZone) {
+                // Launch any dice in zones upwards to a single point
+                this.tweens.add({
+                    targets: die,
+                    x: target.x,
+                    y: target.y - upwardOffset,
+                    duration: 500,
+                    ease: 'Cubic.easeOut',
+                    onComplete: () => {
+                        die.destroy();
+                        resolve();
+                    }
+                });
+            }
+
+            // Fade out in parallel
             this.tweens.add({
                 targets: die,
                 alpha: 0,
                 duration: 400,
-                delay: 600,
+                delay: 100,
                 ease: 'Quad.easeIn'
             });
         });
