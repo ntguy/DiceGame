@@ -14,6 +14,7 @@ export class GameScene extends Phaser.Scene {
         this.playerMaxHealth = 100;
         this.playerHealth = this.playerMaxHealth;
         this.healthBar = null;
+        this.isResolving = false;
     }
     
     preload() {
@@ -122,15 +123,22 @@ export class GameScene extends Phaser.Scene {
     }
 
     resolveDice() {
+        if (this.isResolving) {
+            return;
+        }
+        this.isResolving = true;
+
+        this.disableAllInputs();
+
         // Play resolve sound effect
         this.sound.play('chimeShort', { volume: 0.7 });
         this.sound.play('chimeLong', {
             volume: 0.4,
-            seek: 1.5,     // start 0.5s into the clip
-            duration: 1, // play for 1 second
-            rate: 3      // 1.0 = normal speed, >1 = faster, <1 = slower
+            seek: 1.5,
+            duration: 1,
+            rate: 3
         });
-        
+
         // Calculate scores
         const defendType = evaluateCombo(this.defendDice).type;
         const attackType = evaluateCombo(this.attackDice).type;
@@ -140,27 +148,121 @@ export class GameScene extends Phaser.Scene {
         const attackSummation = this.attackDice.reduce((sum, die) => sum + die.value, 0);
         const defendScore = defendSummation + defendBonus;
         const attackScore = attackSummation + attackBonus;
-        
+
         // Update or create score text
         if (!this.defendText) {
-            this.defendText = this.add.text(200, CONSTANTS.RESOLVE_TEXT_Y, "", { 
-                fontSize: "28px", 
-                color: "#3498db" 
+            this.defendText = this.add.text(200, CONSTANTS.RESOLVE_TEXT_Y, "", {
+                fontSize: "28px",
+                color: "#3498db"
             }).setOrigin(0.5);
-            
-            this.attackText = this.add.text(600, CONSTANTS.RESOLVE_TEXT_Y, "", { 
-                fontSize: "28px", 
-                color: "#e74c3c" 
+
+            this.attackText = this.add.text(600, CONSTANTS.RESOLVE_TEXT_Y, "", {
+                fontSize: "28px",
+                color: "#e74c3c"
             }).setOrigin(0.5);
         }
-        
+
         this.defendText.setText(`${defendType}: ${defendScore}`);
         this.attackText.setText(`${attackType}: ${attackScore}`);
 
-        this.applyDamage(10);
+        const diceToResolve = this.getDiceInPlay();
+        const finishResolution = () => {
+            this.applyDamage(10);
+            this.resetGameState({ destroyDice: false });
+            this.input.enabled = true;
+            if (this.resolveButton) {
+                this.resolveButton.setAlpha(1);
+                this.resolveButton.setInteractive();
+            }
+            this.isResolving = false;
+        };
 
-        // Reset game state
-        this.resetGameState();
+        if (diceToResolve.length === 0) {
+            this.time.delayedCall(1000, finishResolution);
+            return;
+        }
+
+        Promise.all(diceToResolve.map(die => {
+            const target = this.getResolutionTarget(die);
+            return this.animateDieResolution(die, target);
+        })).then(finishResolution);
+    }
+
+    disableAllInputs() {
+        this.input.enabled = false;
+
+        if (this.rollButton) {
+            this.rollButton.disableInteractive();
+            this.rollButton.setAlpha(0.5);
+        }
+
+        if (this.sortButton) {
+            this.sortButton.disableInteractive();
+            this.sortButton.setAlpha(0.5);
+        }
+
+        if (this.resolveButton) {
+            this.resolveButton.disableInteractive();
+            this.resolveButton.setAlpha(0.5);
+        }
+    }
+
+    getDiceInPlay() {
+        const combined = [...this.defendDice, ...this.attackDice, ...this.dice];
+        return Array.from(new Set(combined));
+    }
+
+    getResolutionTarget(die) {
+        if (this.defendDice.includes(die) && this.defendZoneCenter) {
+            return this.defendZoneCenter;
+        }
+
+        if (this.attackDice.includes(die) && this.attackZoneCenter) {
+            return this.attackZoneCenter;
+        }
+
+        if (this.defendZoneCenter && this.attackZoneCenter) {
+            const midpoint = (this.defendZoneCenter.x + this.attackZoneCenter.x) / 2;
+            return die.x < midpoint ? this.defendZoneCenter : this.attackZoneCenter;
+        }
+
+        return { x: die.x, y: die.y - 100 };
+    }
+
+    animateDieResolution(die, target) {
+        return new Promise(resolve => {
+            const upwardOffset = 180;
+
+            die.disableInteractive();
+            die.setDepth(10);
+            die.setAlpha(1);
+
+            const inZone = this.defendDice.includes(die) || this.attackDice.includes(die);
+
+            if (inZone) {
+                // Launch any dice in zones upwards to a single point
+                this.tweens.add({
+                    targets: die,
+                    x: target.x,
+                    y: target.y - upwardOffset,
+                    duration: 500,
+                    ease: 'Cubic.easeOut',
+                    onComplete: () => {
+                        die.destroy();
+                        resolve();
+                    }
+                });
+            }
+
+            // Fade out in parallel
+            this.tweens.add({
+                targets: die,
+                alpha: 0,
+                duration: 400,
+                delay: 100,
+                ease: 'Quad.easeIn'
+            });
+        });
     }
 
     applyDamage(amount) {
@@ -178,9 +280,10 @@ export class GameScene extends Phaser.Scene {
         this.healthBar.text.setText(`HP: ${this.playerHealth}/${this.playerMaxHealth}`);
     }
 
-    resetGameState() {
-        // Remove all dice
-        [...this.defendDice, ...this.attackDice, ...this.dice].forEach(d => d.destroy());
+    resetGameState({ destroyDice = true } = {}) {
+        if (destroyDice) {
+            this.getDiceInPlay().forEach(d => d.destroy());
+        }
         this.dice = [];
         this.defendDice = [];
         this.attackDice = [];
@@ -196,6 +299,10 @@ export class GameScene extends Phaser.Scene {
         this.rollButton.setInteractive();
         this.sortButton.setAlpha(0.5);
         this.sortButton.disableInteractive();
+        if (this.resolveButton) {
+            this.resolveButton.setAlpha(1);
+            this.resolveButton.setInteractive();
+        }
 
         // Reset combo highlights
         this.comboTextGroup.forEach(t => t.setColor("#ffffff"));

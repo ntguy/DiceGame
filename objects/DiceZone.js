@@ -8,17 +8,22 @@ export function setupZones(scene) {
     const zoneY = 350;
 
     // --- Defend zone ---
-    const defendZone = scene.add.zone(200, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
-    scene.add.rectangle(200, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0x3498db);
-    scene.add.text(200, zoneY - zoneHeight/2 - 20, "DEFEND", { fontSize: "24px", color: "#3498db" }).setOrigin(0.5);
+    const defendZoneX = 200;
+    const attackZoneX = 600;
+
+    const defendZone = scene.add.zone(defendZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
+    scene.add.rectangle(defendZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0x3498db);
+    scene.add.text(defendZoneX, zoneY - zoneHeight/2 - 20, "DEFEND", { fontSize: "24px", color: "#3498db" }).setOrigin(0.5);
 
     // --- Attack zone ---
-    const attackZone = scene.add.zone(600, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
-    scene.add.rectangle(600, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0xe74c3c);
-    scene.add.text(600, zoneY - zoneHeight/2 - 20, "ATTACK", { fontSize: "24px", color: "#e74c3c" }).setOrigin(0.5);
+    const attackZone = scene.add.zone(attackZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
+    scene.add.rectangle(attackZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0xe74c3c);
+    scene.add.text(attackZoneX, zoneY - zoneHeight/2 - 20, "ATTACK", { fontSize: "24px", color: "#e74c3c" }).setOrigin(0.5);
 
     scene.defendZone = defendZone;
     scene.attackZone = attackZone;
+    scene.defendZoneCenter = { x: defendZoneX, y: zoneY };
+    scene.attackZoneCenter = { x: attackZoneX, y: zoneY };
 
     // After drawing the defend zone rectangle
     scene.defendHighlight = scene.add.rectangle(200, zoneY, zoneWidth, zoneHeight, 0x3498db, 0.3).setOrigin(0.5);
