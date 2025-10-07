@@ -42,16 +42,17 @@ export function setupButtons(scene) {
 export function setupHealthBar(scene) {
     const barWidth = 200;
     const barHeight = 20;
+    const y = 30;
 
     // Slightly larger background rectangle to act as a border.
-    const barBg = scene.add.rectangle(20, 20, barWidth + 4, barHeight + 4, 0x000000, 0.6)
+    const barBg = scene.add.rectangle(20, y, barWidth + 4, barHeight + 4, 0x000000, 0.6)
         .setOrigin(0, 0)
         .setStrokeStyle(2, 0xffffff, 0.4);
 
-    const barFill = scene.add.rectangle(22, 22, barWidth, barHeight, 0x27ae60)
+    const barFill = scene.add.rectangle(22, y + 2, barWidth, barHeight, 0x27ae60)
         .setOrigin(0, 0);
 
-    const text = scene.add.text(20, 22 + barHeight + 8, "", {
+    const text = scene.add.text(20, y + 2 + barHeight + 8, "", {
         fontSize: "20px",
         color: "#ffffff"
     });
@@ -69,7 +70,7 @@ export function setupEnemyUI(scene, enemyName) {
     const barWidth = 200;
     const barHeight = 20;
     const x = scene.scale.width - barWidth - 22;
-    const y = 20;
+    const y = 30;
 
     const barBg = scene.add.rectangle(x - 2, y - 2, barWidth + 4, barHeight + 4, 0x000000, 0.6)
         .setOrigin(0, 0)
@@ -84,7 +85,7 @@ export function setupEnemyUI(scene, enemyName) {
     }).setOrigin(1, 0);
 
     const nameText = scene.add.text(x + barWidth, y - 24, enemyName, {
-        fontSize: "20px",
+        fontSize: "18px",
         color: "#ffffff"
     }).setOrigin(1, 0);
 

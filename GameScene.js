@@ -3,7 +3,7 @@ import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
-import { EmployeeEnemy } from './enemies/Employee.js';
+import { SlapperEnemy } from './enemies/Slapper.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -52,7 +52,7 @@ export class GameScene extends Phaser.Scene {
         this.updateHealthUI();
 
         // --- Enemy ---
-        this.enemy = new EmployeeEnemy();
+        this.enemy = new SlapperEnemy();
         this.enemyHealthBar = setupEnemyUI(this, this.enemy.name);
         this.enemyIntentText = this.enemyHealthBar.intentText;
         this.updateEnemyHealthUI();

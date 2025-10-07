@@ -1,6 +1,6 @@
-export class EmployeeEnemy {
+export class SlapperEnemy {
     constructor() {
-        this.name = 'Employee';
+        this.name = 'Slapper';
         this.maxHealth = 50;
         this.health = this.maxHealth;
         this.moves = [
