@@ -1,8 +1,9 @@
 import { CONSTANTS } from './config.js';
 import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
-import { setupButtons, setupHealthBar } from './objects/UI.js';
+import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
+import { SlapperEnemy } from './enemies/Slapper.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -14,6 +15,10 @@ export class GameScene extends Phaser.Scene {
         this.playerMaxHealth = 100;
         this.playerHealth = this.playerMaxHealth;
         this.healthBar = null;
+        this.enemy = null;
+        this.enemyHealthBar = null;
+        this.enemyIntentText = null;
+        this.upcomingEnemyMove = null;
         this.isResolving = false;
     }
     
@@ -45,6 +50,13 @@ export class GameScene extends Phaser.Scene {
         // --- Health bar ---
         this.healthBar = setupHealthBar(this);
         this.updateHealthUI();
+
+        // --- Enemy ---
+        this.enemy = new SlapperEnemy();
+        this.enemyHealthBar = setupEnemyUI(this, this.enemy.name);
+        this.enemyIntentText = this.enemyHealthBar.intentText;
+        this.updateEnemyHealthUI();
+        this.setNextEnemyMove();
 
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(100, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, { 
@@ -184,7 +196,7 @@ export class GameScene extends Phaser.Scene {
 
         const diceToResolve = this.getDiceInPlay();
         const finishResolution = () => {
-            this.applyDamage(10);
+            this.processTurnOutcome(attackScore);
             this.resetGameState({ destroyDice: false });
             this.input.enabled = true;
             if (this.resolveButton) {
@@ -319,6 +331,90 @@ export class GameScene extends Phaser.Scene {
         const healthRatio = Phaser.Math.Clamp(this.playerHealth / this.playerMaxHealth, 0, 1);
         this.healthBar.barFill.displayWidth = this.healthBar.barWidth * healthRatio;
         this.healthBar.text.setText(`HP: ${this.playerHealth}/${this.playerMaxHealth}`);
+    }
+
+    processTurnOutcome(attackScore) {
+        if (!this.enemy) {
+            return;
+        }
+
+        this.damageEnemy(attackScore);
+
+        if (this.enemy.isDefeated()) {
+            this.upcomingEnemyMove = null;
+            if (this.enemyIntentText) {
+                this.enemyIntentText.setText('Enemy defeated');
+            }
+            return;
+        }
+
+        this.executeEnemyMove();
+    }
+
+    damageEnemy(amount) {
+        if (!this.enemy || amount <= 0) {
+            this.updateEnemyHealthUI();
+            return;
+        }
+
+        this.enemy.takeDamage(amount);
+        this.updateEnemyHealthUI();
+    }
+
+    healEnemy(amount) {
+        if (!this.enemy || amount <= 0) {
+            return;
+        }
+
+        this.enemy.heal(amount);
+        this.updateEnemyHealthUI();
+    }
+
+    updateEnemyHealthUI() {
+        if (!this.enemy || !this.enemyHealthBar) {
+            return;
+        }
+
+        const ratio = Phaser.Math.Clamp(this.enemy.health / this.enemy.maxHealth, 0, 1);
+        this.enemyHealthBar.barFill.displayWidth = this.enemyHealthBar.barWidth * ratio;
+        this.enemyHealthBar.text.setText(`HP: ${this.enemy.health}/${this.enemy.maxHealth}`);
+    }
+
+    setNextEnemyMove() {
+        if (!this.enemy || this.enemy.isDefeated()) {
+            this.upcomingEnemyMove = null;
+            if (this.enemyIntentText) {
+                this.enemyIntentText.setText('Enemy defeated');
+            }
+            return;
+        }
+
+        this.upcomingEnemyMove = this.enemy.getRandomMove();
+        if (this.enemyIntentText) {
+            const label = this.upcomingEnemyMove ? this.upcomingEnemyMove.label : '...';
+            this.enemyIntentText.setText(`Next: ${label}`);
+        }
+    }
+
+    executeEnemyMove() {
+        if (!this.enemy || this.enemy.isDefeated()) {
+            return;
+        }
+
+        const move = this.upcomingEnemyMove;
+        if (!move) {
+            this.setNextEnemyMove();
+            return;
+        }
+
+        if (move.type === 'attack') {
+            const damage = move.value;
+            this.applyDamage(damage);
+        } else if (move.type === 'heal') {
+            this.healEnemy(move.value);
+        }
+
+        this.setNextEnemyMove();
     }
 
     resetGameState({ destroyDice = true } = {}) {
