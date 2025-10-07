@@ -104,17 +104,28 @@ export function displayComboTable(scene) {
     });
 }
 
-export function highlightCombos(scene, diceArray) {
+export function highlightCombos(scene, _diceArray = null) {
     if (!scene.comboTextGroup) return;
 
-    // Evaluate what combo the current dice give
-    const comboResult = evaluateCombo(diceArray);
-    const activeCombo = comboResult.type;
+    // derive same order used by displayComboTable
+    const combos = Object.keys(COMBO_POINTS);
 
-    scene.comboTextGroup.forEach(textObj => {
-        const comboName = textObj.text.split(":")[0]; // get combo name from text
-        if (comboName === activeCombo) {
-            textObj.setColor("#f1c40f"); // highlight
+    const defendCombo = (scene.defendDice && scene.defendDice.length > 0) ? evaluateCombo(scene.defendDice).type : null;
+    const attackCombo = (scene.attackDice && scene.attackDice.length > 0) ? evaluateCombo(scene.attackDice).type : null;
+
+    combos.forEach((comboName, i) => {
+        const textObj = scene.comboTextGroup[i];
+        if (!textObj) return;
+
+        const defMatch = defendCombo !== null && comboName === defendCombo;
+        const atkMatch = attackCombo !== null && comboName === attackCombo;
+
+        if (defMatch && atkMatch) {
+            textObj.setColor("#ae72ac"); // both -> purple
+        } else if (defMatch) {
+            textObj.setColor("#3498db"); // defend -> blue
+        } else if (atkMatch) {
+            textObj.setColor("#e74c3c"); // attack -> red
         } else {
             textObj.setColor("#ffffff"); // default
         }
