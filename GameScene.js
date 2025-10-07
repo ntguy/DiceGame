@@ -3,7 +3,7 @@ import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
-import { SlapperEnemy } from './enemies/Slapper.js';
+import { EnemyManager } from './systems/EnemySystem.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -15,11 +15,12 @@ export class GameScene extends Phaser.Scene {
         this.playerMaxHealth = 100;
         this.playerHealth = this.playerMaxHealth;
         this.healthBar = null;
-        this.enemy = null;
+        this.enemyManager = null;
         this.enemyHealthBar = null;
         this.enemyIntentText = null;
         this.upcomingEnemyMove = null;
         this.isResolving = false;
+        this.playerBlockValue = 0;
     }
     
     preload() {
@@ -52,11 +53,12 @@ export class GameScene extends Phaser.Scene {
         this.updateHealthUI();
 
         // --- Enemy ---
-        this.enemy = new SlapperEnemy();
-        this.enemyHealthBar = setupEnemyUI(this, this.enemy.name);
+        this.enemyManager = new EnemyManager();
+        const initialEnemy = this.enemyManager.getCurrentEnemy();
+        this.enemyHealthBar = setupEnemyUI(this, initialEnemy ? initialEnemy.name : '???');
         this.enemyIntentText = this.enemyHealthBar.intentText;
         this.updateEnemyHealthUI();
-        this.setNextEnemyMove();
+        this.prepareNextEnemyMove();
 
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(100, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, { 
@@ -196,7 +198,7 @@ export class GameScene extends Phaser.Scene {
 
         const diceToResolve = this.getDiceInPlay();
         const finishResolution = () => {
-            this.processTurnOutcome(attackScore);
+            this.processTurnOutcome({ attackScore, defendScore });
             this.resetGameState({ destroyDice: false });
             this.input.enabled = true;
             if (this.resolveButton) {
@@ -333,88 +335,167 @@ export class GameScene extends Phaser.Scene {
         this.healthBar.text.setText(`HP: ${this.playerHealth}/${this.playerMaxHealth}`);
     }
 
-    processTurnOutcome(attackScore) {
-        if (!this.enemy) {
+    processTurnOutcome({ attackScore, defendScore }) {
+        if (!this.enemyManager) {
             return;
         }
 
-        this.damageEnemy(attackScore);
+        this.playerBlockValue = defendScore;
 
-        if (this.enemy.isDefeated()) {
-            this.upcomingEnemyMove = null;
-            if (this.enemyIntentText) {
-                this.enemyIntentText.setText('Enemy defeated');
-            }
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (!enemy) {
+            this.handleAllEnemiesDefeated();
+            this.playerBlockValue = 0;
             return;
         }
 
-        this.executeEnemyMove();
-    }
-
-    damageEnemy(amount) {
-        if (!this.enemy || amount <= 0) {
-            this.updateEnemyHealthUI();
-            return;
-        }
-
-        this.enemy.takeDamage(amount);
+        this.enemyManager.applyPlayerAttack(attackScore);
         this.updateEnemyHealthUI();
-    }
 
-    healEnemy(amount) {
-        if (!this.enemy || amount <= 0) {
+        if (this.enemyManager.isCurrentEnemyDefeated()) {
+            this.handleEnemyDefeat();
+            this.playerBlockValue = 0;
             return;
         }
 
-        this.enemy.heal(amount);
-        this.updateEnemyHealthUI();
+        this.executeEnemyTurn();
     }
 
     updateEnemyHealthUI() {
-        if (!this.enemy || !this.enemyHealthBar) {
+        if (!this.enemyHealthBar) {
             return;
         }
 
-        const ratio = Phaser.Math.Clamp(this.enemy.health / this.enemy.maxHealth, 0, 1);
+        const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
+        if (!enemy) {
+            this.enemyHealthBar.barFill.displayWidth = 0;
+            this.enemyHealthBar.text.setText('HP: 0/0');
+            return;
+        }
+
+        const ratio = Phaser.Math.Clamp(enemy.health / enemy.maxHealth, 0, 1);
         this.enemyHealthBar.barFill.displayWidth = this.enemyHealthBar.barWidth * ratio;
-        this.enemyHealthBar.text.setText(`HP: ${this.enemy.health}/${this.enemy.maxHealth}`);
+        this.enemyHealthBar.text.setText(`HP: ${enemy.health}/${enemy.maxHealth}`);
     }
 
-    setNextEnemyMove() {
-        if (!this.enemy || this.enemy.isDefeated()) {
+    prepareNextEnemyMove() {
+        if (!this.enemyManager) {
+            return;
+        }
+
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (!enemy || this.enemyManager.isCurrentEnemyDefeated()) {
             this.upcomingEnemyMove = null;
             if (this.enemyIntentText) {
-                this.enemyIntentText.setText('Enemy defeated');
+                this.enemyIntentText.setText('All enemies defeated');
             }
             return;
         }
 
-        this.upcomingEnemyMove = this.enemy.getRandomMove();
+        this.upcomingEnemyMove = this.enemyManager.prepareNextMove();
         if (this.enemyIntentText) {
             const label = this.upcomingEnemyMove ? this.upcomingEnemyMove.label : '...';
             this.enemyIntentText.setText(`Next: ${label}`);
         }
     }
 
-    executeEnemyMove() {
-        if (!this.enemy || this.enemy.isDefeated()) {
+    executeEnemyTurn() {
+        if (!this.enemyManager) {
             return;
         }
 
-        const move = this.upcomingEnemyMove;
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (!enemy || this.enemyManager.isCurrentEnemyDefeated()) {
+            return;
+        }
+
+        const move = this.enemyManager.consumeUpcomingMove();
+        this.upcomingEnemyMove = null;
+
         if (!move) {
-            this.setNextEnemyMove();
+            this.prepareNextEnemyMove();
+            this.playerBlockValue = 0;
             return;
         }
 
-        if (move.type === 'attack') {
-            const damage = move.value;
-            this.applyDamage(damage);
-        } else if (move.type === 'heal') {
-            this.healEnemy(move.value);
+        move.actions.forEach(action => {
+            if (action.type === 'attack') {
+                this.handleEnemyAttack(action.value);
+            } else if (action.type === 'heal') {
+                this.enemyManager.healCurrentEnemy(action.value);
+                this.updateEnemyHealthUI();
+            } else if (action.type === 'defend') {
+                this.enemyManager.addEnemyBlock(action.value);
+            }
+        });
+
+        this.playerBlockValue = 0;
+
+        if (!this.enemyManager.isCurrentEnemyDefeated()) {
+            this.prepareNextEnemyMove();
+        } else {
+            this.handleEnemyDefeat();
+        }
+    }
+
+    handleEnemyAttack(amount) {
+        if (amount <= 0) {
+            return;
         }
 
-        this.setNextEnemyMove();
+        const mitigated = Math.min(this.playerBlockValue, amount);
+        const damage = Math.max(0, amount - mitigated);
+        this.playerBlockValue = Math.max(0, this.playerBlockValue - amount);
+
+        if (damage > 0) {
+            this.applyDamage(damage);
+        }
+    }
+
+    handleEnemyDefeat() {
+        if (!this.enemyManager) {
+            return;
+        }
+
+        const hasNextEnemy = this.enemyManager.advanceToNextEnemy();
+        if (hasNextEnemy) {
+            this.onNewEnemyEncounter();
+        } else {
+            this.handleAllEnemiesDefeated();
+        }
+    }
+
+    onNewEnemyEncounter() {
+        if (!this.enemyManager) {
+            return;
+        }
+
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (!enemy) {
+            this.handleAllEnemiesDefeated();
+            return;
+        }
+
+        if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
+            this.enemyHealthBar.nameText.setText(enemy.name);
+        }
+
+        this.updateEnemyHealthUI();
+        this.prepareNextEnemyMove();
+    }
+
+    handleAllEnemiesDefeated() {
+        this.upcomingEnemyMove = null;
+
+        if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
+            this.enemyHealthBar.nameText.setText('All Enemies Defeated');
+        }
+
+        if (this.enemyIntentText) {
+            this.enemyIntentText.setText('All enemies defeated');
+        }
+
+        this.updateEnemyHealthUI();
     }
 
     resetGameState({ destroyDice = true } = {}) {
@@ -426,6 +507,8 @@ export class GameScene extends Phaser.Scene {
         this.attackDice = [];
         this.defendSlots = Array(6).fill(null);
         this.attackSlots = Array(6).fill(null);
+
+        this.playerBlockValue = 0;
 
         // Reset roll counter
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
