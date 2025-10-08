@@ -21,6 +21,9 @@ export class GameScene extends Phaser.Scene {
         this.upcomingEnemyMove = null;
         this.isResolving = false;
         this.playerBlockValue = 0;
+        this.playerBurn = 0;
+        this.playerBurnText = null;
+        this.playerBurnGlowTween = null;
         this.lockedDice = new Set();
         this.pendingLockCount = 0;
     }
@@ -53,6 +56,14 @@ export class GameScene extends Phaser.Scene {
         // --- Health bar ---
         this.healthBar = setupHealthBar(this);
         this.updateHealthUI();
+
+        this.playerBurnText = this.add.text(0, 0, '', {
+            fontSize: '20px',
+            color: '#ffb347',
+            fontStyle: 'bold'
+        }).setVisible(false);
+        this.playerBurnText.setShadow(0, 0, '#ff6b6b', 16, true, true);
+        this.updateBurnUI();
 
         // --- Enemy ---
         this.enemyManager = new EnemyManager();
@@ -393,6 +404,7 @@ export class GameScene extends Phaser.Scene {
         const healthRatio = Phaser.Math.Clamp(this.playerHealth / this.playerMaxHealth, 0, 1);
         this.healthBar.barFill.displayWidth = this.healthBar.barWidth * healthRatio;
         this.healthBar.text.setText(`HP: ${this.playerHealth}/${this.playerMaxHealth}`);
+        this.updateBurnUI();
     }
 
     processTurnOutcome({ attackScore, defendScore }) {
@@ -401,6 +413,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.playerBlockValue = defendScore;
+
+        this.applyBurnTickDamage();
 
         const enemy = this.enemyManager.getCurrentEnemy();
         if (!enemy) {
@@ -488,6 +502,8 @@ export class GameScene extends Phaser.Scene {
                 this.enemyManager.addEnemyBlock(action.value);
             } else if (action.type === 'lock') {
                 this.queueEnemyLocks(action.count || 1);
+            } else if (action.type === 'burn') {
+                this.applyPlayerBurn(action.value);
             }
         });
 
@@ -497,6 +513,63 @@ export class GameScene extends Phaser.Scene {
             this.prepareNextEnemyMove();
         } else {
             this.handleEnemyDefeat();
+        }
+    }
+
+    applyPlayerBurn(amount) {
+        if (amount <= 0) {
+            return;
+        }
+
+        this.playerBurn += amount;
+        this.updateBurnUI();
+    }
+
+    applyBurnTickDamage() {
+        if (this.playerBurn <= 0) {
+            return;
+        }
+
+        this.handleEnemyAttack(this.playerBurn);
+    }
+
+    updateBurnUI() {
+        if (!this.playerBurnText || !this.healthBar || !this.healthBar.text) {
+            return;
+        }
+
+        if (this.playerBurn > 0) {
+            const bounds = this.healthBar.text.getBounds();
+            const burnX = bounds.x + bounds.width + 20;
+            const burnY = bounds.y + bounds.height / 2;
+            this.playerBurnText.setPosition(burnX, burnY);
+            this.playerBurnText.setOrigin(0, 0.5);
+            this.playerBurnText.setText(`🔥 Burn ${this.playerBurn}`);
+            this.playerBurnText.setVisible(true);
+
+            if (!this.playerBurnGlowTween) {
+                this.playerBurnGlowTween = this.tweens.add({
+                    targets: this.playerBurnText,
+                    alpha: { from: 0.7, to: 1 },
+                    scale: { from: 1, to: 1.05 },
+                    duration: 800,
+                    ease: 'Sine.easeInOut',
+                    yoyo: true,
+                    repeat: -1
+                });
+            }
+        } else {
+            this.playerBurnText.setVisible(false);
+            this.playerBurnText.setText('');
+
+            if (this.playerBurnGlowTween) {
+                this.playerBurnGlowTween.stop();
+                this.playerBurnGlowTween.remove();
+                this.playerBurnGlowTween = null;
+            }
+
+            this.playerBurnText.setAlpha(1);
+            this.playerBurnText.setScale(1);
         }
     }
 
