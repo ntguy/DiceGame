@@ -654,8 +654,6 @@ export class GameScene extends Phaser.Scene {
 
         this.playerBlockValue = 0;
 
-        this.resetPlayerBurn();
-
         // Reset roll counter
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.rollsRemainingText.setText(CONSTANTS.DEFAULT_MAX_ROLLS);
