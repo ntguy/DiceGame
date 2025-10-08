@@ -4,7 +4,7 @@ import { HotfixEnemy } from '../enemies/Hotfix.js';
 export class EnemyManager {
     constructor() {
         // this.enemies = [new SlapperEnemy(), new LockjawEnemy()];
-        this.enemies = [new LockjawEnemy(), new HotfixEnemy()];
+        this.enemies = [new HotfixEnemy(), new LockjawEnemy()];
         this.currentEnemyIndex = 0;
         this.currentEnemy = this.enemies[this.currentEnemyIndex] || null;
         this.upcomingMove = null;

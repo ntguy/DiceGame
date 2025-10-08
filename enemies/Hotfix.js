@@ -1,21 +1,21 @@
 export class HotfixEnemy {
     constructor() {
         this.name = 'Hotfix';
-        this.maxHealth = 100;
+        this.maxHealth = 75;
         this.health = this.maxHealth;
         this.moveIndex = 0;
         this.scalingBurnValue = 3;
         this.moves = [
             {
                 key: 'apply_burn',
-                label: 'Deploy Patch: Apply 3 Burn',
+                label: `Burn ${this.scalingBurnValue + 2}`,
                 actions: [
-                    { type: 'burn', value: 3 }
+                    { type: 'burn', value: this.scalingBurnValue + 1 }
                 ]
             },
             {
                 key: 'heal_attack',
-                label: 'Quick Fix: Heal 10 + Attack 5',
+                label: 'Heal 10 + Attack 5',
                 actions: [
                     { type: 'heal', value: 10 },
                     { type: 'attack', value: 5 }
@@ -23,7 +23,7 @@ export class HotfixEnemy {
             },
             {
                 key: 'burn_defend_loop',
-                label: 'Firewall Update: Growing Burn + Defend 5',
+                label: `Burn ${this.scalingBurnValue} + Defend 10`,
                 createActions: () => {
                     const burnValue = this.scalingBurnValue;
                     this.scalingBurnValue += 1;

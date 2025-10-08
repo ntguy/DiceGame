@@ -62,7 +62,6 @@ export class GameScene extends Phaser.Scene {
             color: '#ffb347',
             fontStyle: 'bold'
         }).setVisible(false);
-        this.playerBurnText.setShadow(0, 0, '#ff6b6b', 16, true, true);
         this.updateBurnUI();
 
         // --- Enemy ---
@@ -544,14 +543,13 @@ export class GameScene extends Phaser.Scene {
             const burnY = bounds.y + bounds.height / 2;
             this.playerBurnText.setPosition(burnX, burnY);
             this.playerBurnText.setOrigin(0, 0.5);
-            this.playerBurnText.setText(`🔥 Burn ${this.playerBurn}`);
+            this.playerBurnText.setText(`Burn ${this.playerBurn}`);
             this.playerBurnText.setVisible(true);
 
             if (!this.playerBurnGlowTween) {
                 this.playerBurnGlowTween = this.tweens.add({
                     targets: this.playerBurnText,
                     alpha: { from: 0.7, to: 1 },
-                    scale: { from: 1, to: 1.05 },
                     duration: 800,
                     ease: 'Sine.easeInOut',
                     yoyo: true,
