@@ -21,6 +21,8 @@ export class GameScene extends Phaser.Scene {
         this.upcomingEnemyMove = null;
         this.isResolving = false;
         this.playerBlockValue = 0;
+        this.lockedDice = new Set();
+        this.pendingLockCount = 0;
     }
     
     preload() {
@@ -74,7 +76,9 @@ export class GameScene extends Phaser.Scene {
     rollDice() {
         // Determine which sound to play
         const diceSelectedCount = this.dice.filter(d => d.selected).length;
-        if (this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS || diceSelectedCount === 6) { // TODO replace 6 with const
+        const isFirstRoll = this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS;
+
+        if (isFirstRoll || diceSelectedCount === 6) { // TODO replace 6 with const
             this.sound.play('multiDiceRoll');
             this.sound.play('diceRoll', { volume: 0.75 });
             this.time.delayedCall(Phaser.Math.Between(100, 300), () => {
@@ -91,7 +95,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         // First roll → create dice
-        if (this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS) {
+        if (isFirstRoll) {
             this.dice = [];
             for (let i = 0; i < 6; i++) {
                 const die = createDie(this, i);
@@ -101,12 +105,16 @@ export class GameScene extends Phaser.Scene {
 
         // Roll dice (first roll = all dice, later rolls = only selected dice)
         this.dice.forEach(d => {
-            if (this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS || d.selected) {
+            if (isFirstRoll || d.selected) {
                 d.roll();
                 d.selected = false;
-                d.bg.fillColor = 0x444444;
+                d.updateVisualState();
             }
         });
+
+        if (isFirstRoll) {
+            this.applyPendingLocks();
+        }
 
 
 
@@ -120,7 +128,51 @@ export class GameScene extends Phaser.Scene {
         this.sortButton.setAlpha(1);
         this.sortButton.setInteractive();
     }
-    
+
+    applyPendingLocks() {
+        if (this.pendingLockCount <= 0 || this.dice.length === 0) {
+            return;
+        }
+
+        const availableDice = this.dice.filter(die => !die.isLocked);
+        if (availableDice.length === 0) {
+            return;
+        }
+
+        const locksToApply = Math.min(this.pendingLockCount, availableDice.length);
+        let remainingLocks = locksToApply;
+        const candidates = [...availableDice];
+
+        while (remainingLocks > 0 && candidates.length > 0) {
+            const index = Phaser.Math.Between(0, candidates.length - 1);
+            const die = candidates.splice(index, 1)[0];
+            if (this.lockDie(die)) {
+                remainingLocks--;
+            }
+        }
+
+        this.pendingLockCount = Math.max(0, this.pendingLockCount - locksToApply);
+        this.updateRollButtonState();
+    }
+
+    lockDie(die) {
+        if (!die || die.isLocked) {
+            return false;
+        }
+
+        die.setLocked(true);
+        this.lockedDice.add(die);
+        return true;
+    }
+
+    queueEnemyLocks(count) {
+        if (!count || count <= 0) {
+            return;
+        }
+
+        this.pendingLockCount = Math.min(6, this.pendingLockCount + count);
+    }
+
     sortDice() {
         this.sound.play('swoosh', { volume: 0.6 });
         this.dice.sort((a, b) => a.value - b.value);
@@ -196,8 +248,16 @@ export class GameScene extends Phaser.Scene {
             }
         });
 
+        const locksToCarryOver = Array.from(this.lockedDice).filter(die =>
+            this.defendDice.includes(die) || this.attackDice.includes(die)
+        ).length;
+
         const diceToResolve = this.getDiceInPlay();
         const finishResolution = () => {
+            if (locksToCarryOver > 0) {
+                this.pendingLockCount = Math.min(6, this.pendingLockCount + locksToCarryOver);
+            }
+            this.lockedDice.clear();
             this.processTurnOutcome({ attackScore, defendScore });
             this.resetGameState({ destroyDice: false });
             this.input.enabled = true;
@@ -426,6 +486,8 @@ export class GameScene extends Phaser.Scene {
                 this.updateEnemyHealthUI();
             } else if (action.type === 'defend') {
                 this.enemyManager.addEnemyBlock(action.value);
+            } else if (action.type === 'lock') {
+                this.queueEnemyLocks(action.count || 1);
             }
         });
 
@@ -523,6 +585,8 @@ export class GameScene extends Phaser.Scene {
             this.resolveButton.setAlpha(1);
             this.resolveButton.setInteractive();
         }
+
+        this.lockedDice.clear();
 
         // Reset combo highlights
         this.comboTextGroup.forEach(t => t.setColor("#ffffff"));
