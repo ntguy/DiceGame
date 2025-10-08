@@ -21,13 +21,6 @@ export function createDie(scene, slotIndex) {
     container.add(lockOverlay);
     container.lockOverlay = lockOverlay;
 
-    const lockIcon = scene.add.text(0, 0, '⛓', {
-        fontSize: '28px',
-        color: '#f9e79f'
-    }).setOrigin(0.5).setVisible(false);
-    container.add(lockIcon);
-    container.lockIcon = lockIcon;
-
     container.value = Phaser.Math.Between(1, 6);
     container.selected = false;
     container.slotIndex = slotIndex;
@@ -51,10 +44,8 @@ export function createDie(scene, slotIndex) {
         if (this.isLocked) {
             this.bg.fillColor = 0x5b2c6f;
             this.lockOverlay.setVisible(true);
-            this.lockIcon.setVisible(true);
         } else {
             this.lockOverlay.setVisible(false);
-            this.lockIcon.setVisible(false);
             this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
         }
     };
@@ -144,13 +135,9 @@ function drawDiePips(scene, container, value) {
         container.pips.push(pip);
     });
 
-    if (container.lockIcon) {
-        container.bringToTop(container.lockIcon);
-    }
     if (container.lockOverlay) {
         container.bringToTop(container.lockOverlay);
         container.sendToBack(container.bg);
-        container.bringToTop(container.lockIcon);
     }
 }
 
