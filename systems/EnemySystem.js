@@ -1,10 +1,10 @@
 import { SlapperEnemy } from '../enemies/Slapper.js';
-import { KickyMcGeeEnemy } from '../enemies/KickyMcGee.js';
+import { LockjawEnemy } from '../enemies/Lockjaw.js';
 
 export class EnemyManager {
     constructor() {
-        // this.enemies = [new SlapperEnemy(), new KickyMcGeeEnemy()];
-        this.enemies = [new KickyMcGeeEnemy()];
+        // this.enemies = [new SlapperEnemy(), new LockjawEnemy()];
+        this.enemies = [new LockjawEnemy()];
         this.currentEnemyIndex = 0;
         this.currentEnemy = this.enemies[this.currentEnemyIndex] || null;
         this.upcomingMove = null;

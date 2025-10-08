@@ -13,17 +13,45 @@ export function createDie(scene, slotIndex) {
     container.add(bg);
     container.bg = bg;
 
+    const lockOverlay = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE + 12, CONSTANTS.DIE_SIZE + 12, 0x8e44ad, 0.35)
+        .setOrigin(0.5)
+        .setStrokeStyle(3, 0xf1c40f, 0.8)
+        .setVisible(false)
+        .setAngle(8);
+    container.add(lockOverlay);
+    container.lockOverlay = lockOverlay;
+
     container.value = Phaser.Math.Between(1, 6);
     container.selected = false;
     container.slotIndex = slotIndex;
     container.pips = [];
-    
+    container.isLocked = false;
+
     // Add die methods
     container.roll = function() {
         drawDiePips(scene, this, Phaser.Math.Between(1, 6));
     };
-    
+
+    container.setLocked = function(isLocked) {
+        this.isLocked = isLocked;
+        if (isLocked) {
+            this.selected = false;
+        }
+        this.updateVisualState();
+    };
+
+    container.updateVisualState = function() {
+        if (this.isLocked) {
+            this.bg.fillColor = 0x5b2c6f;
+            this.lockOverlay.setVisible(true);
+        } else {
+            this.lockOverlay.setVisible(false);
+            this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
+        }
+    };
+
     drawDiePips(scene, container, container.value);
+    container.updateVisualState();
 
     container.setSize(CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE);
     container.setInteractive();
@@ -31,9 +59,13 @@ export function createDie(scene, slotIndex) {
 
     // --- Click to toggle selection ---
     container.on("pointerup", pointer => {
+        if (container.isLocked) {
+            return;
+        }
+
         if (Math.abs(pointer.downX - pointer.x) < 5 && Math.abs(pointer.downY - pointer.y) < 5) {
             container.selected = !container.selected;
-            container.bg.fillColor = container.selected ? 0x2ecc71 : 0x444444;
+            container.updateVisualState();
             scene.updateRollButtonState();
         }
     });
@@ -102,6 +134,11 @@ function drawDiePips(scene, container, value) {
         container.add(pip);
         container.pips.push(pip);
     });
+
+    if (container.lockOverlay) {
+        container.bringToTop(container.lockOverlay);
+        container.sendToBack(container.bg);
+    }
 }
 
 export function snapToGrid(die, diceArray, scene) {
