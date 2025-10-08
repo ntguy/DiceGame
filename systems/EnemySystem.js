@@ -3,7 +3,8 @@ import { KickyMcGeeEnemy } from '../enemies/KickyMcGee.js';
 
 export class EnemyManager {
     constructor() {
-        this.enemies = [new SlapperEnemy(), new KickyMcGeeEnemy()];
+        // this.enemies = [new SlapperEnemy(), new KickyMcGeeEnemy()];
+        this.enemies = [new KickyMcGeeEnemy()];
         this.currentEnemyIndex = 0;
         this.currentEnemy = this.enemies[this.currentEnemyIndex] || null;
         this.upcomingMove = null;
