@@ -47,7 +47,6 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessage = null;
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
-        this.comboHeaderText = null;
         this.activeFacilityUI = null;
         this.relicCatalog = [];
         this.relics = [];
@@ -73,7 +72,6 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessage = null;
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
-        this.comboHeaderText = null;
         this.activeFacilityUI = null;
         this.relicCatalog = [];
         this.relics = [];
@@ -214,7 +212,7 @@ export class GameScene extends Phaser.Scene {
             lineSpacing: 6
         }).setOrigin(1, 0);
 
-        this.setRelicInfoText('', this.relics.length ? 'Select a relic to view details.' : 'No relics owned yet.');
+        this.setRelicInfoText('', '');
         this.updateRelicDisplay();
     }
 
@@ -226,12 +224,6 @@ export class GameScene extends Phaser.Scene {
         }
 
         const ownedRelics = this.relics.filter(relic => this.ownedRelicIds.has(relic.id));
-
-        if (ownedRelics.length === 0) {
-            this.selectedRelicId = null;
-            this.setRelicInfoText('', 'No relics owned yet.');
-            return;
-        }
 
         const startX = CONSTANTS.RIGHT_COLUMN_X;
         const baseY = CONSTANTS.RELIC_TRAY_Y;
@@ -259,7 +251,7 @@ export class GameScene extends Phaser.Scene {
             this.setRelicInfoText(selectedRelic.name, selectedRelic.description);
         } else {
             this.selectedRelicId = null;
-            this.setRelicInfoText('', 'Select a relic to view details.');
+            this.setRelicInfoText('', '');
         }
 
         this.updateRelicSelectionHighlight();
@@ -305,14 +297,21 @@ export class GameScene extends Phaser.Scene {
     showRelicDetails(relic) {
         if (!relic || !this.ownedRelicIds.has(relic.id)) {
             this.selectedRelicId = null;
-            const hasOwnedRelics = this.relics.some(item => this.ownedRelicIds.has(item.id));
-            this.setRelicInfoText('', hasOwnedRelics ? 'Select a relic to view details.' : 'No relics owned yet.');
+            this.setRelicInfoText('', ''); // Display nothing if no relic is selected
             this.updateRelicSelectionHighlight();
             return;
         }
 
-        this.selectedRelicId = relic.id;
-        this.setRelicInfoText(relic.name, relic.description);
+        // Check if the clicked relic is already selected
+        if (this.selectedRelicId === relic.id) {
+            // If it's the same relic, deselect it
+            this.selectedRelicId = null;
+            this.setRelicInfoText('', ''); // Display nothing
+        } else {
+            // Otherwise, select the new relic
+            this.selectedRelicId = relic.id;
+            this.setRelicInfoText(relic.name, relic.description);
+        }
         this.updateRelicSelectionHighlight();
     }
     
@@ -1488,7 +1487,6 @@ export class GameScene extends Phaser.Scene {
         }
 
         applyToArray(this.comboTextGroup, showCombatUI);
-        setVisibility(this.comboHeaderText, showCombatUI);
         applyToArray(this.relicVisuals, showCombatUI);
         setVisibility(this.relicInfoTitleText, showCombatUI);
         setVisibility(this.relicInfoDescriptionText, showCombatUI);
