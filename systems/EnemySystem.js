@@ -37,7 +37,7 @@ export class EnemyManager {
     }
 
     getEnemyBlock() {
-        return this.enemyBlockValue;
+        return Number.isFinite(this.enemyBlockValue) ? this.enemyBlockValue : 0;
     }
 
     prepareNextMove() {
@@ -56,13 +56,24 @@ export class EnemyManager {
     }
 
     applyPlayerAttack(amount) {
-        if (!this.currentEnemy || amount <= 0) {
-            return { damageDealt: 0, blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)) };
+        if (!this.currentEnemy) {
+            return { damageDealt: 0, blockedAmount: 0 };
         }
 
-        const blockedAmount = Math.min(this.enemyBlockValue, amount);
-        const damageDealt = Math.max(0, amount - this.enemyBlockValue);
-        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - amount);
+        if (!Number.isFinite(this.enemyBlockValue)) {
+            this.enemyBlockValue = 0;
+        }
+
+        const numericAmount = Number(amount);
+        const incomingDamage = Number.isFinite(numericAmount) && numericAmount > 0 ? numericAmount : 0;
+
+        if (incomingDamage <= 0) {
+            return { damageDealt: 0, blockedAmount: 0 };
+        }
+
+        const blockedAmount = Math.min(this.enemyBlockValue, incomingDamage);
+        const damageDealt = incomingDamage - blockedAmount;
+        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - blockedAmount);
 
         if (damageDealt > 0) {
             this.currentEnemy.takeDamage(damageDealt);
@@ -72,9 +83,16 @@ export class EnemyManager {
     }
 
     addEnemyBlock(amount) {
-        if (amount > 0) {
-            this.enemyBlockValue += amount;
+        const numericAmount = Number(amount);
+        if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+            return;
         }
+
+        if (!Number.isFinite(this.enemyBlockValue)) {
+            this.enemyBlockValue = 0;
+        }
+
+        this.enemyBlockValue += numericAmount;
     }
 
     healCurrentEnemy(amount) {
