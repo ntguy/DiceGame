@@ -56,6 +56,7 @@ export class GameScene extends Phaser.Scene {
         this.defendComboText = null;
         this.attackComboText = null;
         this.comboListTexts = [];
+        this.pendingPostCombatTransition = false;
 
         this.relicUI = new RelicUIManager(this);
 
@@ -89,6 +90,7 @@ export class GameScene extends Phaser.Scene {
         this.pathUI = null;
         this.currentPathNodeId = null;
         this.inCombat = false;
+        this.pendingPostCombatTransition = false;
         this.playerGold = 0;
         this.nodeMessage = null;
         this.nodeMessageTween = null;
@@ -124,6 +126,7 @@ export class GameScene extends Phaser.Scene {
         this.playerGold = 0;
         this.currentPathNodeId = null;
         this.inCombat = false;
+        this.pendingPostCombatTransition = false;
         this.resetRelicState();
         this.relicCatalog = [
             new LuckyPipRelic(),
@@ -487,11 +490,16 @@ export class GameScene extends Phaser.Scene {
             }
             this.lockedDice.clear();
             this.resetGameState({ destroyDice: false });
-            this.input.enabled = true;
-            if (this.resolveButton) {
-                setTextButtonEnabled(this.resolveButton, true);
+            if (this.pendingPostCombatTransition) {
+                this.disableAllInputs();
+            } else {
+                this.input.enabled = true;
+                if (this.resolveButton) {
+                    setTextButtonEnabled(this.resolveButton, true);
+                }
             }
             this.isResolving = false;
+            this.tryEnterMapStateAfterCombat();
         };
 
         this.processTurnOutcome({ attackScore, defendScore });
@@ -634,6 +642,8 @@ export class GameScene extends Phaser.Scene {
                 bar[key] = null;
             }
         });
+
+        this.tryEnterMapStateAfterCombat();
     }
 
     animateHealthBar(bar, targetHealth, maxHealth) {
@@ -699,6 +709,8 @@ export class GameScene extends Phaser.Scene {
                     onComplete: () => {
                         bar.damageFill.setVisible(false);
                         bar.damageFill.displayWidth = 0;
+                        bar.damageTween = null;
+                        this.tryEnterMapStateAfterCombat();
                     }
                 });
             }
@@ -708,7 +720,11 @@ export class GameScene extends Phaser.Scene {
                 targets: bar.barFill,
                 displayWidth: targetWidth,
                 duration,
-                ease: 'Linear'
+                ease: 'Linear',
+                onComplete: () => {
+                    bar.barTween = null;
+                    this.tryEnterMapStateAfterCombat();
+                }
             });
         }
 
@@ -728,8 +744,44 @@ export class GameScene extends Phaser.Scene {
                 bar.displayedHealth = clampedTarget;
                 bar.text.setText(`HP: ${clampedTarget}/${maxHealth}`);
                 this.updateBurnUI();
+                bar.textTween = null;
+                this.tryEnterMapStateAfterCombat();
             }
         });
+    }
+
+    isHealthBarAnimating(bar) {
+        if (!bar) {
+            return false;
+        }
+
+        const tweenKeys = ['barTween', 'damageTween', 'textTween'];
+        return tweenKeys.some(key => {
+            const tween = bar[key];
+            return tween && tween.isPlaying;
+        });
+    }
+
+    requestEnterMapStateAfterCombat() {
+        this.pendingPostCombatTransition = true;
+        this.tryEnterMapStateAfterCombat();
+    }
+
+    tryEnterMapStateAfterCombat() {
+        if (!this.pendingPostCombatTransition) {
+            return;
+        }
+
+        const animationsActive = this.isResolving
+            || this.isHealthBarAnimating(this.enemyHealthBar)
+            || this.isHealthBarAnimating(this.healthBar);
+
+        if (animationsActive) {
+            return;
+        }
+
+        this.pendingPostCombatTransition = false;
+        this.enterMapState();
     }
 
     processTurnOutcome({ attackScore, defendScore }) {
@@ -971,6 +1023,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        this.pendingPostCombatTransition = false;
         this.inCombat = true;
         if (this.pathUI) {
             this.pathUI.hide();
@@ -1138,6 +1191,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     enterMapState() {
+        this.pendingPostCombatTransition = false;
+        this.input.enabled = true;
         const hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
 
         this.destroyFacilityUI();
@@ -1338,8 +1393,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.enemyManager.clearCurrentEnemy();
-        this.updateEnemyHealthUI();
-        this.enterMapState();
+        this.prepareNextEnemyMove();
+        this.requestEnterMapStateAfterCombat();
     }
 
     handleAllEnemiesDefeated() {
