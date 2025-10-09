@@ -1004,6 +1004,9 @@ export class GameScene extends Phaser.Scene {
             this.pathUI.hide();
         }
 
+        this.pendingLockCount = 0;
+        this.lockedDice.clear();
+
         this.resetGameState({ destroyDice: true });
         this.setMapMode(false);
 
