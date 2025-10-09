@@ -199,7 +199,7 @@ export class GameScene extends Phaser.Scene {
         const zoneWidth = CONSTANTS.DEFAULT_ZONE_WIDTH + 6;
         const defendLeftX = (this.defendZoneCenter ? this.defendZoneCenter.x : 200) - zoneWidth / 2;
         const attackLeftX = (this.attackZoneCenter ? this.attackZoneCenter.x : 600) - zoneWidth / 2;
-        const comboLineOffset = 28;
+        const comboLineOffset = 145;
 
         if (!this.defendPreviewText) {
             this.defendPreviewText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
@@ -210,7 +210,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (!this.defendComboText) {
-            this.defendComboText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y + comboLineOffset, '', {
+            this.defendComboText = this.add.text(defendLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y, '', {
                 fontSize: '20px',
                 color: '#3498db',
                 align: 'left'
@@ -226,7 +226,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (!this.attackComboText) {
-            this.attackComboText = this.add.text(attackLeftX, CONSTANTS.RESOLVE_TEXT_Y + comboLineOffset, '', {
+            this.attackComboText = this.add.text(attackLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y, '', {
                 fontSize: '20px',
                 color: '#e74c3c',
                 align: 'left'
@@ -308,7 +308,7 @@ export class GameScene extends Phaser.Scene {
         const attackScore = this.computeZoneScore(this.attackDice || []);
 
         const formatScoreLine = score => `${score.total}: ${score.baseSum}+${score.comboBonus}`;
-        const formatComboLine = score => `Combo Bonus: ${score.comboType} (+${score.comboBonus})`;
+        const formatComboLine = score => `${score.comboType}`;
 
         this.defendPreviewText.setText(formatScoreLine(defendScore));
         if (this.defendComboText) {
