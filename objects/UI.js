@@ -40,10 +40,8 @@ export function setupButtons(scene) {
 }
 
 export function setupMuteButton(scene, onToggle) {
-    const button = scene.add.text(scene.scale.width - 20, scene.scale.height - 20, '', {
+    const button = scene.add.text(scene.scale.width - 5, scene.scale.height - 5, '', {
         fontSize: '28px',
-        color: '#ffffff',
-        backgroundColor: '#2c3e50',
         padding: { x: 16, y: 10 }
     }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
 
@@ -51,14 +49,6 @@ export function setupMuteButton(scene, onToggle) {
         if (typeof onToggle === 'function') {
             onToggle();
         }
-    });
-
-    button.on('pointerover', () => {
-        button.setStyle({ backgroundColor: '#34495e' });
-    });
-
-    button.on('pointerout', () => {
-        button.setStyle({ backgroundColor: '#2c3e50' });
     });
 
     return button;

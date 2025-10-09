@@ -767,7 +767,6 @@ export class GameScene extends Phaser.Scene {
 
         const icon = this.isMuted ? '🔇' : '🔊';
         this.muteButton.setText(icon);
-        this.muteButton.setStyle({ color: this.isMuted ? '#f39c12' : '#ffffff' });
     }
 
     triggerGameOver() {
