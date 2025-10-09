@@ -5,7 +5,8 @@ import { SlapperEnemy } from '../enemies/Slapper.js';
 
 export class EnemyManager {
     constructor() {
-        this.enemies = [new SlapperEnemy(), new LockjawEnemy(), new HotfixEnemy(), new InfernoEnemy()];
+        this.enemies = [new SlapperEnemy(), new HotfixEnemy(), new LockjawEnemy(), new InfernoEnemy()];
+        // this.enemies = [new InfernoEnemy(), new LockjawEnemy(), new SlapperEnemy(), new HotfixEnemy()];
         this.currentEnemyIndex = -1;
         this.currentEnemy = null;
         this.upcomingMove = null;
@@ -67,6 +68,8 @@ export class EnemyManager {
         if (damageDealt > 0) {
             this.currentEnemy.takeDamage(damageDealt);
         }
+
+        console.log(damageDealt, blockedAmount, this.enemyBlockValue, this.currentEnemy.health);
 
         return { damageDealt, blockedAmount };
     }

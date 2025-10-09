@@ -9,7 +9,7 @@ export class HotfixEnemy extends BaseEnemy {
             {
                 key: 'apply_burn',
                 label: () => `Burn ${this.scalingBurnValue + 2}`,
-                createActions: () => [burnAction(this.scalingBurnValue + 1)]
+                createActions: () => [burnAction(this.scalingBurnValue + 2)]
             },
             {
                 key: 'heal_attack',

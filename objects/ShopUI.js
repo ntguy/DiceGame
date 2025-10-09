@@ -36,12 +36,7 @@ export class ShopUI {
             fontStyle: 'bold'
         }).setOrigin(0.5, 0.5);
 
-        const subtitle = this.scene.add.text(0, title.y + 40, 'Each relic costs 100 gold', {
-            fontSize: '20px',
-            color: '#f9e79f'
-        }).setOrigin(0.5, 0.5);
-
-        this.container.add([panel, title, subtitle]);
+        this.container.add([panel, title]);
 
         this.renderRelicCards();
         this.createLeaveButton();
@@ -76,8 +71,8 @@ export class ShopUI {
                 wordWrap: { width: CARD_WIDTH - 40 }
             }).setOrigin(0.5, 0);
 
-            const buttonY = CARD_HEIGHT / 2 - 50;
-            const buttonBg = this.scene.add.rectangle(0, buttonY, CARD_WIDTH - 40, 46, 0x271438, 0.9)
+            const buttonY = CARD_HEIGHT / 2;
+            const buttonBg = this.scene.add.rectangle(0, buttonY, CARD_WIDTH - 40, 46, 0x271438)
                 .setStrokeStyle(2, 0xf1c40f, 0.8)
                 .setInteractive({ useHandCursor: !relic.owned && relic.canAfford });
 
@@ -97,8 +92,8 @@ export class ShopUI {
                 buttonText.setAlpha(0.55);
                 buttonBg.disableInteractive();
             } else {
-                buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x3a1c4d, 0.95));
-                buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x271438, 0.9));
+                buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x3a1c4d));
+                buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x271438));
                 buttonBg.on('pointerup', () => {
                     const purchased = this.onPurchase(relic.id);
                     if (purchased) {
