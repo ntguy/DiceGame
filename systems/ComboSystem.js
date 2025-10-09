@@ -1,3 +1,5 @@
+import { CONSTANTS } from '../config.js';
+
 // Scoring values for different combinations
 export const COMBO_POINTS = {
     "YAHTZEE": 25,
@@ -79,8 +81,8 @@ export function isStraight(values) {
 }
 
 export function displayComboTable(scene) {
-    const startX = 1070; // right side
-    const startY = 310;
+    const startX = CONSTANTS.RIGHT_COLUMN_X; // right side
+    const startY = CONSTANTS.COMBO_TABLE_TOP_Y;
     const lineSpacing = 28;
 
     // Destroy old table if it exists
@@ -88,14 +90,6 @@ export function displayComboTable(scene) {
         scene.comboTextGroup.forEach(t => t.destroy());
     }
     scene.comboTextGroup = [];
-
-    if (scene.comboHeaderText) {
-        scene.comboHeaderText.destroy();
-    }
-    scene.comboHeaderText = scene.add.text(startX, startY - 40, "Combo Bonuses", {
-        fontSize: "28px",
-        color: "#f1c40f"
-    }).setOrigin(1, 0);
 
     // Iterate over COMBO_POINTS
     Object.entries(COMBO_POINTS).forEach(([combo, points], i) => {
