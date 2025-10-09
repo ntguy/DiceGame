@@ -1,6 +1,5 @@
 import { CONSTANTS } from '../config.js';
 import { snapToGrid } from './Dice.js';
-// import { highlightCombos } from '../systems/ComboSystem.js';
 
 export function setupZones(scene) {
     const zoneWidth = CONSTANTS.DEFAULT_ZONE_WIDTH + 6;

@@ -1,9 +1,10 @@
 import { CONSTANTS } from './config.js';
 import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
-import { setupButtons, setupHealthBar, setupEnemyUI, setupMuteButton } from './objects/UI.js';
+import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
+import { MenuPanel } from './objects/MenuPanel.js';
 import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
-import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
+import { evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
 import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
@@ -36,7 +37,6 @@ export class GameScene extends Phaser.Scene {
         this.lockedDice = new Set();
         this.pendingLockCount = 0;
         this.gameOverManager = null;
-        this.muteButton = null;
         this.isMuted = false;
         this.isGameOver = false;
         this.pathManager = null;
@@ -57,6 +57,9 @@ export class GameScene extends Phaser.Scene {
         this.relicInfoTitleText = null;
         this.relicInfoDescriptionText = null;
         this.selectedRelicId = null;
+        this.menuPanel = null;
+        this.defendText = null;
+        this.attackText = null;
     }
 
     init(data) {
@@ -64,7 +67,6 @@ export class GameScene extends Phaser.Scene {
         this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
         this.isGameOver = false;
         this.gameOverManager = null;
-        this.muteButton = null;
         this.pathManager = null;
         this.pathUI = null;
         this.currentPathNodeId = null;
@@ -82,6 +84,9 @@ export class GameScene extends Phaser.Scene {
         this.relicInfoTitleText = null;
         this.relicInfoDescriptionText = null;
         this.selectedRelicId = null;
+        this.menuPanel = null;
+        this.defendText = null;
+        this.attackText = null;
     }
 
     preload() {
@@ -130,14 +135,12 @@ export class GameScene extends Phaser.Scene {
             this.zoneVisuals = [];
         }
 
+        this.updateZonePreviews();
+
         // --- Buttons ---
         setupButtons(this);
         this.updateRollButtonState();
-
-        this.muteButton = setupMuteButton(this, () => this.toggleMute());
-
-        // --- Combo table ---
-        displayComboTable(this);
+        this.menuPanel = new MenuPanel(this);
         this.createRelicShelf();
 
         // --- Health bar ---
@@ -462,47 +465,13 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Calculate scores
-        const defendType = evaluateCombo(this.defendDice).type;
-        const attackType = evaluateCombo(this.attackDice).type;
-        const defendBonus = scoreCombo(defendType);
-        const attackBonus = scoreCombo(attackType);
-        const defendSummation = this.defendDice.reduce((sum, die) => sum + die.value, 0);
-        const attackSummation = this.attackDice.reduce((sum, die) => sum + die.value, 0);
-        const defendScore = defendSummation + defendBonus;
-        const attackScore = attackSummation + attackBonus;
+        const defendResult = this.calculateZoneOutcome(this.defendDice);
+        const attackResult = this.calculateZoneOutcome(this.attackDice);
 
-        // Update or create score text
-        if (!this.defendText) {
-            this.defendText = this.add.text(200, CONSTANTS.RESOLVE_TEXT_Y, "", {
-                fontSize: "28px",
-                color: "#3498db"
-            }).setOrigin(0.5);
+        this.updateZonePreviews(defendResult, attackResult);
 
-            this.attackText = this.add.text(600, CONSTANTS.RESOLVE_TEXT_Y, "", {
-                fontSize: "28px",
-                color: "#e74c3c"
-            }).setOrigin(0.5);
-        }
-
-        this.defendText.setText(`${defendType}: ${defendScore}`);
-        this.attackText.setText(`${attackType}: ${attackScore}`);
-
-        // Ensure visible
-        this.defendText.setAlpha(1);
-        this.attackText.setAlpha(1);
-
-        // Fade the combo texts above the zones over 4 seconds, then destroy them
-        this.tweens.add({
-            targets: [ this.defendText, this.attackText ],
-            alpha: 0,
-            duration: 2000,
-            delay: 2000,
-            ease: 'Cubic',
-            onComplete: () => {
-                if (this.defendText) { this.defendText.destroy(); this.defendText = null; }
-                if (this.attackText) { this.attackText.destroy(); this.attackText = null; }
-            }
-        });
+        const defendScore = defendResult.total;
+        const attackScore = attackResult.total;
 
         const locksToCarryOver = Array.from(this.lockedDice).filter(die =>
             this.defendDice.includes(die) || this.attackDice.includes(die)
@@ -533,6 +502,44 @@ export class GameScene extends Phaser.Scene {
             const target = this.getResolutionTarget(die);
             return this.animateDieResolution(die, target);
         })).then(finishResolution);
+    }
+
+    calculateZoneOutcome(diceArray = []) {
+        const comboType = evaluateCombo(diceArray).type;
+        const diceTotal = diceArray.reduce((sum, die) => sum + die.value, 0);
+        const comboBonus = scoreCombo(comboType);
+        const total = diceTotal + comboBonus;
+
+        return { comboType, diceTotal, comboBonus, total };
+    }
+
+    updateZonePreviews(defendResult = null, attackResult = null) {
+        const defendInfo = defendResult || this.calculateZoneOutcome(this.defendDice);
+        const attackInfo = attackResult || this.calculateZoneOutcome(this.attackDice);
+
+        if (!this.defendText) {
+            this.defendText = this.add.text(200, CONSTANTS.RESOLVE_TEXT_Y, '', {
+                fontSize: '26px',
+                color: '#3498db'
+            }).setOrigin(0.5);
+        }
+
+        if (!this.attackText) {
+            this.attackText = this.add.text(600, CONSTANTS.RESOLVE_TEXT_Y, '', {
+                fontSize: '26px',
+                color: '#e74c3c'
+            }).setOrigin(0.5);
+        }
+
+        const formatText = (label, info) => {
+            return `${label} Total ${info.total}: ${info.diceTotal} + ${info.comboBonus} (${info.comboType})`;
+        };
+
+        this.defendText.setText(formatText('Defense', defendInfo));
+        this.attackText.setText(formatText('Attack', attackInfo));
+
+        this.defendText.setAlpha(1);
+        this.attackText.setAlpha(1);
     }
 
     disableAllInputs() {
@@ -1413,10 +1420,7 @@ export class GameScene extends Phaser.Scene {
 
         this.lockedDice.clear();
 
-        // Reset combo highlights
-        if (this.comboTextGroup) {
-            this.comboTextGroup.forEach(t => t.setColor("#ffffff"));
-        }
+        this.updateZonePreviews();
     }
 
     setMapMode(isMapView) {
@@ -1455,13 +1459,8 @@ export class GameScene extends Phaser.Scene {
 
         setVisibility(this.rollsRemainingText, showCombatUI);
 
-        if (this.muteButton) {
-            setVisibility(this.muteButton, showCombatUI);
-            if (showCombatUI) {
-                this.muteButton.setInteractive({ useHandCursor: true });
-            } else {
-                this.muteButton.disableInteractive();
-            }
+        if (this.menuPanel) {
+            this.menuPanel.setVisible(showCombatUI);
         }
 
         setVisibility(this.playerBurnText, showCombatUI && this.playerBurn > 0 && this.inCombat);
@@ -1475,7 +1474,6 @@ export class GameScene extends Phaser.Scene {
             this.attackHighlight.setVisible(false);
         }
 
-        applyToArray(this.comboTextGroup, showCombatUI);
         applyToArray(this.relicVisuals, showCombatUI);
         setVisibility(this.relicInfoTitleText, showCombatUI);
         setVisibility(this.relicInfoDescriptionText, showCombatUI);
@@ -1527,12 +1525,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateMuteButtonState() {
-        if (!this.muteButton) {
-            return;
+        if (this.menuPanel) {
+            this.menuPanel.updateMuteLabel(this.isMuted);
         }
-
-        const icon = this.isMuted ? '🔇' : '🔊';
-        this.muteButton.setText(icon);
     }
 
     triggerGameOver() {

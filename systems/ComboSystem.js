@@ -1,5 +1,3 @@
-import { CONSTANTS } from '../config.js';
-
 // Scoring values for different combinations
 export const COMBO_POINTS = {
     "YAHTZEE": 25,
@@ -78,53 +76,4 @@ export function isStraight(values) {
         }
     }
     return true;
-}
-
-export function displayComboTable(scene) {
-    const startX = CONSTANTS.RIGHT_COLUMN_X; // right side
-    const startY = CONSTANTS.COMBO_TABLE_TOP_Y;
-    const lineSpacing = 28;
-
-    // Destroy old table if it exists
-    if (scene.comboTextGroup) {
-        scene.comboTextGroup.forEach(t => t.destroy());
-    }
-    scene.comboTextGroup = [];
-
-    // Iterate over COMBO_POINTS
-    Object.entries(COMBO_POINTS).forEach(([combo, points], i) => {
-        const text = scene.add.text(startX, startY + i * lineSpacing, `${combo}: ${points}`, {
-            fontSize: "20px",
-            color: "#ffffff"
-        }).setOrigin(1, 0); // right-align
-        scene.comboTextGroup.push(text);
-    });
-}
-
-export function highlightCombos(scene, _diceArray = null) {
-    if (!scene.comboTextGroup) return;
-
-    // derive same order used by displayComboTable
-    const combos = Object.keys(COMBO_POINTS);
-
-    const defendCombo = (scene.defendDice && scene.defendDice.length > 0) ? evaluateCombo(scene.defendDice).type : null;
-    const attackCombo = (scene.attackDice && scene.attackDice.length > 0) ? evaluateCombo(scene.attackDice).type : null;
-
-    combos.forEach((comboName, i) => {
-        const textObj = scene.comboTextGroup[i];
-        if (!textObj) return;
-
-        const defMatch = defendCombo !== null && comboName === defendCombo;
-        const atkMatch = attackCombo !== null && comboName === attackCombo;
-
-        if (defMatch && atkMatch) {
-            textObj.setColor("#ae72ac"); // both -> purple
-        } else if (defMatch) {
-            textObj.setColor("#3498db"); // defend -> blue
-        } else if (atkMatch) {
-            textObj.setColor("#e74c3c"); // attack -> red
-        } else {
-            textObj.setColor("#ffffff"); // default
-        }
-    });
 }
