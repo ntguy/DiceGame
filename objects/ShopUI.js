@@ -1,4 +1,5 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
+import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;
@@ -111,8 +112,15 @@ export class ShopUI {
                 descText.setAlpha(0.85);
                 buttonBg.disableInteractive();
             } else {
-                buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x3a1c4d, 0.95));
-                buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x271438, 0.92));
+                applyRectangleButtonStyle(buttonBg, {
+                    baseColor: 0x271438,
+                    baseAlpha: 0.92,
+                    hoverBlend: 0.18,
+                    pressBlend: 0.32,
+                    disabledBlend: 0.5,
+                    enabledAlpha: 1,
+                    disabledAlpha: 0.45
+                });
                 buttonBg.on('pointerup', () => {
                     const purchased = this.onPurchase(relic.id);
                     if (purchased) {
@@ -148,8 +156,15 @@ export class ShopUI {
             color: '#f9e79f'
         }).setOrigin(0.5);
 
-        leaveBg.on('pointerover', () => leaveBg.setFillStyle(0x3a2356, 0.96));
-        leaveBg.on('pointerout', () => leaveBg.setFillStyle(0x2d1b3d, 0.92));
+        applyRectangleButtonStyle(leaveBg, {
+            baseColor: 0x2d1b3d,
+            baseAlpha: 0.92,
+            hoverBlend: 0.18,
+            pressBlend: 0.32,
+            disabledBlend: 0.5,
+            enabledAlpha: 1,
+            disabledAlpha: 0.45
+        });
         leaveBg.on('pointerup', () => this.onClose());
 
         this.container.add([leaveBg, leaveText]);

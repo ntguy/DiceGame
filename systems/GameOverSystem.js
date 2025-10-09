@@ -1,3 +1,5 @@
+import { applyTextButtonStyle, setTextButtonEnabled } from '../objects/ui/ButtonStyles.js';
+
 export class GameOverManager {
     constructor(scene) {
         this.scene = scene;
@@ -30,28 +32,30 @@ export class GameOverManager {
 
         this.retryButton = this.scene.add.text(width / 2, height / 2 + 80, 'RETRY', {
             fontSize: '36px',
-            color: '#000000',
-            backgroundColor: '#f1c40f',
+            color: '#1b1300',
             padding: { x: 30, y: 16 }
         }).setOrigin(0.5);
+
+        applyTextButtonStyle(this.retryButton, {
+            baseColor: '#f1c40f',
+            textColor: '#1b1300',
+            hoverBlend: 0.16,
+            pressBlend: 0.3,
+            disabledBlend: 0.45,
+            enabledAlpha: 1,
+            disabledAlpha: 0.5
+        });
+        setTextButtonEnabled(this.retryButton, true);
 
         this.retryButton.on('pointerdown', () => {
             if (!this.retryButton.input || !this.retryButton.input.enabled) {
                 return;
             }
 
-            this.retryButton.disableInteractive();
+            setTextButtonEnabled(this.retryButton, false, { disabledAlpha: 0.6 });
             if (typeof this.onRetry === 'function') {
                 this.onRetry();
             }
-        });
-
-        this.retryButton.on('pointerover', () => {
-            this.retryButton.setStyle({ backgroundColor: '#f39c12' });
-        });
-
-        this.retryButton.on('pointerout', () => {
-            this.retryButton.setStyle({ backgroundColor: '#f1c40f' });
         });
 
         this.container.add([this.background, title, subtitle, this.retryButton]);
@@ -75,8 +79,7 @@ export class GameOverManager {
         }
 
         if (this.retryButton) {
-            this.retryButton.setInteractive({ useHandCursor: true });
-            this.retryButton.setStyle({ backgroundColor: '#f1c40f' });
+            setTextButtonEnabled(this.retryButton, true);
         }
 
         this.scene.tweens.add({
@@ -101,7 +104,7 @@ export class GameOverManager {
         }
 
         if (this.retryButton) {
-            this.retryButton.disableInteractive();
+            setTextButtonEnabled(this.retryButton, false);
         }
 
         this.onRetry = null;

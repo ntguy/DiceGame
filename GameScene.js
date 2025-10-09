@@ -2,6 +2,7 @@ import { CONSTANTS } from './config.js';
 import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI, setupMuteButton } from './objects/UI.js';
+import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
 import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
@@ -373,8 +374,7 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
 
         // Enable sort button after the first roll
-        this.sortButton.setAlpha(1);
-        this.sortButton.setInteractive();
+        setTextButtonEnabled(this.sortButton, true);
     }
 
     applyPendingLocks() {
@@ -517,8 +517,7 @@ export class GameScene extends Phaser.Scene {
             this.resetGameState({ destroyDice: false });
             this.input.enabled = true;
             if (this.resolveButton) {
-                this.resolveButton.setAlpha(1);
-                this.resolveButton.setInteractive();
+                setTextButtonEnabled(this.resolveButton, true);
             }
             this.isResolving = false;
         };
@@ -540,18 +539,15 @@ export class GameScene extends Phaser.Scene {
         this.input.enabled = false;
 
         if (this.rollButton) {
-            this.rollButton.disableInteractive();
-            this.rollButton.setAlpha(0.5);
+            setTextButtonEnabled(this.rollButton, false);
         }
 
         if (this.sortButton) {
-            this.sortButton.disableInteractive();
-            this.sortButton.setAlpha(0.5);
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         if (this.resolveButton) {
-            this.resolveButton.disableInteractive();
-            this.resolveButton.setAlpha(0.5);
+            setTextButtonEnabled(this.resolveButton, false);
         }
     }
 
@@ -1023,13 +1019,11 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
 
         if (this.resolveButton) {
-            this.resolveButton.setAlpha(1);
-            this.resolveButton.setInteractive();
+            setTextButtonEnabled(this.resolveButton, true);
         }
 
         if (this.sortButton) {
-            this.sortButton.setAlpha(0.5);
-            this.sortButton.disableInteractive();
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         const messageText = node.isBoss ? 'Boss Encounter!' : 'Battle Start';
@@ -1178,13 +1172,11 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
 
         if (this.sortButton) {
-            this.sortButton.disableInteractive();
-            this.sortButton.setAlpha(0.3);
+            setTextButtonEnabled(this.sortButton, false, { disabledAlpha: 0.3 });
         }
 
         if (this.resolveButton) {
-            this.resolveButton.disableInteractive();
-            this.resolveButton.setAlpha(0.3);
+            setTextButtonEnabled(this.resolveButton, false, { disabledAlpha: 0.3 });
         }
 
         if (!hasPendingNodes) {
@@ -1413,13 +1405,10 @@ export class GameScene extends Phaser.Scene {
         this.rollsRemainingText.setText(CONSTANTS.DEFAULT_MAX_ROLLS);
 
         // Enable roll button, disable sort button
-        this.rollButton.setAlpha(1);
-        this.rollButton.setInteractive();
-        this.sortButton.setAlpha(0.5);
-        this.sortButton.disableInteractive();
+        setTextButtonEnabled(this.rollButton, true);
+        setTextButtonEnabled(this.sortButton, false);
         if (this.resolveButton) {
-            this.resolveButton.setAlpha(1);
-            this.resolveButton.setInteractive();
+            setTextButtonEnabled(this.resolveButton, true);
         }
 
         this.lockedDice.clear();
@@ -1450,18 +1439,18 @@ export class GameScene extends Phaser.Scene {
             if (showCombatUI) {
                 this.updateRollButtonState();
             } else {
-                this.rollButton.disableInteractive();
+                setTextButtonEnabled(this.rollButton, false);
             }
         }
 
         setVisibility(this.sortButton, showCombatUI);
         if (this.sortButton && !showCombatUI) {
-            this.sortButton.disableInteractive();
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         setVisibility(this.resolveButton, showCombatUI);
         if (this.resolveButton && !showCombatUI) {
-            this.resolveButton.disableInteractive();
+            setTextButtonEnabled(this.resolveButton, false);
         }
 
         setVisibility(this.rollsRemainingText, showCombatUI);
@@ -1510,40 +1499,25 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (!this.inCombat || this.isGameOver) {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
-            return;
-        }
-
-        if (this.isGameOver) {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
+            setTextButtonEnabled(this.rollButton, false);
             return;
         }
 
         // If no rolls left -> disabled
         if (this.rollsRemaining === 0) {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
+            setTextButtonEnabled(this.rollButton, false);
             return;
         }
 
         // First roll (before any rolls used) -> always enabled
         if (this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS) {
-            this.rollButton.setAlpha(1);
-            this.rollButton.setInteractive();
+            setTextButtonEnabled(this.rollButton, true);
             return;
         }
 
         // Otherwise: enable only if at least one die is selected
         const anySelected = this.getDiceInPlay().some(d => d.selected);
-        if (anySelected) {
-            this.rollButton.setAlpha(1);
-            this.rollButton.setInteractive();
-        } else {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
-        }
+        setTextButtonEnabled(this.rollButton, anySelected);
     }
 
     toggleMute() {
@@ -1569,18 +1543,15 @@ export class GameScene extends Phaser.Scene {
         this.isGameOver = true;
 
         if (this.rollButton) {
-            this.rollButton.disableInteractive();
-            this.rollButton.setAlpha(0.5);
+            setTextButtonEnabled(this.rollButton, false);
         }
 
         if (this.sortButton) {
-            this.sortButton.disableInteractive();
-            this.sortButton.setAlpha(0.5);
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         if (this.resolveButton) {
-            this.resolveButton.disableInteractive();
-            this.resolveButton.setAlpha(0.5);
+            setTextButtonEnabled(this.resolveButton, false);
         }
 
         this.getDiceInPlay().forEach(die => die.disableInteractive());
