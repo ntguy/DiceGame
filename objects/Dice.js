@@ -1,6 +1,5 @@
 import { CONSTANTS } from '../config.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
-import { highlightCombos } from '../systems/ComboSystem.js';
 
 export function createDie(scene, slotIndex) {
     const x = CONSTANTS.SLOT_START_X + slotIndex * CONSTANTS.SLOT_SPACING;
@@ -94,21 +93,12 @@ export function createDie(scene, slotIndex) {
             // Dropped in a zone
             if (container.x < 400) {
                 snapIntoZone(container, scene.defendSlots, scene.defendDice, 200, zoneY, scene);
-                highlightCombos(scene, scene.defendDice);
             } else {
                 snapIntoZone(container, scene.attackSlots, scene.attackDice, 600, zoneY, scene);
-                highlightCombos(scene, scene.attackDice);
             }
         } else {
             // Dropped back into main row
-            const fromZone = snapToGrid(container, scene.dice, scene);
-            
-            // Only update the zone it came from
-            if (fromZone === 'defend') {
-                highlightCombos(scene, scene.defendDice);
-            } else if (fromZone === 'attack') {
-                highlightCombos(scene, scene.attackDice);
-            }
+            snapToGrid(container, scene.dice, scene);
         }
     });
 
@@ -181,8 +171,7 @@ export function snapToGrid(die, diceArray, scene) {
         });
     });
 
-    let fromZone = null;
-    if (inDefendZone) fromZone = 'defend';
-    else if (inAttackZone) fromZone = 'attack';
-    return fromZone;
+    if (scene && typeof scene.updateZonePreviewText === 'function') {
+        scene.updateZonePreviewText();
+    }
 }

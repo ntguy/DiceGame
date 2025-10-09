@@ -1,57 +1,70 @@
 import { CONSTANTS } from '../config.js';
+import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 
 export function setupButtons(scene) {
     // --- Roll button ---
     const rollButton = scene.add.text(200, CONSTANTS.BUTTONS_Y, "ROLL", {
         fontSize: "40px",
-        color: "#000",
-        backgroundColor: "#f1c40f",
-        padding: {x:20, y:10}
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    
+        color: "#1b1300",
+        padding: { x: 20, y: 10 }
+    }).setOrigin(0.5);
+
+    applyTextButtonStyle(rollButton, {
+        baseColor: '#f1c40f',
+        textColor: '#1b1300',
+        hoverBlend: 0.16,
+        pressBlend: 0.3,
+        disabledBlend: 0.45,
+        enabledAlpha: 1,
+        disabledAlpha: 0.45
+    });
+    setTextButtonEnabled(rollButton, true);
+
     rollButton.on("pointerdown", () => scene.rollDice());
     scene.rollButton = rollButton;
 
     // --- Sort button ---
     const sortButton = scene.add.text(350, CONSTANTS.BUTTONS_Y, "SORT", {
         fontSize: "40px",
-        color: "#000",
-        backgroundColor: "#1abc9c",
-        padding: {x:20, y:10}
+        color: "#002f29",
+        padding: { x: 20, y: 10 }
     }).setOrigin(0.5);
-    
-    sortButton.setAlpha(0.5);
-    sortButton.disableInteractive();
+
+    applyTextButtonStyle(sortButton, {
+        baseColor: '#1abc9c',
+        textColor: '#002f29',
+        hoverBlend: 0.14,
+        pressBlend: 0.28,
+        disabledBlend: 0.35,
+        enabledAlpha: 1,
+        disabledAlpha: 0.45
+    });
+    setTextButtonEnabled(sortButton, false);
     scene.sortButton = sortButton;
     sortButton.on("pointerdown", () => scene.sortDice());
 
     // --- Resolve button ---
     const resolveButton = scene.add.text(535, CONSTANTS.BUTTONS_Y, "RESOLVE", {
         fontSize: "40px",
-        color: "#fff",
-        backgroundColor: "#9b59b6",
-        padding: {x:20, y:10}
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        color: "#f7ecff",
+        padding: { x: 20, y: 10 }
+    }).setOrigin(0.5);
+
+    applyTextButtonStyle(resolveButton, {
+        baseColor: '#9b59b6',
+        textColor: '#f7ecff',
+        hoverBlend: 0.14,
+        pressBlend: 0.3,
+        disabledBlend: 0.38,
+        enabledAlpha: 1,
+        disabledAlpha: 0.45
+    });
+    setTextButtonEnabled(resolveButton, true);
 
     resolveButton.on("pointerdown", () => {
         scene.resolveDice();
     });
     scene.resolveButton = resolveButton;
-}
-
-export function setupMuteButton(scene, onToggle) {
-    const button = scene.add.text(scene.scale.width - 5, scene.scale.height - 5, '', {
-        fontSize: '28px',
-        padding: { x: 16, y: 10 }
-    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
-
-    button.on('pointerdown', () => {
-        if (typeof onToggle === 'function') {
-            onToggle();
-        }
-    });
-
-    return button;
 }
 
 export function setupHealthBar(scene) {

@@ -1,8 +1,9 @@
 import { CONSTANTS } from './config.js';
 import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
-import { setupButtons, setupHealthBar, setupEnemyUI, setupMuteButton } from './objects/UI.js';
-import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
+import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
+import { applyRectangleButtonStyle, applyTextButtonStyle, setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
+import { COMBO_POINTS, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
 import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
@@ -47,13 +48,22 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessage = null;
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
-        this.comboHeaderText = null;
         this.activeFacilityUI = null;
         this.relicCatalog = [];
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicBackgrounds = new Map();
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
+        this.selectedRelicId = null;
+        this.menuButton = null;
+        this.menuPanel = null;
+        this.menuCloseButton = null;
+        this.isMenuOpen = false;
+        this.defendPreviewText = null;
+        this.attackPreviewText = null;
+        this.comboListTexts = [];
     }
 
     init(data) {
@@ -70,13 +80,22 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessage = null;
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
-        this.comboHeaderText = null;
         this.activeFacilityUI = null;
         this.relicCatalog = [];
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicBackgrounds = new Map();
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
+        this.selectedRelicId = null;
+        this.menuButton = null;
+        this.menuPanel = null;
+        this.menuCloseButton = null;
+        this.isMenuOpen = false;
+        this.defendPreviewText = null;
+        this.attackPreviewText = null;
+        this.comboListTexts = [];
     }
 
     preload() {
@@ -108,7 +127,10 @@ export class GameScene extends Phaser.Scene {
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicBackgrounds = new Map();
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
+        this.selectedRelicId = null;
 
         // --- Dice arrays for zones ---
         this.defendDice = [];
@@ -122,14 +144,12 @@ export class GameScene extends Phaser.Scene {
             this.zoneVisuals = [];
         }
 
+        this.createZonePreviewTexts();
+
         // --- Buttons ---
         setupButtons(this);
         this.updateRollButtonState();
-
-        this.muteButton = setupMuteButton(this, () => this.toggleMute());
-
-        // --- Combo table ---
-        displayComboTable(this);
+        this.createMenuUI();
         this.createRelicShelf();
 
         // --- Health bar ---
@@ -175,59 +195,380 @@ export class GameScene extends Phaser.Scene {
         this.enterMapState();
     }
 
+    createZonePreviewTexts() {
+        if (!this.defendPreviewText) {
+            this.defendPreviewText = this.add.text(200, CONSTANTS.RESOLVE_TEXT_Y, '', {
+                fontSize: '24px',
+                color: '#3498db',
+                align: 'center'
+            }).setOrigin(0.5);
+        }
+
+        if (!this.attackPreviewText) {
+            this.attackPreviewText = this.add.text(600, CONSTANTS.RESOLVE_TEXT_Y, '', {
+                fontSize: '24px',
+                color: '#e74c3c',
+                align: 'center'
+            }).setOrigin(0.5);
+        }
+
+        this.updateZonePreviewText();
+    }
+
+    createMenuUI() {
+        const panelWidth = this.scale.width * 0.25;
+        const panelHeight = this.scale.height;
+        const panelX = this.scale.width - panelWidth;
+        const padding = 24;
+        const sectionWidth = panelWidth - padding * 2;
+
+        if (this.menuButton) {
+            this.menuButton.destroy();
+            this.menuButton = null;
+        }
+
+        const menuButton = this.add.text(CONSTANTS.UI_MARGIN, this.scale.height - CONSTANTS.UI_MARGIN, 'MENU ☰', {
+            fontSize: '28px',
+            color: '#ecf0f1',
+            padding: { x: 18, y: 10 }
+        }).setOrigin(0, 1);
+        menuButton.setDepth(70);
+        applyTextButtonStyle(menuButton, {
+            baseColor: '#2c3e50',
+            textColor: '#ecf0f1',
+            hoverBlend: 0.18,
+            pressBlend: 0.28,
+            disabledBlend: 0.42
+        });
+        setTextButtonEnabled(menuButton, true);
+        menuButton.on('pointerdown', () => this.toggleMenu());
+        this.menuButton = menuButton;
+
+        if (this.menuPanel) {
+            this.menuPanel.destroy(true);
+            this.menuPanel = null;
+        }
+
+        const menuPanel = this.add.container(panelX, 0);
+        menuPanel.setDepth(80);
+
+        const panelBg = this.add.rectangle(panelWidth / 2, panelHeight / 2, panelWidth, panelHeight, 0x101820, 0.95)
+            .setOrigin(0.5)
+            .setStrokeStyle(2, 0xffffff, 0.08)
+            .setInteractive();
+        menuPanel.add(panelBg);
+
+        const headerText = this.add.text(panelWidth / 2, 24, 'Menu', {
+            fontSize: '32px',
+            color: '#f1c40f',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+        menuPanel.add(headerText);
+
+        const combos = Object.entries(COMBO_POINTS);
+        const lineSpacing = 24;
+        const comboContentHeight = combos.length * lineSpacing;
+        const comboSectionHeight = comboContentHeight + 60;
+        const comboTop = 70;
+
+        const comboBg = this.add.rectangle(panelWidth / 2, comboTop + comboSectionHeight / 2, sectionWidth, comboSectionHeight, 0x1f2a38, 0.92)
+            .setOrigin(0.5)
+            .setStrokeStyle(2, 0xf1c40f, 0.18);
+        menuPanel.add(comboBg);
+
+        const comboTitle = this.add.text(panelWidth / 2, comboTop + 16, 'Combo Bonuses', {
+            fontSize: '24px',
+            color: '#f9e79f',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+        menuPanel.add(comboTitle);
+
+        const comboTextStartX = panelWidth / 2 - sectionWidth / 2 + 16;
+        const comboTextStartY = comboTop + 52;
+        this.comboListTexts = combos.map(([combo, points], index) => {
+            const text = this.add.text(comboTextStartX, comboTextStartY + index * lineSpacing, `${combo}: ${points}`, {
+                fontSize: '20px',
+                color: '#ecf0f1'
+            }).setOrigin(0, 0);
+            menuPanel.add(text);
+            return text;
+        });
+
+        const gapBetweenSections = 28;
+        const closeButtonHeight = 58;
+        const closeButtonMargin = 32;
+        const closeButtonY = panelHeight - closeButtonMargin - closeButtonHeight / 2;
+        const settingsBottomLimit = closeButtonY - closeButtonHeight / 2 - gapBetweenSections;
+        const minSettingsHeight = 120;
+        const settingsTopBase = comboTop + comboSectionHeight + gapBetweenSections;
+        let settingsTop = Math.min(settingsTopBase, settingsBottomLimit - minSettingsHeight);
+        settingsTop = Math.max(settingsTop, padding);
+        let settingsHeight = Math.max(minSettingsHeight, settingsBottomLimit - settingsTop);
+        if (settingsTop + settingsHeight > settingsBottomLimit) {
+            settingsHeight = Math.max(minSettingsHeight, settingsBottomLimit - settingsTop);
+        }
+        if (settingsHeight < minSettingsHeight) {
+            settingsHeight = minSettingsHeight;
+            settingsTop = Math.max(padding, settingsBottomLimit - settingsHeight);
+        }
+        const settingsCenterY = settingsTop + settingsHeight / 2;
+
+        const settingsBg = this.add.rectangle(panelWidth / 2, settingsCenterY, sectionWidth, settingsHeight, 0x232d3b, 0.92)
+            .setOrigin(0.5)
+            .setStrokeStyle(2, 0x76d7c4, 0.18);
+        menuPanel.add(settingsBg);
+
+        const settingsTitle = this.add.text(panelWidth / 2, settingsTop + 16, 'Settings', {
+            fontSize: '24px',
+            color: '#76d7c4',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+        menuPanel.add(settingsTitle);
+
+        this.muteButton = this.add.text(panelWidth / 2, settingsTop + 74, '', {
+            fontSize: '22px',
+            color: '#ecf0f1',
+            padding: { x: 18, y: 10 }
+        }).setOrigin(0.5);
+        applyTextButtonStyle(this.muteButton, {
+            baseColor: '#34495e',
+            textColor: '#ecf0f1',
+            hoverBlend: 0.2,
+            pressBlend: 0.3,
+            disabledBlend: 0.45
+        });
+        setTextButtonEnabled(this.muteButton, true);
+        this.muteButton.on('pointerdown', () => this.toggleMute());
+        menuPanel.add(this.muteButton);
+
+        this.menuCloseButton = this.add.rectangle(panelWidth / 2, closeButtonY, sectionWidth, 58, 0x2d1b3d, 0.92)
+            .setInteractive({ useHandCursor: true });
+        applyRectangleButtonStyle(this.menuCloseButton, {
+            baseColor: 0x2d1b3d,
+            baseAlpha: 0.92,
+            hoverBlend: 0.18,
+            pressBlend: 0.32,
+            disabledBlend: 0.5,
+            enabledAlpha: 1,
+            disabledAlpha: 0.45
+        });
+        this.menuCloseButton.on('pointerup', () => this.closeMenu());
+        menuPanel.add(this.menuCloseButton);
+
+        const closeText = this.add.text(panelWidth / 2, closeButtonY, 'Close Menu', {
+            fontSize: '24px',
+            color: '#f9e79f'
+        }).setOrigin(0.5);
+        menuPanel.add(closeText);
+
+        menuPanel.setVisible(false);
+        this.menuPanel = menuPanel;
+        this.isMenuOpen = false;
+        this.updateMenuButtonLabel();
+    }
+
+    toggleMenu() {
+        if (!this.menuPanel) {
+            return;
+        }
+
+        if (this.isMenuOpen) {
+            this.closeMenu();
+        } else {
+            this.openMenu();
+        }
+    }
+
+    openMenu() {
+        if (this.isMenuOpen) {
+            return;
+        }
+
+        this.isMenuOpen = true;
+        if (this.menuPanel) {
+            this.menuPanel.setVisible(true);
+            this.menuPanel.setDepth(80);
+        }
+
+        this.updateMenuButtonLabel();
+        this.updateMuteButtonState();
+    }
+
+    closeMenu() {
+        this.isMenuOpen = false;
+        if (this.menuPanel) {
+            this.menuPanel.setVisible(false);
+        }
+
+        this.updateMenuButtonLabel();
+    }
+
+    updateMenuButtonLabel() {
+        if (!this.menuButton) {
+            return;
+        }
+
+        const suffix = this.isMenuOpen ? '✕' : '☰';
+        this.menuButton.setText(`MENU ${suffix}`);
+    }
+
     update() {
         // Update logic here
     }
 
+    computeZoneScore(diceList) {
+        const baseSum = diceList.reduce((sum, die) => sum + die.value, 0);
+        const comboInfo = evaluateCombo(diceList);
+        const comboType = comboInfo.type;
+        const comboBonus = scoreCombo(comboType);
+
+        return {
+            baseSum,
+            comboBonus,
+            comboType,
+            total: baseSum + comboBonus
+        };
+    }
+
+    updateZonePreviewText() {
+        if (!this.defendPreviewText || !this.attackPreviewText) {
+            return;
+        }
+
+        const defendScore = this.computeZoneScore(this.defendDice || []);
+        const attackScore = this.computeZoneScore(this.attackDice || []);
+
+        this.defendPreviewText.setText(`Defense Total ${defendScore.total}: ${defendScore.baseSum} + ${defendScore.comboBonus} (${defendScore.comboType})`);
+        this.attackPreviewText.setText(`Attack Total ${attackScore.total}: ${attackScore.baseSum} + ${attackScore.comboBonus} (${attackScore.comboType})`);
+    }
+
     createRelicShelf() {
-        if (this.relicTitleText) {
-            this.relicTitleText.destroy();
-            this.relicTitleText = null;
+        this.clearRelicVisuals();
+
+        if (this.relicInfoTitleText) {
+            this.relicInfoTitleText.destroy();
+            this.relicInfoTitleText = null;
         }
 
-        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
-            this.relicVisuals.forEach(obj => obj.destroy());
+        if (this.relicInfoDescriptionText) {
+            this.relicInfoDescriptionText.destroy();
+            this.relicInfoDescriptionText = null;
         }
-        this.relicVisuals = [];
 
-        const startX = 1070;
-        const titleY = 220;
-        this.relicTitleText = this.add.text(startX, titleY, 'Relics', {
+        this.relicInfoTitleText = this.add.text(CONSTANTS.RIGHT_COLUMN_X, CONSTANTS.RELIC_INFO_TITLE_Y, '', {
             fontSize: '24px',
-            color: '#f1c40f'
+            color: '#f1c40f',
+            fontStyle: 'bold'
         }).setOrigin(1, 0);
 
+        this.relicInfoDescriptionText = this.add.text(CONSTANTS.RIGHT_COLUMN_X, CONSTANTS.RELIC_INFO_TITLE_Y + 32, '', {
+            fontSize: '18px',
+            color: '#f9e79f',
+            wordWrap: { width: CONSTANTS.RELIC_INFO_WRAP_WIDTH },
+            lineSpacing: 6
+        }).setOrigin(1, 0);
+
+        this.setRelicInfoText('', '');
         this.updateRelicDisplay();
     }
 
     updateRelicDisplay() {
-        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
-            this.relicVisuals.forEach(obj => obj.destroy());
-        }
-        this.relicVisuals = [];
+        this.clearRelicVisuals();
 
-        if (!this.relicTitleText) {
+        if (!this.relicInfoTitleText || !this.relicInfoDescriptionText) {
             return;
         }
 
-        const startX = this.relicTitleText.x;
-        const baseY = this.relicTitleText.y + 36;
-        const spacing = 64;
+        const ownedRelics = this.relics.filter(relic => this.ownedRelicIds.has(relic.id));
 
-        this.relics.forEach((relic, index) => {
+        const startX = CONSTANTS.RIGHT_COLUMN_X;
+        const baseY = CONSTANTS.RELIC_TRAY_Y;
+        const spacing = CONSTANTS.RELIC_ICON_SPACING;
+        const iconSize = CONSTANTS.RELIC_ICON_SIZE;
+
+        ownedRelics.forEach((relic, index) => {
             const x = startX - index * spacing;
-            const iconBg = this.add.rectangle(x, baseY, 44, 44, 0x1c1c1c, 0.85)
-                .setStrokeStyle(2, 0xf1c40f, 0.9);
+            const iconBg = this.add.rectangle(x, baseY, iconSize, iconSize, 0x1c1c1c, 0.85)
+                .setStrokeStyle(2, 0xf1c40f, 0.9)
+                .setInteractive({ useHandCursor: true });
             const iconText = this.add.text(x, baseY, relic.icon || '♦', {
-                fontSize: '24px'
-            }).setOrigin(0.5);
-            const label = this.add.text(x, baseY + 28, relic.name, {
-                fontSize: '14px',
-                color: '#f9e79f'
-            }).setOrigin(0.5);
+                fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE
+            }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-            this.relicVisuals.push(iconBg, iconText, label);
+            iconBg.on('pointerdown', () => this.showRelicDetails(relic));
+            iconText.on('pointerdown', () => this.showRelicDetails(relic));
+
+            this.relicVisuals.push(iconBg, iconText);
+            this.relicBackgrounds.set(relic.id, iconBg);
         });
+
+        const selectedRelic = ownedRelics.find(relic => relic.id === this.selectedRelicId);
+        if (selectedRelic) {
+            this.setRelicInfoText(selectedRelic.name, selectedRelic.description);
+        } else {
+            this.selectedRelicId = null;
+            this.setRelicInfoText('', '');
+        }
+
+        this.updateRelicSelectionHighlight();
+    }
+
+    clearRelicVisuals() {
+        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
+            this.relicVisuals.forEach(obj => {
+                if (obj && typeof obj.destroy === 'function') {
+                    obj.destroy();
+                }
+            });
+        }
+        this.relicVisuals = [];
+        if (this.relicBackgrounds && typeof this.relicBackgrounds.clear === 'function') {
+            this.relicBackgrounds.clear();
+        }
+    }
+
+    setRelicInfoText(title = '', description = '') {
+        if (this.relicInfoTitleText) {
+            this.relicInfoTitleText.setText(title || '');
+        }
+        if (this.relicInfoDescriptionText) {
+            this.relicInfoDescriptionText.setText(description || '');
+        }
+    }
+
+    updateRelicSelectionHighlight() {
+        if (!this.relicBackgrounds || typeof this.relicBackgrounds.forEach !== 'function') {
+            return;
+        }
+
+        this.relicBackgrounds.forEach((bg, relicId) => {
+            if (!bg || typeof bg.setStrokeStyle !== 'function') {
+                return;
+            }
+            const isSelected = relicId === this.selectedRelicId;
+            bg.setStrokeStyle(2, isSelected ? 0xffffff : 0xf1c40f, isSelected ? 1 : 0.9);
+        });
+    }
+
+    showRelicDetails(relic) {
+        if (!relic || !this.ownedRelicIds.has(relic.id)) {
+            this.selectedRelicId = null;
+            this.setRelicInfoText('', ''); // Display nothing if no relic is selected
+            this.updateRelicSelectionHighlight();
+            return;
+        }
+
+        // Check if the clicked relic is already selected
+        if (this.selectedRelicId === relic.id) {
+            // If it's the same relic, deselect it
+            this.selectedRelicId = null;
+            this.setRelicInfoText('', ''); // Display nothing
+        } else {
+            // Otherwise, select the new relic
+            this.selectedRelicId = relic.id;
+            this.setRelicInfoText(relic.name, relic.description);
+        }
+        this.updateRelicSelectionHighlight();
     }
     
     rollDice() {
@@ -288,8 +629,7 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
 
         // Enable sort button after the first roll
-        this.sortButton.setAlpha(1);
-        this.sortButton.setInteractive();
+        setTextButtonEnabled(this.sortButton, true);
     }
 
     applyPendingLocks() {
@@ -377,47 +717,12 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Calculate scores
-        const defendType = evaluateCombo(this.defendDice).type;
-        const attackType = evaluateCombo(this.attackDice).type;
-        const defendBonus = scoreCombo(defendType);
-        const attackBonus = scoreCombo(attackType);
-        const defendSummation = this.defendDice.reduce((sum, die) => sum + die.value, 0);
-        const attackSummation = this.attackDice.reduce((sum, die) => sum + die.value, 0);
-        const defendScore = defendSummation + defendBonus;
-        const attackScore = attackSummation + attackBonus;
+        const defendResult = this.computeZoneScore(this.defendDice || []);
+        const attackResult = this.computeZoneScore(this.attackDice || []);
+        const defendScore = defendResult.total;
+        const attackScore = attackResult.total;
 
-        // Update or create score text
-        if (!this.defendText) {
-            this.defendText = this.add.text(200, CONSTANTS.RESOLVE_TEXT_Y, "", {
-                fontSize: "28px",
-                color: "#3498db"
-            }).setOrigin(0.5);
-
-            this.attackText = this.add.text(600, CONSTANTS.RESOLVE_TEXT_Y, "", {
-                fontSize: "28px",
-                color: "#e74c3c"
-            }).setOrigin(0.5);
-        }
-
-        this.defendText.setText(`${defendType}: ${defendScore}`);
-        this.attackText.setText(`${attackType}: ${attackScore}`);
-
-        // Ensure visible
-        this.defendText.setAlpha(1);
-        this.attackText.setAlpha(1);
-
-        // Fade the combo texts above the zones over 4 seconds, then destroy them
-        this.tweens.add({
-            targets: [ this.defendText, this.attackText ],
-            alpha: 0,
-            duration: 2000,
-            delay: 2000,
-            ease: 'Cubic',
-            onComplete: () => {
-                if (this.defendText) { this.defendText.destroy(); this.defendText = null; }
-                if (this.attackText) { this.attackText.destroy(); this.attackText = null; }
-            }
-        });
+        this.updateZonePreviewText();
 
         const locksToCarryOver = Array.from(this.lockedDice).filter(die =>
             this.defendDice.includes(die) || this.attackDice.includes(die)
@@ -432,8 +737,7 @@ export class GameScene extends Phaser.Scene {
             this.resetGameState({ destroyDice: false });
             this.input.enabled = true;
             if (this.resolveButton) {
-                this.resolveButton.setAlpha(1);
-                this.resolveButton.setInteractive();
+                setTextButtonEnabled(this.resolveButton, true);
             }
             this.isResolving = false;
         };
@@ -455,18 +759,15 @@ export class GameScene extends Phaser.Scene {
         this.input.enabled = false;
 
         if (this.rollButton) {
-            this.rollButton.disableInteractive();
-            this.rollButton.setAlpha(0.5);
+            setTextButtonEnabled(this.rollButton, false);
         }
 
         if (this.sortButton) {
-            this.sortButton.disableInteractive();
-            this.sortButton.setAlpha(0.5);
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         if (this.resolveButton) {
-            this.resolveButton.disableInteractive();
-            this.resolveButton.setAlpha(0.5);
+            setTextButtonEnabled(this.resolveButton, false);
         }
     }
 
@@ -938,13 +1239,11 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
 
         if (this.resolveButton) {
-            this.resolveButton.setAlpha(1);
-            this.resolveButton.setInteractive();
+            setTextButtonEnabled(this.resolveButton, true);
         }
 
         if (this.sortButton) {
-            this.sortButton.setAlpha(0.5);
-            this.sortButton.disableInteractive();
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         const messageText = node.isBoss ? 'Boss Encounter!' : 'Battle Start';
@@ -1013,7 +1312,7 @@ export class GameScene extends Phaser.Scene {
         this.destroyFacilityUI();
 
         const missing = Math.max(0, this.playerMaxHealth - this.playerHealth);
-        const healFullCost = missing * 10;
+        const healFullCost = missing / 2 * 10;
         const canAffordFull = healFullCost > 0 && this.canAfford(healFullCost);
 
         this.activeFacilityUI = new InfirmaryUI(this, {
@@ -1046,7 +1345,7 @@ export class GameScene extends Phaser.Scene {
             if (missing <= 0) {
                 message = 'Already at full health';
             } else {
-                const cost = missing * 10;
+                const cost = missing / 2 * 10;
                 if (cost > 0 && this.canAfford(cost)) {
                     const spent = this.spendGold(cost);
                     if (spent > 0) {
@@ -1093,13 +1392,11 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
 
         if (this.sortButton) {
-            this.sortButton.disableInteractive();
-            this.sortButton.setAlpha(0.3);
+            setTextButtonEnabled(this.sortButton, false, { disabledAlpha: 0.3 });
         }
 
         if (this.resolveButton) {
-            this.resolveButton.disableInteractive();
-            this.resolveButton.setAlpha(0.3);
+            setTextButtonEnabled(this.resolveButton, false, { disabledAlpha: 0.3 });
         }
 
         if (!hasPendingNodes) {
@@ -1215,6 +1512,7 @@ export class GameScene extends Phaser.Scene {
             relic.apply(this);
         }
         this.updateRelicDisplay();
+        this.showRelicDetails(relic);
         return relic;
     }
 
@@ -1327,21 +1625,14 @@ export class GameScene extends Phaser.Scene {
         this.rollsRemainingText.setText(CONSTANTS.DEFAULT_MAX_ROLLS);
 
         // Enable roll button, disable sort button
-        this.rollButton.setAlpha(1);
-        this.rollButton.setInteractive();
-        this.sortButton.setAlpha(0.5);
-        this.sortButton.disableInteractive();
+        setTextButtonEnabled(this.rollButton, true);
+        setTextButtonEnabled(this.sortButton, false);
         if (this.resolveButton) {
-            this.resolveButton.setAlpha(1);
-            this.resolveButton.setInteractive();
+            setTextButtonEnabled(this.resolveButton, true);
         }
 
         this.lockedDice.clear();
-
-        // Reset combo highlights
-        if (this.comboTextGroup) {
-            this.comboTextGroup.forEach(t => t.setColor("#ffffff"));
-        }
+        this.updateZonePreviewText();
     }
 
     setMapMode(isMapView) {
@@ -1364,29 +1655,30 @@ export class GameScene extends Phaser.Scene {
             if (showCombatUI) {
                 this.updateRollButtonState();
             } else {
-                this.rollButton.disableInteractive();
+                setTextButtonEnabled(this.rollButton, false);
             }
         }
 
         setVisibility(this.sortButton, showCombatUI);
         if (this.sortButton && !showCombatUI) {
-            this.sortButton.disableInteractive();
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         setVisibility(this.resolveButton, showCombatUI);
         if (this.resolveButton && !showCombatUI) {
-            this.resolveButton.disableInteractive();
+            setTextButtonEnabled(this.resolveButton, false);
         }
 
         setVisibility(this.rollsRemainingText, showCombatUI);
 
-        if (this.muteButton) {
-            setVisibility(this.muteButton, showCombatUI);
-            if (showCombatUI) {
-                this.muteButton.setInteractive({ useHandCursor: true });
-            } else {
-                this.muteButton.disableInteractive();
-            }
+        if (this.menuButton) {
+            setVisibility(this.menuButton, showCombatUI);
+        }
+
+        if (!showCombatUI) {
+            this.closeMenu();
+        } else if (this.menuPanel) {
+            this.menuPanel.setVisible(this.isMenuOpen);
         }
 
         setVisibility(this.playerBurnText, showCombatUI && this.playerBurn > 0 && this.inCombat);
@@ -1400,12 +1692,11 @@ export class GameScene extends Phaser.Scene {
             this.attackHighlight.setVisible(false);
         }
 
-        applyToArray(this.comboTextGroup, showCombatUI);
-        setVisibility(this.comboHeaderText, showCombatUI);
         applyToArray(this.relicVisuals, showCombatUI);
-        setVisibility(this.relicTitleText, showCombatUI);
-        setVisibility(this.defendText, showCombatUI);
-        setVisibility(this.attackText, showCombatUI);
+        setVisibility(this.relicInfoTitleText, showCombatUI);
+        setVisibility(this.relicInfoDescriptionText, showCombatUI);
+        setVisibility(this.defendPreviewText, showCombatUI);
+        setVisibility(this.attackPreviewText, showCombatUI);
 
         if (this.enemyHealthBar) {
             const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText'];
@@ -1424,40 +1715,25 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (!this.inCombat || this.isGameOver) {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
-            return;
-        }
-
-        if (this.isGameOver) {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
+            setTextButtonEnabled(this.rollButton, false);
             return;
         }
 
         // If no rolls left -> disabled
         if (this.rollsRemaining === 0) {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
+            setTextButtonEnabled(this.rollButton, false);
             return;
         }
 
         // First roll (before any rolls used) -> always enabled
         if (this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS) {
-            this.rollButton.setAlpha(1);
-            this.rollButton.setInteractive();
+            setTextButtonEnabled(this.rollButton, true);
             return;
         }
 
         // Otherwise: enable only if at least one die is selected
         const anySelected = this.getDiceInPlay().some(d => d.selected);
-        if (anySelected) {
-            this.rollButton.setAlpha(1);
-            this.rollButton.setInteractive();
-        } else {
-            this.rollButton.setAlpha(0.5);
-            this.rollButton.disableInteractive();
-        }
+        setTextButtonEnabled(this.rollButton, anySelected);
     }
 
     toggleMute() {
@@ -1471,8 +1747,8 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        const icon = this.isMuted ? '🔇' : '🔊';
-        this.muteButton.setText(icon);
+        const statusText = this.isMuted ? 'Sound: Off 🔇' : 'Sound: On 🔊';
+        this.muteButton.setText(statusText);
     }
 
     triggerGameOver() {
@@ -1483,18 +1759,15 @@ export class GameScene extends Phaser.Scene {
         this.isGameOver = true;
 
         if (this.rollButton) {
-            this.rollButton.disableInteractive();
-            this.rollButton.setAlpha(0.5);
+            setTextButtonEnabled(this.rollButton, false);
         }
 
         if (this.sortButton) {
-            this.sortButton.disableInteractive();
-            this.sortButton.setAlpha(0.5);
+            setTextButtonEnabled(this.sortButton, false);
         }
 
         if (this.resolveButton) {
-            this.resolveButton.disableInteractive();
-            this.resolveButton.setAlpha(0.5);
+            setTextButtonEnabled(this.resolveButton, false);
         }
 
         this.getDiceInPlay().forEach(die => die.disableInteractive());

@@ -5,7 +5,9 @@ const COLORS = {
     [PATH_NODE_TYPES.SHOP]: 0xf1c40f,
     [PATH_NODE_TYPES.INFIRMARY]: 0x27ae60,
     boss: 0x9b59b6,
-    completed: 0x7f8c8d
+    completed: 0x7f8c8d,
+    whiteStroke: 0xffeeee,
+    blackStroke: 0x111111
 };
 
 const ICONS = {
@@ -25,6 +27,18 @@ const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
 const BOTTOM_MARGIN = 80;
 const WHEEL_SCROLL_MULTIPLIER = 0.5;
+
+function blendColor(base, mix, amount = 0.5) {
+    const clamped = Phaser.Math.Clamp(amount, 0, 1);
+    const baseColor = Phaser.Display.Color.ValueToColor(base);
+    const mixColor = Phaser.Display.Color.ValueToColor(mix);
+
+    const r = Phaser.Math.Linear(baseColor.red, mixColor.red, clamped);
+    const g = Phaser.Math.Linear(baseColor.green, mixColor.green, clamped);
+    const b = Phaser.Math.Linear(baseColor.blue, mixColor.blue, clamped);
+
+    return Phaser.Display.Color.GetColor(r, g, b);
+}
 
 export class PathUI {
     constructor(scene, pathManager, onSelect) {
@@ -81,20 +95,30 @@ export class PathUI {
             const container = this.scene.add.container(x, y);
             const isBoss = node.isBoss;
             const typeKey = isBoss ? 'boss' : node.type;
-            const color = COLORS[typeKey] || 0xffffff;
+            const color = COLORS[typeKey] || COLORS.whiteStroke;
             const icon = isBoss ? ICONS.boss : ICONS[node.type];
 
             const cube = this.scene.add.rectangle(0, 0, 56, 56, color, 1)
-                .setStrokeStyle(3, 0xffffff, 0.9)
+                .setStrokeStyle(3, COLORS.whiteStroke, 0.9)
                 .setInteractive({ useHandCursor: true })
                 .setAngle(45);
+
+            // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
+            cube.on('pointerover', () => {
+            if (!this.isNodeSelectable(node.id)) return;
+                cube.setStrokeStyle(4, COLORS.blackStroke, 1); // change stroke color & width on hover
+            });
+        
+            cube.on('pointerout', () => {
+                this.updateState();
+            });
 
             const iconText = this.scene.add.text(0, 0, icon || '?', {
                 fontSize: '24px',
                 color: '#000000'
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, 40, node.label || '', {
+            const labelText = this.scene.add.text(0, 50, node.label || '', {
                 fontSize: '18px',
                 color: '#ffffff'
             }).setOrigin(0.5);
@@ -147,7 +171,7 @@ export class PathUI {
 
     drawConnections() {
         this.connectionGraphics.clear();
-        this.connectionGraphics.lineStyle(3, 0xffffff, 0.2);
+        this.connectionGraphics.lineStyle(3, 0xffffff, 0.12);
 
         const nodes = this.pathManager.getNodes();
         nodes.forEach(node => {
@@ -174,47 +198,42 @@ export class PathUI {
 
         this.nodeRefs.forEach(({ node, cube, iconText, labelText, isBoss }) => {
             const typeKey = isBoss ? 'boss' : node.type;
-            const color = COLORS[typeKey] || 0xffffff;
+            const baseColor = COLORS[typeKey] || 0xffffff;
             const isCompleted = this.pathManager.isNodeCompleted(node.id);
-            const isLocked = this.pathManager.isNodeLocked(node.id);
-            const isCurrent = currentId === node.id;
 
-            cube.setFillStyle(color, 1);
+            let fillColor = baseColor;
+            let strokeWidth = 4;
+            let strokeAlpha = 1;
+            let strokeColor = COLORS.blackStroke;
+            let iconAlpha = 1;
+            let labelAlpha = 1;
+            let interactive = false;
 
-            if (isCurrent) {
-                cube.setAlpha(1);
-                iconText.setAlpha(1);
-                labelText.setAlpha(1);
-                cube.setStrokeStyle(4, 0xffffff, 1);
-                cube.setScale(1.05);
-                cube.disableInteractive();
-            } else if (isCompleted) {
-                cube.setAlpha(0.35);
-                iconText.setAlpha(0.45);
-                labelText.setAlpha(0.45);
-                cube.setStrokeStyle(2, 0xffffff, 0.4);
-                cube.setScale(1);
-                cube.disableInteractive();
+            if (isCompleted) {
+                fillColor = blendColor(baseColor, 0x1f2a30, 0.55);
+                strokeWidth = 6;
+                iconAlpha = 0.6;
+                labelAlpha = 0.65;
+                strokeColor = 0x1f1f1f;
             } else if (availableIds.has(node.id)) {
-                cube.setAlpha(1);
-                iconText.setAlpha(1);
-                labelText.setAlpha(1);
-                cube.setStrokeStyle(4, 0xffffff, 1);
-                cube.setScale(isCurrent ? 1.05 : 1);
-                cube.setInteractive({ useHandCursor: true });
-            } else if (isLocked) {
-                cube.setAlpha(0.15);
-                iconText.setAlpha(0.25);
-                labelText.setAlpha(0.25);
-                cube.setStrokeStyle(2, 0xffffff, 0.25);
-                cube.setScale(1);
-                cube.disableInteractive();
+                interactive = true;
             } else {
-                cube.setAlpha(0.25);
-                iconText.setAlpha(0.4);
-                labelText.setAlpha(0.4);
-                cube.setStrokeStyle(2, 0xffffff, 0.45);
-                cube.setScale(1);
+                fillColor = blendColor(baseColor, 0x90a4ae, 0.6);
+                strokeWidth = 2;
+                strokeAlpha = 0.5;
+                iconAlpha = 0.8;
+                labelAlpha = 0.8;
+            }
+
+            cube.setFillStyle(fillColor, 1);
+            cube.setAlpha(1);
+            iconText.setAlpha(iconAlpha);
+            labelText.setAlpha(labelAlpha);
+            cube.setStrokeStyle(strokeWidth, strokeColor, strokeAlpha);
+
+            if (interactive) {
+                cube.setInteractive({ useHandCursor: true });
+            } else {
                 cube.disableInteractive();
             }
         });
@@ -253,7 +272,8 @@ export class PathUI {
             return;
         }
 
-        const delta = -deltaY * WHEEL_SCROLL_MULTIPLIER;
+        const scrollDeltaY = typeof deltaY === 'number' ? deltaY : 0;
+        const delta = -scrollDeltaY * WHEEL_SCROLL_MULTIPLIER;
         this.setScrollY(this.scrollY + delta);
     }
 

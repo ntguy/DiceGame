@@ -7,23 +7,23 @@ const NODE_TYPES = {
 const ENEMY_SEQUENCE = [
     {
         enemyIndex: 0,
-        rewardGold: 200,
+        rewardGold: 60,
         label: 'Battle',
         start: true
     },
     {
         enemyIndex: 1,
-        rewardGold: 200,
+        rewardGold: 500, // TODO reduce
         label: 'Battle'
     },
     {
         enemyIndex: 2,
-        rewardGold: 200,
+        rewardGold: 100,
         label: 'Battle'
     },
     {
         enemyIndex: 3,
-        rewardGold: 300,
+        rewardGold: 150,
         label: 'Boss',
         isBoss: true
     }
@@ -36,7 +36,6 @@ export class PathManager {
         this.nodeMap = new Map();
         this.currentNodeId = null;
         this.completedNodeIds = new Set();
-        this.lockedNodeIds = new Set();
         this.previousFrontier = [];
 
         this.generatePath();
@@ -139,12 +138,6 @@ export class PathManager {
             this.currentNodeId = null;
         }
 
-        const siblings = this.previousFrontier || [];
-        siblings.forEach(siblingId => {
-            if (siblingId !== nodeId) {
-                this.lockedNodeIds.add(siblingId);
-            }
-        });
         this.previousFrontier = [];
 
         const node = this.nodeMap.get(nodeId);
@@ -159,10 +152,6 @@ export class PathManager {
 
     isNodeCompleted(nodeId) {
         return this.completedNodeIds.has(nodeId);
-    }
-
-    isNodeLocked(nodeId) {
-        return this.lockedNodeIds.has(nodeId);
     }
 
     getCurrentNodeId() {
