@@ -1,9 +1,10 @@
 import { CONSTANTS } from './config.js';
 import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
-import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
+import { setupButtons, setupHealthBar, setupEnemyUI, setupMuteButton } from './objects/UI.js';
 import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
+import { GameOverManager } from './systems/GameOverSystem.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -26,8 +27,19 @@ export class GameScene extends Phaser.Scene {
         this.playerBurnGlowTween = null;
         this.lockedDice = new Set();
         this.pendingLockCount = 0;
+        this.gameOverManager = null;
+        this.muteButton = null;
+        this.isMuted = false;
+        this.isGameOver = false;
     }
-    
+
+    init(data) {
+        this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
+        this.isGameOver = false;
+        this.gameOverManager = null;
+        this.muteButton = null;
+    }
+
     preload() {
         this.load.audio('diceRoll', './audio/single-dice-roll.mp3');
         this.load.audio('multiDiceRoll', './audio/multi-dice-roll.mp3');
@@ -37,6 +49,16 @@ export class GameScene extends Phaser.Scene {
     }
     
     create() {
+        this.dice = [];
+        this.lockedDice = new Set();
+        this.pendingLockCount = 0;
+        this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
+        this.playerBlockValue = 0;
+        this.playerBurn = 0;
+        this.playerHealth = this.playerMaxHealth;
+        this.playerBurnText = null;
+        this.playerBurnGlowTween = null;
+
         // --- Dice arrays for zones ---
         this.defendDice = [];
         this.attackDice = [];
@@ -49,6 +71,8 @@ export class GameScene extends Phaser.Scene {
         // --- Buttons ---
         setupButtons(this);
         this.updateRollButtonState();
+
+        this.muteButton = setupMuteButton(this, () => this.toggleMute());
 
         // --- Combo table ---
         displayComboTable(this);
@@ -72,6 +96,12 @@ export class GameScene extends Phaser.Scene {
         this.updateEnemyHealthUI();
         this.prepareNextEnemyMove();
 
+        this.sound.mute = this.isMuted;
+        this.updateMuteButtonState();
+
+        this.gameOverManager = new GameOverManager(this);
+        this.gameOverManager.create();
+
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(100, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, { 
             fontSize: "24px", 
@@ -85,7 +115,8 @@ export class GameScene extends Phaser.Scene {
     
     rollDice() {
         // Determine which sound to play
-        const diceSelectedCount = this.dice.filter(d => d.selected).length;
+        let diceInPlay = this.getDiceInPlay();
+        const diceSelectedCount = diceInPlay.filter(d => d.selected).length;
         const isFirstRoll = this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS;
 
         if (isFirstRoll || diceSelectedCount === 6) { // TODO replace 6 with const
@@ -111,10 +142,11 @@ export class GameScene extends Phaser.Scene {
                 const die = createDie(this, i);
                 this.dice.push(die);
             }
+            diceInPlay = this.getDiceInPlay();
         }
 
         // Roll dice (first roll = all dice, later rolls = only selected dice)
-        this.dice.forEach(d => {
+        diceInPlay.forEach(d => {
             if (isFirstRoll || d.selected) {
                 d.roll();
                 d.selected = false;
@@ -393,6 +425,10 @@ export class GameScene extends Phaser.Scene {
     applyDamage(amount) {
         this.playerHealth = Math.max(0, this.playerHealth - amount);
         this.updateHealthUI();
+
+        if (this.playerHealth === 0) {
+            this.triggerGameOver();
+        }
     }
 
     updateHealthUI() {
@@ -491,7 +527,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        move.actions.forEach(action => {
+        for (const action of move.actions) {
             if (action.type === 'attack') {
                 this.handleEnemyAttack(action.value);
             } else if (action.type === 'heal') {
@@ -504,7 +540,15 @@ export class GameScene extends Phaser.Scene {
             } else if (action.type === 'burn') {
                 this.applyPlayerBurn(action.value);
             }
-        });
+
+            if (this.isGameOver) {
+                break;
+            }
+        }
+
+        if (this.isGameOver) {
+            return;
+        }
 
         this.playerBlockValue = 0;
 
@@ -675,6 +719,16 @@ export class GameScene extends Phaser.Scene {
     }
     
     updateRollButtonState() {
+        if (!this.rollButton) {
+            return;
+        }
+
+        if (this.isGameOver) {
+            this.rollButton.setAlpha(0.5);
+            this.rollButton.disableInteractive();
+            return;
+        }
+
         // If no rolls left -> disabled
         if (this.rollsRemaining === 0) {
             this.rollButton.setAlpha(0.5);
@@ -690,7 +744,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         // Otherwise: enable only if at least one die is selected
-        const anySelected = this.dice.some(d => d.selected);
+        const anySelected = this.getDiceInPlay().some(d => d.selected);
         if (anySelected) {
             this.rollButton.setAlpha(1);
             this.rollButton.setInteractive();
@@ -698,5 +752,57 @@ export class GameScene extends Phaser.Scene {
             this.rollButton.setAlpha(0.5);
             this.rollButton.disableInteractive();
         }
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        this.sound.mute = this.isMuted;
+        this.updateMuteButtonState();
+    }
+
+    updateMuteButtonState() {
+        if (!this.muteButton) {
+            return;
+        }
+
+        const icon = this.isMuted ? '🔇' : '🔊';
+        this.muteButton.setText(icon);
+    }
+
+    triggerGameOver() {
+        if (this.isGameOver) {
+            return;
+        }
+
+        this.isGameOver = true;
+
+        if (this.rollButton) {
+            this.rollButton.disableInteractive();
+            this.rollButton.setAlpha(0.5);
+        }
+
+        if (this.sortButton) {
+            this.sortButton.disableInteractive();
+            this.sortButton.setAlpha(0.5);
+        }
+
+        if (this.resolveButton) {
+            this.resolveButton.disableInteractive();
+            this.resolveButton.setAlpha(0.5);
+        }
+
+        this.getDiceInPlay().forEach(die => die.disableInteractive());
+
+        if (this.gameOverManager) {
+            this.gameOverManager.show(() => this.restartGame());
+        }
+    }
+
+    restartGame() {
+        if (this.gameOverManager) {
+            this.gameOverManager.hide();
+        }
+
+        this.scene.restart({ isMuted: this.isMuted });
     }
 }

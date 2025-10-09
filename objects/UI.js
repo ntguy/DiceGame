@@ -2,22 +2,22 @@ import { CONSTANTS } from '../config.js';
 
 export function setupButtons(scene) {
     // --- Roll button ---
-    const rollButton = scene.add.text(200, CONSTANTS.BUTTONS_Y, "ROLL", { 
-        fontSize: "40px", 
-        color: "#000", 
-        backgroundColor: "#f1c40f", 
-        padding: {x:20, y:10} 
-    }).setOrigin(0.5).setInteractive();
+    const rollButton = scene.add.text(200, CONSTANTS.BUTTONS_Y, "ROLL", {
+        fontSize: "40px",
+        color: "#000",
+        backgroundColor: "#f1c40f",
+        padding: {x:20, y:10}
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     
     rollButton.on("pointerdown", () => scene.rollDice());
     scene.rollButton = rollButton;
 
     // --- Sort button ---
-    const sortButton = scene.add.text(350, CONSTANTS.BUTTONS_Y, "SORT", { 
-        fontSize: "40px", 
-        color: "#000", 
-        backgroundColor: "#1abc9c", 
-        padding: {x:20, y:10} 
+    const sortButton = scene.add.text(350, CONSTANTS.BUTTONS_Y, "SORT", {
+        fontSize: "40px",
+        color: "#000",
+        backgroundColor: "#1abc9c",
+        padding: {x:20, y:10}
     }).setOrigin(0.5);
     
     sortButton.setAlpha(0.5);
@@ -26,17 +26,32 @@ export function setupButtons(scene) {
     sortButton.on("pointerdown", () => scene.sortDice());
 
     // --- Resolve button ---
-    const resolveButton = scene.add.text(535, CONSTANTS.BUTTONS_Y, "RESOLVE", { 
-        fontSize: "40px", 
-        color: "#fff", 
-        backgroundColor: "#9b59b6", 
-        padding: {x:20, y:10} 
-    }).setOrigin(0.5).setInteractive();
+    const resolveButton = scene.add.text(535, CONSTANTS.BUTTONS_Y, "RESOLVE", {
+        fontSize: "40px",
+        color: "#fff",
+        backgroundColor: "#9b59b6",
+        padding: {x:20, y:10}
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     resolveButton.on("pointerdown", () => {
         scene.resolveDice();
     });
     scene.resolveButton = resolveButton;
+}
+
+export function setupMuteButton(scene, onToggle) {
+    const button = scene.add.text(scene.scale.width - 5, scene.scale.height - 5, '', {
+        fontSize: '28px',
+        padding: { x: 16, y: 10 }
+    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+
+    button.on('pointerdown', () => {
+        if (typeof onToggle === 'function') {
+            onToggle();
+        }
+    });
+
+    return button;
 }
 
 export function setupHealthBar(scene) {
