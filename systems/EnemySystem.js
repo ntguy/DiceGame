@@ -55,6 +55,29 @@ export class EnemyManager {
         return move;
     }
 
+    preApplyUpcomingBlock() {
+        if (!this.upcomingMove || !Array.isArray(this.upcomingMove.actions)) {
+            return 0;
+        }
+
+        let applied = 0;
+        for (const action of this.upcomingMove.actions) {
+            if (action.type !== 'defend' || action._blockApplied) {
+                continue;
+            }
+
+            const value = Math.max(0, action.value || 0);
+            if (value > 0) {
+                this.addEnemyBlock(value);
+                applied += value;
+            }
+
+            action._blockApplied = true;
+        }
+
+        return applied;
+    }
+
     applyPlayerAttack(amount) {
         if (!this.currentEnemy || amount <= 0) {
             return { damageDealt: 0, blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)) };
