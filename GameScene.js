@@ -7,6 +7,7 @@ import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
 import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
 import { PathUI } from './objects/PathUI.js';
+import { resolveDamage } from './systems/CombatMath.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -502,6 +503,30 @@ export class GameScene extends Phaser.Scene {
                 bar[key] = null;
             }
         });
+
+        if (bar.damageFill) {
+            bar.damageFill.setVisible(false);
+            bar.damageFill.displayWidth = 0;
+        }
+    }
+
+    getHealthBarDisplayedValue(bar, maxHealth, fallback = 0) {
+        if (!bar) {
+            return Phaser.Math.Clamp(fallback, 0, maxHealth);
+        }
+
+        if (typeof bar.displayedHealth === 'number' && Number.isFinite(bar.displayedHealth)) {
+            return Phaser.Math.Clamp(bar.displayedHealth, 0, maxHealth);
+        }
+
+        if (bar.text && typeof bar.text.text === 'string') {
+            const match = bar.text.text.match(/HP:\s*(\d+)/i);
+            if (match) {
+                return Phaser.Math.Clamp(parseInt(match[1], 10), 0, maxHealth);
+            }
+        }
+
+        return Phaser.Math.Clamp(fallback, 0, maxHealth);
     }
 
     animateHealthBar(bar, targetHealth, maxHealth) {
@@ -510,7 +535,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         const clampedTarget = Phaser.Math.Clamp(targetHealth, 0, maxHealth);
-        const previousHealth = typeof bar.displayedHealth === 'number' ? bar.displayedHealth : clampedTarget;
+        const previousHealth = this.getHealthBarDisplayedValue(bar, maxHealth, clampedTarget);
         const duration = 1000;
 
         const targetRatio = maxHealth > 0 ? Phaser.Math.Clamp(clampedTarget / maxHealth, 0, 1) : 0;
@@ -518,24 +543,10 @@ export class GameScene extends Phaser.Scene {
         const targetWidth = bar.barWidth * targetRatio;
         const previousWidth = bar.barWidth * previousRatio;
 
-        const isDamage = clampedTarget < previousHealth;
-
         this.stopHealthBarTweens(bar);
 
         bar.barFill.setFillStyle(bar.fillColor ?? bar.barFill.fillColor);
-
-        if (typeof bar.damageFill !== 'undefined') {
-            bar.damageFill.setVisible(false);
-            bar.damageFill.displayWidth = 0;
-        }
-
-        if (typeof bar.displayedHealth !== 'number') {
-            bar.barFill.displayWidth = targetWidth;
-            bar.text.setText(`HP: ${clampedTarget}/${maxHealth}`);
-            bar.displayedHealth = clampedTarget;
-            this.updateBurnUI();
-            return;
-        }
+        bar.displayedHealth = previousHealth;
 
         if (previousHealth === clampedTarget) {
             bar.barFill.displayWidth = targetWidth;
@@ -544,6 +555,8 @@ export class GameScene extends Phaser.Scene {
             this.updateBurnUI();
             return;
         }
+
+        const isDamage = clampedTarget < previousHealth;
 
         if (isDamage && bar.damageFill) {
             const differenceWidth = Math.max(0, previousWidth - targetWidth);
@@ -788,13 +801,12 @@ export class GameScene extends Phaser.Scene {
     }
 
     handleEnemyAttack(amount) {
-        if (amount <= 0) {
-            return;
-        }
+        const { damage, remainingBlock } = resolveDamage({
+            amount,
+            block: this.playerBlockValue
+        });
 
-        const mitigated = Math.min(this.playerBlockValue, amount);
-        const damage = Math.max(0, amount - mitigated);
-        this.playerBlockValue = Math.max(0, this.playerBlockValue - amount);
+        this.playerBlockValue = remainingBlock;
 
         if (damage > 0) {
             this.applyDamage(damage);

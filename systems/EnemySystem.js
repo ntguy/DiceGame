@@ -2,6 +2,7 @@ import { LockjawEnemy } from '../enemies/Lockjaw.js';
 import { HotfixEnemy } from '../enemies/Hotfix.js';
 import { InfernoEnemy } from '../enemies/Inferno.js';
 import { SlapperEnemy } from '../enemies/Slapper.js';
+import { resolveDamage } from './CombatMath.js';
 
 export class EnemyManager {
     constructor() {
@@ -56,19 +57,22 @@ export class EnemyManager {
     }
 
     applyPlayerAttack(amount) {
-        if (!this.currentEnemy || amount <= 0) {
-            return { damageDealt: 0, blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)) };
+        const { damage, blocked, remainingBlock } = resolveDamage({
+            amount,
+            block: this.enemyBlockValue
+        });
+
+        this.enemyBlockValue = remainingBlock;
+
+        if (!this.currentEnemy) {
+            return { damageDealt: 0, blockedAmount: blocked };
         }
 
-        const blockedAmount = Math.min(this.enemyBlockValue, amount);
-        const damageDealt = Math.max(0, amount - this.enemyBlockValue);
-        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - amount);
-
-        if (damageDealt > 0) {
-            this.currentEnemy.takeDamage(damageDealt);
+        if (damage > 0) {
+            this.currentEnemy.takeDamage(damage);
         }
 
-        return { damageDealt, blockedAmount };
+        return { damageDealt: damage, blockedAmount: blocked };
     }
 
     addEnemyBlock(amount) {
