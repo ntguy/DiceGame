@@ -61,14 +61,27 @@ export class EnemyManager {
         }
 
         const blockedAmount = Math.min(this.enemyBlockValue, amount);
-        const damageDealt = Math.max(0, amount - this.enemyBlockValue);
-        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - amount);
+        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - blockedAmount);
+        const damageDealt = Math.max(0, amount - blockedAmount);
 
         if (damageDealt > 0) {
             this.currentEnemy.takeDamage(damageDealt);
         }
 
         return { damageDealt, blockedAmount };
+    }
+
+    primeUpcomingDefenses() {
+        if (!this.upcomingMove || !Array.isArray(this.upcomingMove.actions)) {
+            return;
+        }
+
+        for (const action of this.upcomingMove.actions) {
+            if (action.type === 'defend' && action.value > 0 && !action._preApplied) {
+                this.addEnemyBlock(action.value);
+                action._preApplied = true;
+            }
+        }
     }
 
     addEnemyBlock(amount) {
