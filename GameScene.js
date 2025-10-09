@@ -53,6 +53,8 @@ export class GameScene extends Phaser.Scene {
         this.activeFacilityUI = null;
         this.defendPreviewText = null;
         this.attackPreviewText = null;
+        this.defendComboText = null;
+        this.attackComboText = null;
         this.comboListTexts = [];
 
         this.relicUI = new RelicUIManager(this);
@@ -96,6 +98,8 @@ export class GameScene extends Phaser.Scene {
         this.resetMenuState();
         this.defendPreviewText = null;
         this.attackPreviewText = null;
+        this.defendComboText = null;
+        this.attackComboText = null;
         this.comboListTexts = [];
     }
 
@@ -192,20 +196,49 @@ export class GameScene extends Phaser.Scene {
     }
 
     createZonePreviewTexts() {
+        const defendLeftX = this.defendZoneCenter
+            ? this.defendZoneCenter.x - CONSTANTS.DEFAULT_ZONE_WIDTH / 2
+            : 200 - CONSTANTS.DEFAULT_ZONE_WIDTH / 2;
+        const attackLeftX = this.attackZoneCenter
+            ? this.attackZoneCenter.x - CONSTANTS.DEFAULT_ZONE_WIDTH / 2
+            : 600 - CONSTANTS.DEFAULT_ZONE_WIDTH / 2;
+
+        const valueStyle = {
+            fontSize: '24px',
+            align: 'left'
+        };
+
+        const comboStyle = {
+            fontSize: '20px',
+            align: 'left'
+        };
+
         if (!this.defendPreviewText) {
-            this.defendPreviewText = this.add.text(200, CONSTANTS.RESOLVE_TEXT_Y, '', {
-                fontSize: '24px',
-                color: '#3498db',
-                align: 'center'
-            }).setOrigin(0.5);
+            this.defendPreviewText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
+                ...valueStyle,
+                color: '#3498db'
+            }).setOrigin(0, 0.5);
+        }
+
+        if (!this.defendComboText) {
+            this.defendComboText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y + 26, '', {
+                ...comboStyle,
+                color: '#3498db'
+            }).setOrigin(0, 0.5);
         }
 
         if (!this.attackPreviewText) {
-            this.attackPreviewText = this.add.text(600, CONSTANTS.RESOLVE_TEXT_Y, '', {
-                fontSize: '24px',
-                color: '#e74c3c',
-                align: 'center'
-            }).setOrigin(0.5);
+            this.attackPreviewText = this.add.text(attackLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
+                ...valueStyle,
+                color: '#e74c3c'
+            }).setOrigin(0, 0.5);
+        }
+
+        if (!this.attackComboText) {
+            this.attackComboText = this.add.text(attackLeftX, CONSTANTS.RESOLVE_TEXT_Y + 26, '', {
+                ...comboStyle,
+                color: '#e74c3c'
+            }).setOrigin(0, 0.5);
         }
 
         this.updateZonePreviewText();
@@ -282,8 +315,18 @@ export class GameScene extends Phaser.Scene {
         const defendScore = this.computeZoneScore(this.defendDice || []);
         const attackScore = this.computeZoneScore(this.attackDice || []);
 
-        this.defendPreviewText.setText(`${defendScore.total}: ${defendScore.baseSum}+${defendScore.comboBonus}(${defendScore.comboType})`);
-        this.attackPreviewText.setText(`${attackScore.total}: ${attackScore.baseSum}+${attackScore.comboBonus}(${attackScore.comboType})`);
+        const formatScoreLine = score => `${score.total} = ${score.baseSum} + ${score.comboBonus}`;
+        const formatComboLine = score => `Combo Bonus: ${score.comboType} (+${score.comboBonus})`;
+
+        this.defendPreviewText.setText(formatScoreLine(defendScore));
+        if (this.defendComboText) {
+            this.defendComboText.setText(formatComboLine(defendScore));
+        }
+
+        this.attackPreviewText.setText(formatScoreLine(attackScore));
+        if (this.attackComboText) {
+            this.attackComboText.setText(formatComboLine(attackScore));
+        }
     }
 
     rollDice() {
@@ -330,6 +373,8 @@ export class GameScene extends Phaser.Scene {
                 d.updateVisualState();
             }
         });
+
+        this.updateZonePreviewText();
 
         if (isFirstRoll) {
             this.applyPendingLocks();
@@ -1414,6 +1459,8 @@ export class GameScene extends Phaser.Scene {
         }
         setVisibility(this.defendPreviewText, showCombatUI);
         setVisibility(this.attackPreviewText, showCombatUI);
+        setVisibility(this.defendComboText, showCombatUI);
+        setVisibility(this.attackComboText, showCombatUI);
 
         if (this.enemyHealthBar) {
             const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText'];
