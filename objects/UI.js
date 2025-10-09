@@ -67,6 +67,12 @@ export function setupHealthBar(scene) {
     const barFill = scene.add.rectangle(22, y + 2, barWidth, barHeight, 0x27ae60)
         .setOrigin(0, 0);
 
+    const damageFill = scene.add.rectangle(22, y + 2, barWidth, barHeight, 0x8b0000)
+        .setOrigin(0, 0)
+        .setVisible(false);
+    damageFill.displayWidth = 0;
+    damageFill.displayHeight = barHeight;
+
     const text = scene.add.text(20, y + 2 + barHeight + 8, "", {
         fontSize: "20px",
         color: "#ffffff"
@@ -77,6 +83,9 @@ export function setupHealthBar(scene) {
         barHeight,
         barBg,
         barFill,
+        damageFill,
+        fillColor: 0x27ae60,
+        damageColor: 0x8b0000,
         text
     };
 }
@@ -93,6 +102,12 @@ export function setupEnemyUI(scene, enemyName) {
 
     const barFill = scene.add.rectangle(x, y, barWidth, barHeight, 0xc0392b)
         .setOrigin(0, 0);
+
+    const damageFill = scene.add.rectangle(x, y, barWidth, barHeight, 0x641e16)
+        .setOrigin(0, 0)
+        .setVisible(false);
+    damageFill.displayWidth = 0;
+    damageFill.displayHeight = barHeight;
 
     const text = scene.add.text(x + barWidth, y + barHeight + 8, "", {
         fontSize: "20px",
@@ -114,6 +129,9 @@ export function setupEnemyUI(scene, enemyName) {
         barHeight,
         barBg,
         barFill,
+        damageFill,
+        fillColor: 0xc0392b,
+        damageColor: 0x641e16,
         text,
         nameText,
         intentText
