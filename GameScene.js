@@ -350,7 +350,6 @@ export class GameScene extends Phaser.Scene {
                 this.pendingLockCount = Math.min(6, this.pendingLockCount + locksToCarryOver);
             }
             this.lockedDice.clear();
-            this.processTurnOutcome({ attackScore, defendScore });
             this.resetGameState({ destroyDice: false });
             this.input.enabled = true;
             if (this.resolveButton) {
@@ -359,6 +358,8 @@ export class GameScene extends Phaser.Scene {
             }
             this.isResolving = false;
         };
+
+        this.processTurnOutcome({ attackScore, defendScore });
 
         if (diceToResolve.length === 0) {
             this.time.delayedCall(1000, finishResolution);
