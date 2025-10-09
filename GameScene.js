@@ -571,6 +571,13 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    resetPlayerBurn() {
+        if (this.playerBurn !== 0) {
+            this.playerBurn = 0;
+        }
+        this.updateBurnUI();
+    }
+
     handleEnemyAttack(amount) {
         if (amount <= 0) {
             return;
@@ -589,6 +596,8 @@ export class GameScene extends Phaser.Scene {
         if (!this.enemyManager) {
             return;
         }
+
+        this.resetPlayerBurn();
 
         const hasNextEnemy = this.enemyManager.advanceToNextEnemy();
         if (hasNextEnemy) {
@@ -619,6 +628,8 @@ export class GameScene extends Phaser.Scene {
 
     handleAllEnemiesDefeated() {
         this.upcomingEnemyMove = null;
+
+        this.resetPlayerBurn();
 
         if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
             this.enemyHealthBar.nameText.setText('All Enemies Defeated');
