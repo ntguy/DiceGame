@@ -616,6 +616,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        this.enemyManager.primeUpcomingDefenses();
         this.enemyManager.applyPlayerAttack(attackScore);
         this.updateEnemyHealthUI();
 
@@ -697,7 +698,9 @@ export class GameScene extends Phaser.Scene {
                 this.enemyManager.healCurrentEnemy(action.value);
                 this.updateEnemyHealthUI();
             } else if (action.type === 'defend') {
-                this.enemyManager.addEnemyBlock(action.value);
+                if (!action._preApplied) {
+                    this.enemyManager.addEnemyBlock(action.value);
+                }
             } else if (action.type === 'lock') {
                 this.queueEnemyLocks(action.count || 1);
             } else if (action.type === 'burn') {

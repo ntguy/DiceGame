@@ -71,6 +71,19 @@ export class EnemyManager {
         return { damageDealt, blockedAmount };
     }
 
+    primeUpcomingDefenses() {
+        if (!this.upcomingMove || !Array.isArray(this.upcomingMove.actions)) {
+            return;
+        }
+
+        for (const action of this.upcomingMove.actions) {
+            if (action.type === 'defend' && action.value > 0 && !action._preApplied) {
+                this.addEnemyBlock(action.value);
+                action._preApplied = true;
+            }
+        }
+    }
+
     addEnemyBlock(amount) {
         if (amount > 0) {
             this.enemyBlockValue += amount;
