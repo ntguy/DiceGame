@@ -1,6 +1,10 @@
-const PANEL_WIDTH = 540;
-const PANEL_HEIGHT = 420;
-const OPTION_HEIGHT = 90;
+import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
+
+const PANEL_WIDTH = 860;
+const PANEL_HEIGHT = 500;
+const CARD_WIDTH = 220;
+const CARD_HEIGHT = 250;
+const CARD_GAP = 48;
 
 export class InfirmaryUI {
     constructor(scene, { onHealHalf, onIncreaseMax, onHealFull, healFullCost = 0, canAffordFull = false }) {
@@ -11,109 +15,145 @@ export class InfirmaryUI {
         this.healFullCost = healFullCost;
         this.canAffordFull = canAffordFull;
         this.isDestroyed = false;
+        this.optionCards = [];
 
         this.create();
     }
 
     create() {
-        const { width, height } = this.scene.scale;
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        this.backdrop = this.scene.add.rectangle(centerX, centerY, width, height, 0x000000, 0.55)
-            .setDepth(38)
-            .setInteractive({ useHandCursor: false });
-
-        this.container = this.scene.add.container(centerX, centerY);
-        this.container.setDepth(40);
-
-        const panel = this.scene.add.rectangle(0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0x172026, 0.92)
-            .setStrokeStyle(4, 0x2ecc71, 0.9);
-
-        const title = this.scene.add.text(0, -PANEL_HEIGHT / 2 + 40, 'Infirmary', {
-            fontSize: '36px',
-            color: '#2ecc71',
-            fontStyle: 'bold'
-        }).setOrigin(0.5, 0.5);
-
-        const subtitle = this.scene.add.text(0, title.y + 40, 'Choose a treatment to continue', {
-            fontSize: '20px',
-            color: '#d5f5e3'
-        }).setOrigin(0.5, 0.5);
-
-        this.container.add([panel, title, subtitle]);
-
-        const optionStartY = subtitle.y + 70;
-
-        this.createOption({
-            y: optionStartY,
-            title: 'Patch Up',
-            description: 'Recover half of your missing health for free.',
-            accentColor: 0x58d68d,
-            onClick: () => this.onHealHalf()
-        });
-
-        this.createOption({
-            y: optionStartY + OPTION_HEIGHT + 16,
-            title: 'Reinforce',
-            description: 'Increase max health by 10% (no healing).',
-            accentColor: 0x2ecc71,
-            onClick: () => this.onIncreaseMax()
-        });
-
-        const healFullDescription = this.healFullCost > 0
-            ? `Pay ${this.healFullCost} gold to heal to full.`
-            : 'Already at full health!';
-
-        this.createOption({
-            y: optionStartY + (OPTION_HEIGHT + 16) * 2,
-            title: 'Full Restoration',
-            description: healFullDescription,
-            accentColor: 0xf1c40f,
-            onClick: () => {
-                if (this.canAffordFull && this.healFullCost > 0) {
-                    this.onHealFull();
-                }
+        const modal = createModal(this.scene, {
+            width: PANEL_WIDTH,
+            height: PANEL_HEIGHT,
+            panelColor: 0x142126,
+            panelAlpha: 0.95,
+            strokeColor: 0x2ecc71,
+            strokeAlpha: 0.9,
+            title: 'Infirmary',
+            titleStyle: {
+                fontSize: '40px',
+                color: '#2ecc71',
+                fontStyle: 'bold'
             },
-            disabled: !this.canAffordFull || this.healFullCost <= 0
+            subtitle: 'Choose a treatment to continue',
+            subtitleStyle: {
+                fontSize: '22px',
+                color: '#d5f5e3'
+            }
+        });
+
+        this.modal = modal;
+        this.backdrop = modal.backdrop;
+        this.container = modal.container;
+
+        this.renderOptions();
+    }
+
+    renderOptions() {
+        this.optionCards.forEach(card => card.destroy(true));
+        this.optionCards = [];
+
+        const options = [
+            {
+                title: 'Patch Up',
+                description: 'Recover half of your missing health for free.',
+                accentColor: 0x58d68d,
+                icon: '💉',
+                buttonLabel: 'Recover',
+                onClick: () => this.onHealHalf()
+            },
+            {
+                title: 'Reinforce',
+                description: 'Increase max health by 10% (no immediate healing).',
+                accentColor: 0x2ecc71,
+                icon: '🛡️',
+                buttonLabel: 'Fortify',
+                onClick: () => this.onIncreaseMax()
+            },
+            {
+                title: 'Full Restoration',
+                description: this.healFullCost > 0
+                    ? `Pay ${this.healFullCost} gold to heal to full.`
+                    : 'Already at full health!',
+                accentColor: 0xf1c40f,
+                icon: '❤️',
+                buttonLabel: this.healFullCost > 0 ? `Heal (${this.healFullCost}g)` : 'Healed',
+                onClick: () => {
+                    if (this.canAffordFull && this.healFullCost > 0) {
+                        this.onHealFull();
+                    }
+                },
+                disabled: !this.canAffordFull || this.healFullCost <= 0
+            }
+        ];
+
+        const cardSpacing = CARD_WIDTH + CARD_GAP;
+        const startX = -cardSpacing;
+        const cardY = 36;
+
+        options.forEach((option, index) => {
+            const cardX = startX + index * cardSpacing;
+            const card = this.createOptionCard({ ...option, x: cardX, y: cardY });
+            this.optionCards.push(card);
         });
     }
 
-    createOption({ y, title, description, accentColor, onClick, disabled = false }) {
-        const buttonWidth = PANEL_WIDTH - 80;
-        const bg = this.scene.add.rectangle(0, y, buttonWidth, OPTION_HEIGHT, 0x0b1418, 0.85)
-            .setStrokeStyle(2, accentColor, 0.8)
-            .setInteractive({ useHandCursor: !disabled });
+    createOptionCard({ x, y, title, description, accentColor, onClick, disabled = false, icon = '✚', buttonLabel = 'Select' }) {
+        const { container: cardContainer, background: cardBg } = createCard(this.scene, {
+            width: CARD_WIDTH,
+            height: CARD_HEIGHT,
+            backgroundColor: 0x0b1a1f,
+            backgroundAlpha: 0.9,
+            strokeColor: accentColor,
+            strokeAlpha: 0.85
+        });
 
-        const titleText = this.scene.add.text(-buttonWidth / 2 + 20, y - 16, title, {
+        cardContainer.setPosition(x, y);
+
+        const iconText = this.scene.add.text(0, -CARD_HEIGHT / 2 + 44, icon, {
+            fontSize: '48px'
+        }).setOrigin(0.5);
+
+        const titleText = this.scene.add.text(0, iconText.y + 46, title, {
             fontSize: '24px',
             color: '#ffffff',
             fontStyle: 'bold'
-        }).setOrigin(0, 0.5);
+        }).setOrigin(0.5);
 
-        const descText = this.scene.add.text(-buttonWidth / 2 + 20, y + 18, description, {
+        const descText = this.scene.add.text(0, titleText.y + 24, description, {
+            fontSize: '16px',
+            color: '#c8f7c5',
+            align: 'center',
+            wordWrap: { width: CARD_WIDTH - 40 }
+        }).setOrigin(0.5, 0);
+
+        const buttonY = CARD_HEIGHT / 2 - 48;
+        const buttonBg = this.scene.add.rectangle(0, buttonY, CARD_WIDTH - 48, 48, 0x102b31, 0.9)
+            .setStrokeStyle(2, accentColor, 0.8)
+            .setInteractive({ useHandCursor: !disabled });
+
+        const buttonText = this.scene.add.text(0, buttonY, buttonLabel, {
             fontSize: '18px',
-            color: '#c8f7c5'
-        }).setOrigin(0, 0.5);
+            color: '#e8fff4'
+        }).setOrigin(0.5);
 
         if (disabled) {
-            bg.setAlpha(0.35);
-            titleText.setAlpha(0.4);
-            descText.setAlpha(0.4);
-            bg.disableInteractive();
+            cardBg.setAlpha(0.7);
+            iconText.setAlpha(0.6);
+            titleText.setAlpha(0.65);
+            descText.setAlpha(0.65);
+            buttonBg.setFillStyle(0x1a353b, 0.75);
+            buttonText.setAlpha(0.6);
+            buttonBg.disableInteractive();
         } else {
-            bg.on('pointerover', () => {
-                bg.setFillStyle(0x102027, 0.95);
-            });
-            bg.on('pointerout', () => {
-                bg.setFillStyle(0x0b1418, 0.85);
-            });
-            bg.on('pointerup', () => {
-                onClick();
-            });
+            buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x134049, 0.95));
+            buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x102b31, 0.9));
+            buttonBg.on('pointerup', () => onClick());
         }
 
-        this.container.add([bg, titleText, descText]);
+        cardContainer.add([cardBg, iconText, titleText, descText, buttonBg, buttonText]);
+        this.container.add(cardContainer);
+
+        return cardContainer;
     }
 
     destroy() {
@@ -122,14 +162,9 @@ export class InfirmaryUI {
         }
 
         this.isDestroyed = true;
-        if (this.backdrop) {
-            this.backdrop.destroy();
-            this.backdrop = null;
-        }
 
-        if (this.container) {
-            this.container.destroy(true);
-            this.container = null;
-        }
+        destroyModal(this.modal);
+        this.modal = null;
+        this.optionCards = [];
     }
 }
