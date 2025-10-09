@@ -3,6 +3,7 @@ import { createDie } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI, setupMuteButton } from './objects/UI.js';
 import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
+import { resolveDamage } from './systems/DamageSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
 import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
@@ -788,17 +789,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     handleEnemyAttack(amount) {
-        if (amount <= 0) {
-            return;
-        }
+        const { damageDealt, remainingBlock } = resolveDamage(
+            amount,
+            this.playerBlockValue,
+            damage => this.applyDamage(damage)
+        );
 
-        const mitigated = Math.min(this.playerBlockValue, amount);
-        const damage = Math.max(0, amount - mitigated);
-        this.playerBlockValue = Math.max(0, this.playerBlockValue - amount);
-
-        if (damage > 0) {
-            this.applyDamage(damage);
-        }
+        this.playerBlockValue = remainingBlock;
+        return damageDealt;
     }
 
     handlePathNodeSelection(node) {
