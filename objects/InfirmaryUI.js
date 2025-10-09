@@ -1,4 +1,5 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
+import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;
@@ -145,8 +146,15 @@ export class InfirmaryUI {
             buttonText.setAlpha(0.6);
             buttonBg.disableInteractive();
         } else {
-            buttonBg.on('pointerover', () => buttonBg.setFillStyle(0x134049, 0.95));
-            buttonBg.on('pointerout', () => buttonBg.setFillStyle(0x102b31, 0.9));
+            applyRectangleButtonStyle(buttonBg, {
+                baseColor: 0x102b31,
+                baseAlpha: 0.9,
+                hoverBlend: 0.18,
+                pressBlend: 0.32,
+                disabledBlend: 0.5,
+                enabledAlpha: 1,
+                disabledAlpha: 0.45
+            });
             buttonBg.on('pointerup', () => onClick());
         }
 
