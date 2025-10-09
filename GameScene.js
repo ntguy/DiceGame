@@ -486,10 +486,117 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        const healthRatio = Phaser.Math.Clamp(this.playerHealth / this.playerMaxHealth, 0, 1);
-        this.healthBar.barFill.displayWidth = this.healthBar.barWidth * healthRatio;
-        this.healthBar.text.setText(`HP: ${this.playerHealth}/${this.playerMaxHealth}`);
-        this.updateBurnUI();
+        this.animateHealthBar(this.healthBar, this.playerHealth, this.playerMaxHealth);
+    }
+
+    stopHealthBarTweens(bar) {
+        if (!bar) {
+            return;
+        }
+
+        ['textTween', 'barTween', 'damageTween'].forEach(key => {
+            if (bar[key]) {
+                bar[key].stop();
+                this.tweens.remove(bar[key]);
+                bar[key] = null;
+            }
+        });
+    }
+
+    animateHealthBar(bar, targetHealth, maxHealth) {
+        if (!bar) {
+            return;
+        }
+
+        const clampedTarget = Phaser.Math.Clamp(targetHealth, 0, maxHealth);
+        const previousHealth = typeof bar.displayedHealth === 'number' ? bar.displayedHealth : clampedTarget;
+        const duration = 1000;
+
+        const targetRatio = maxHealth > 0 ? Phaser.Math.Clamp(clampedTarget / maxHealth, 0, 1) : 0;
+        const previousRatio = maxHealth > 0 ? Phaser.Math.Clamp(previousHealth / maxHealth, 0, 1) : 0;
+        const targetWidth = bar.barWidth * targetRatio;
+        const previousWidth = bar.barWidth * previousRatio;
+
+        const isDamage = clampedTarget < previousHealth;
+
+        this.stopHealthBarTweens(bar);
+
+        bar.barFill.setFillStyle(bar.fillColor ?? bar.barFill.fillColor);
+
+        if (typeof bar.damageFill !== 'undefined') {
+            bar.damageFill.setVisible(false);
+            bar.damageFill.displayWidth = 0;
+        }
+
+        if (typeof bar.displayedHealth !== 'number') {
+            bar.barFill.displayWidth = targetWidth;
+            bar.text.setText(`HP: ${clampedTarget}/${maxHealth}`);
+            bar.displayedHealth = clampedTarget;
+            this.updateBurnUI();
+            return;
+        }
+
+        if (previousHealth === clampedTarget) {
+            bar.barFill.displayWidth = targetWidth;
+            bar.text.setText(`HP: ${clampedTarget}/${maxHealth}`);
+            bar.displayedHealth = clampedTarget;
+            this.updateBurnUI();
+            return;
+        }
+
+        if (isDamage && bar.damageFill) {
+            const differenceWidth = Math.max(0, previousWidth - targetWidth);
+            bar.barFill.displayWidth = targetWidth;
+
+            if (differenceWidth > 0) {
+                bar.damageFill.setFillStyle(bar.damageColor ?? bar.damageFill.fillColor);
+                bar.damageFill.x = bar.barFill.x + targetWidth;
+                bar.damageFill.displayWidth = differenceWidth;
+                bar.damageFill.displayHeight = bar.barHeight;
+                bar.damageFill.setVisible(true);
+
+                bar.damageTween = this.tweens.add({
+                    targets: bar.damageFill,
+                    displayWidth: 0,
+                    duration,
+                    ease: 'Linear',
+                    onUpdate: () => {
+                        bar.damageFill.x = bar.barFill.x + targetWidth;
+                    },
+                    onComplete: () => {
+                        bar.damageFill.setVisible(false);
+                        bar.damageFill.displayWidth = 0;
+                    }
+                });
+            }
+        } else {
+            bar.barFill.displayWidth = previousWidth;
+            bar.barTween = this.tweens.add({
+                targets: bar.barFill,
+                displayWidth: targetWidth,
+                duration,
+                ease: 'Linear'
+            });
+        }
+
+        const textCounter = { value: previousHealth };
+        bar.textTween = this.tweens.add({
+            targets: textCounter,
+            value: clampedTarget,
+            duration,
+            ease: 'Linear',
+            onUpdate: () => {
+                const displayValue = Math.round(textCounter.value);
+                bar.displayedHealth = displayValue;
+                bar.text.setText(`HP: ${displayValue}/${maxHealth}`);
+                this.updateBurnUI();
+            },
+            onComplete: () => {
+                bar.displayedHealth = clampedTarget;
+                bar.text.setText(`HP: ${clampedTarget}/${maxHealth}`);
+                this.updateBurnUI();
+            }
+        });
     }
 
     processTurnOutcome({ attackScore, defendScore }) {
@@ -527,14 +634,18 @@ export class GameScene extends Phaser.Scene {
 
         const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
         if (!enemy) {
+            this.stopHealthBarTweens(this.enemyHealthBar);
             this.enemyHealthBar.barFill.displayWidth = 0;
-            this.enemyHealthBar.text.setText('HP: --/--');
+            this.enemyHealthBar.text.setText('HP: 0/0');
+            if (this.enemyHealthBar.damageFill) {
+                this.enemyHealthBar.damageFill.setVisible(false);
+                this.enemyHealthBar.damageFill.displayWidth = 0;
+            }
+            this.enemyHealthBar.displayedHealth = 0;
             return;
         }
 
-        const ratio = Phaser.Math.Clamp(enemy.health / enemy.maxHealth, 0, 1);
-        this.enemyHealthBar.barFill.displayWidth = this.enemyHealthBar.barWidth * ratio;
-        this.enemyHealthBar.text.setText(`HP: ${enemy.health}/${enemy.maxHealth}`);
+        this.animateHealthBar(this.enemyHealthBar, enemy.health, enemy.maxHealth);
     }
 
     prepareNextEnemyMove() {
