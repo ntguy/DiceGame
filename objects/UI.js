@@ -67,21 +67,6 @@ export function setupButtons(scene) {
     scene.resolveButton = resolveButton;
 }
 
-export function setupMuteButton(scene, onToggle) {
-    const button = scene.add.text(CONSTANTS.UI_MARGIN, scene.scale.height - CONSTANTS.UI_MARGIN, '', {
-        fontSize: '28px',
-        padding: { x: 16, y: 10 }
-    }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
-
-    button.on('pointerdown', () => {
-        if (typeof onToggle === 'function') {
-            onToggle();
-        }
-    });
-
-    return button;
-}
-
 export function setupHealthBar(scene) {
     const barWidth = 200;
     const barHeight = 20;

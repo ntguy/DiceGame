@@ -1,6 +1,5 @@
 import { CONSTANTS } from '../config.js';
 import { snapToGrid } from './Dice.js';
-// import { highlightCombos } from '../systems/ComboSystem.js';
 
 export function setupZones(scene) {
     const zoneWidth = CONSTANTS.DEFAULT_ZONE_WIDTH + 6;
@@ -46,7 +45,12 @@ export function removeFromZones(scene, die) {
 
     scene.defendSlots = scene.defendSlots.map(s => s === die ? null : s);
     scene.attackSlots = scene.attackSlots.map(s => s === die ? null : s);
+
+    if (scene && typeof scene.updateZonePreviewText === 'function') {
+        scene.updateZonePreviewText();
+    }
 }
+
 
 export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     const idx = slots.findIndex(s => s === null);
@@ -71,4 +75,8 @@ export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     die.x = baseX - zoneWidth/2 + spacing/2 + idx * spacing;
     die.y = y;
     die.setDepth(2);
+
+    if (scene && typeof scene.updateZonePreviewText === 'function') {
+        scene.updateZonePreviewText();
+    }
 }
