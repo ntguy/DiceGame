@@ -11,6 +11,7 @@ import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
 import { PathUI } from './objects/PathUI.js';
 import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
+import { RelicUIManager } from './objects/RelicUI.js';
 import { LuckyPipRelic } from './relics/LuckyPipRelic.js';
 import { ReinforcedCaseRelic } from './relics/ReinforcedCaseRelic.js';
 import { GleamingCoreRelic } from './relics/GleamingCoreRelic.js';
@@ -54,6 +55,8 @@ export class GameScene extends Phaser.Scene {
         this.attackPreviewText = null;
         this.comboListTexts = [];
 
+        this.relicUI = new RelicUIManager(this);
+
         this.resetRelicState();
         this.resetMenuState();
     }
@@ -62,11 +65,9 @@ export class GameScene extends Phaser.Scene {
         this.relicCatalog = [];
         this.relics = [];
         this.ownedRelicIds = new Set();
-        this.relicVisuals = [];
-        this.relicBackgrounds = new Map();
-        this.relicInfoTitleText = null;
-        this.relicInfoDescriptionText = null;
-        this.selectedRelicId = null;
+        if (this.relicUI) {
+            this.relicUI.reset();
+        }
     }
 
     resetMenuState() {
@@ -130,8 +131,8 @@ export class GameScene extends Phaser.Scene {
         // --- Dice arrays for zones ---
         this.defendDice = [];
         this.attackDice = [];
-        this.defendSlots = Array(6).fill(null);
-        this.attackSlots = Array(6).fill(null);
+        this.defendSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
+        this.attackSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
 
         // --- Zones ---
         setupZones(this);
@@ -145,7 +146,7 @@ export class GameScene extends Phaser.Scene {
         setupButtons(this);
         this.updateRollButtonState();
         createMenuUI(this);
-        this.createRelicShelf();
+        this.relicUI.createShelf();
 
         // --- Health bar ---
         this.healthBar = setupHealthBar(this);
@@ -285,135 +286,6 @@ export class GameScene extends Phaser.Scene {
         this.attackPreviewText.setText(`${attackScore.total}: ${attackScore.baseSum}+${attackScore.comboBonus}(${attackScore.comboType})`);
     }
 
-    createRelicShelf() {
-        this.clearRelicVisuals();
-
-        if (this.relicInfoTitleText) {
-            this.relicInfoTitleText.destroy();
-            this.relicInfoTitleText = null;
-        }
-
-        if (this.relicInfoDescriptionText) {
-            this.relicInfoDescriptionText.destroy();
-            this.relicInfoDescriptionText = null;
-        }
-
-        this.relicInfoTitleText = this.add.text(CONSTANTS.RIGHT_COLUMN_X, CONSTANTS.RELIC_INFO_TITLE_Y, '', {
-            fontSize: '24px',
-            color: '#f1c40f',
-            fontStyle: 'bold'
-        }).setOrigin(1, 0);
-
-        this.relicInfoDescriptionText = this.add.text(CONSTANTS.RIGHT_COLUMN_X, CONSTANTS.RELIC_INFO_TITLE_Y + 32, '', {
-            fontSize: '18px',
-            color: '#f9e79f',
-            wordWrap: { width: CONSTANTS.RELIC_INFO_WRAP_WIDTH },
-            lineSpacing: 6
-        }).setOrigin(1, 0);
-
-        this.setRelicInfoText('', '');
-        this.updateRelicDisplay();
-    }
-
-    updateRelicDisplay() {
-        this.clearRelicVisuals();
-
-        if (!this.relicInfoTitleText || !this.relicInfoDescriptionText) {
-            return;
-        }
-
-        const ownedRelics = this.relics.filter(relic => this.ownedRelicIds.has(relic.id));
-
-        const startX = CONSTANTS.RIGHT_COLUMN_X;
-        const baseY = CONSTANTS.RELIC_TRAY_Y;
-        const spacing = CONSTANTS.RELIC_ICON_SPACING;
-        const iconSize = CONSTANTS.RELIC_ICON_SIZE;
-
-        ownedRelics.forEach((relic, index) => {
-            const x = startX - index * spacing;
-            const iconBg = this.add.rectangle(x, baseY, iconSize, iconSize, 0x1c1c1c, 0.85)
-                .setStrokeStyle(2, 0xf1c40f, 0.9)
-                .setInteractive({ useHandCursor: true });
-            const iconText = this.add.text(x, baseY, relic.icon || '♦', {
-                fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE
-            }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-            iconBg.on('pointerdown', () => this.showRelicDetails(relic));
-            iconText.on('pointerdown', () => this.showRelicDetails(relic));
-
-            this.relicVisuals.push(iconBg, iconText);
-            this.relicBackgrounds.set(relic.id, iconBg);
-        });
-
-        const selectedRelic = ownedRelics.find(relic => relic.id === this.selectedRelicId);
-        if (selectedRelic) {
-            this.setRelicInfoText(selectedRelic.name, selectedRelic.description);
-        } else {
-            this.selectedRelicId = null;
-            this.setRelicInfoText('', '');
-        }
-
-        this.updateRelicSelectionHighlight();
-    }
-
-    clearRelicVisuals() {
-        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
-            this.relicVisuals.forEach(obj => {
-                if (obj && typeof obj.destroy === 'function') {
-                    obj.destroy();
-                }
-            });
-        }
-        this.relicVisuals = [];
-        if (this.relicBackgrounds && typeof this.relicBackgrounds.clear === 'function') {
-            this.relicBackgrounds.clear();
-        }
-    }
-
-    setRelicInfoText(title = '', description = '') {
-        if (this.relicInfoTitleText) {
-            this.relicInfoTitleText.setText(title || '');
-        }
-        if (this.relicInfoDescriptionText) {
-            this.relicInfoDescriptionText.setText(description || '');
-        }
-    }
-
-    updateRelicSelectionHighlight() {
-        if (!this.relicBackgrounds || typeof this.relicBackgrounds.forEach !== 'function') {
-            return;
-        }
-
-        this.relicBackgrounds.forEach((bg, relicId) => {
-            if (!bg || typeof bg.setStrokeStyle !== 'function') {
-                return;
-            }
-            const isSelected = relicId === this.selectedRelicId;
-            bg.setStrokeStyle(2, isSelected ? 0xffffff : 0xf1c40f, isSelected ? 1 : 0.9);
-        });
-    }
-
-    showRelicDetails(relic) {
-        if (!relic || !this.ownedRelicIds.has(relic.id)) {
-            this.selectedRelicId = null;
-            this.setRelicInfoText('', ''); // Display nothing if no relic is selected
-            this.updateRelicSelectionHighlight();
-            return;
-        }
-
-        // Check if the clicked relic is already selected
-        if (this.selectedRelicId === relic.id) {
-            // If it's the same relic, deselect it
-            this.selectedRelicId = null;
-            this.setRelicInfoText('', ''); // Display nothing
-        } else {
-            // Otherwise, select the new relic
-            this.selectedRelicId = relic.id;
-            this.setRelicInfoText(relic.name, relic.description);
-        }
-        this.updateRelicSelectionHighlight();
-    }
-    
     rollDice() {
         if (!this.inCombat || this.isGameOver) {
             return;
@@ -424,15 +296,15 @@ export class GameScene extends Phaser.Scene {
         const diceSelectedCount = diceInPlay.filter(d => d.selected).length;
         const isFirstRoll = this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS;
 
-        if (isFirstRoll || diceSelectedCount === 6) { // TODO replace 6 with const
+        if (isFirstRoll || diceSelectedCount === CONSTANTS.DICE_PER_SET) {
             this.sound.play('multiDiceRoll');
             this.sound.play('diceRoll', { volume: 0.75 });
             this.time.delayedCall(Phaser.Math.Between(100, 300), () => {
                 this.sound.play('diceRoll', { volume: 0.5 });
             });
         } else {
-            const defaultVolume = 0.6;
-            for (let i=0; i < diceSelectedCount; i++) {
+            const defaultVolume = CONSTANTS.DEFAULT_SFX_VOLUME;
+            for (let i = 0; i < diceSelectedCount; i++) {
                 const delay = i == 0 ? 0 : Phaser.Math.Between(100, 300);
                 this.time.delayedCall(delay, () => {
                     this.sound.play('diceRoll', { volume: ((defaultVolume/(i+1)) + 0.05) });
@@ -443,7 +315,7 @@ export class GameScene extends Phaser.Scene {
         // First roll → create dice
         if (isFirstRoll) {
             this.dice = [];
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < CONSTANTS.DICE_PER_SET; i++) {
                 const die = createDie(this, i);
                 this.dice.push(die);
             }
@@ -516,7 +388,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.pendingLockCount = Math.min(6, this.pendingLockCount + count);
+        this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + count);
     }
 
     sortDice() {
@@ -524,7 +396,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.sound.play('swoosh', { volume: 0.6 });
+        this.sound.play('swoosh', { volume: CONSTANTS.DEFAULT_SFX_VOLUME });
         this.dice.sort((a, b) => a.value - b.value);
         this.dice.forEach((d, i) => {
             d.slotIndex = i;
@@ -574,7 +446,7 @@ export class GameScene extends Phaser.Scene {
         const diceToResolve = this.getDiceInPlay();
         const finishResolution = () => {
             if (locksToCarryOver > 0) {
-                this.pendingLockCount = Math.min(6, this.pendingLockCount + locksToCarryOver);
+                this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + locksToCarryOver);
             }
             this.lockedDice.clear();
             this.resetGameState({ destroyDice: false });
@@ -1356,8 +1228,8 @@ export class GameScene extends Phaser.Scene {
         if (typeof relic.apply === 'function') {
             relic.apply(this);
         }
-        this.updateRelicDisplay();
-        this.showRelicDetails(relic);
+        this.relicUI.updateDisplay();
+        this.relicUI.showRelicDetails(relic);
         return relic;
     }
 
@@ -1460,8 +1332,8 @@ export class GameScene extends Phaser.Scene {
         this.dice = [];
         this.defendDice = [];
         this.attackDice = [];
-        this.defendSlots = Array(6).fill(null);
-        this.attackSlots = Array(6).fill(null);
+        this.defendSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
+        this.attackSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
 
         this.playerBlockValue = 0;
 
@@ -1537,9 +1409,9 @@ export class GameScene extends Phaser.Scene {
             this.attackHighlight.setVisible(false);
         }
 
-        applyToArray(this.relicVisuals, showCombatUI);
-        setVisibility(this.relicInfoTitleText, showCombatUI);
-        setVisibility(this.relicInfoDescriptionText, showCombatUI);
+        if (this.relicUI) {
+            this.relicUI.setVisible(showCombatUI);
+        }
         setVisibility(this.defendPreviewText, showCombatUI);
         setVisibility(this.attackPreviewText, showCombatUI);
 
