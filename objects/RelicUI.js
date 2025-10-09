@@ -24,27 +24,27 @@ export class RelicUIManager {
         this.destroyInfoTexts();
         this.destroyStaticElements();
 
-        const infoCenterX = CONSTANTS.RIGHT_COLUMN_X - (CONSTANTS.RELIC_INFO_WRAP_WIDTH / 2);
+        const infoCenterX = CONSTANTS.RIGHT_COLUMN_X - (CONSTANTS.RELIC_ICON_SPACING * (CONSTANTS.RELIC_MAX_SLOTS - 1) / 2);
         const infoTitleY = CONSTANTS.RELIC_INFO_TITLE_Y;
 
         this.relicInfoBackground = this.scene.add.rectangle(
             infoCenterX,
-            infoTitleY - 16,
+            infoTitleY,
             CONSTANTS.RELIC_INFO_WRAP_WIDTH + 32,
-            160,
+            120,
             0x000000,
             0.45
         ).setOrigin(0.5, 0);
         this.relicInfoBackground.setStrokeStyle(2, 0xf1c40f, 0.25);
 
-        this.relicInfoTitleText = this.scene.add.text(infoCenterX, infoTitleY, '', {
-            fontSize: '24px',
+        this.relicInfoTitleText = this.scene.add.text(infoCenterX, infoTitleY + 20, '', {
+            fontSize: '20px',
             color: '#f1c40f',
             fontStyle: 'bold',
             align: 'center'
         }).setOrigin(0.5, 0);
 
-        this.relicInfoDescriptionText = this.scene.add.text(infoCenterX, infoTitleY + 32, '', {
+        this.relicInfoDescriptionText = this.scene.add.text(infoCenterX, infoTitleY + 45, '', {
             fontSize: '18px',
             color: '#f9e79f',
             wordWrap: { width: CONSTANTS.RELIC_INFO_WRAP_WIDTH },

@@ -7,7 +7,7 @@ const NODE_TYPES = {
 const ENEMY_SEQUENCE = [
     {
         enemyIndex: 0,
-        rewardGold: 60,
+        rewardGold: 600,
         label: 'Battle',
         start: true
     },
