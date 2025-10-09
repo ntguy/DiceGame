@@ -106,7 +106,7 @@ export class PathUI {
             // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
             cube.on('pointerover', () => {
             if (!this.isNodeSelectable(node.id)) return;
-                cube.setStrokeStyle(4, COLORS.blackStroke, 1); // change stroke color & width on hover
+                cube.setStrokeStyle(4, COLORS.whiteStroke, 1); // change stroke color & width on hover
             });
         
             cube.on('pointerout', () => {
@@ -194,11 +194,10 @@ export class PathUI {
 
     updateState() {
         const availableIds = new Set(this.pathManager.getAvailableNodeIds());
-        const currentId = this.pathManager.getCurrentNodeId();
 
         this.nodeRefs.forEach(({ node, cube, iconText, labelText, isBoss }) => {
             const typeKey = isBoss ? 'boss' : node.type;
-            const baseColor = COLORS[typeKey] || 0xffffff;
+            const baseColor = COLORS[typeKey] || COLORS.whiteStroke;
             const isCompleted = this.pathManager.isNodeCompleted(node.id);
 
             let fillColor = baseColor;
@@ -211,10 +210,10 @@ export class PathUI {
 
             if (isCompleted) {
                 fillColor = blendColor(baseColor, 0x1f2a30, 0.55);
-                strokeWidth = 6;
+                strokeWidth = 2;
                 iconAlpha = 0.6;
                 labelAlpha = 0.65;
-                strokeColor = 0x1f1f1f;
+                strokeColor = COLORS.whiteStroke;
             } else if (availableIds.has(node.id)) {
                 interactive = true;
             } else {
