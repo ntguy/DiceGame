@@ -101,12 +101,22 @@ export class PathUI {
                 .setInteractive({ useHandCursor: true })
                 .setAngle(45);
 
+            // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
+            cube.on('pointerover', () => {
+            if (!this.isNodeSelectable(node.id)) return;
+                cube.setStrokeStyle(4, 0x111111, 1); // change stroke color & width on hover
+            });
+        
+            cube.on('pointerout', () => {
+                this.updateState();
+            });
+
             const iconText = this.scene.add.text(0, 0, icon || '?', {
                 fontSize: '24px',
                 color: '#000000'
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, 40, node.label || '', {
+            const labelText = this.scene.add.text(0, 50, node.label || '', {
                 fontSize: '18px',
                 color: '#ffffff'
             }).setOrigin(0.5);
@@ -188,12 +198,12 @@ export class PathUI {
             const typeKey = isBoss ? 'boss' : node.type;
             const baseColor = COLORS[typeKey] || 0xffffff;
             const isCompleted = this.pathManager.isNodeCompleted(node.id);
-            const isLocked = this.pathManager.isNodeLocked(node.id);
             const isCurrent = currentId === node.id;
 
             let fillColor = baseColor;
             let strokeWidth = 4;
             let strokeAlpha = 1;
+            let strokeColor = 0xffffff;
             let iconAlpha = 1;
             let labelAlpha = 1;
             let scale = 1;
@@ -203,22 +213,16 @@ export class PathUI {
                 scale = 1.05;
             } else if (isCompleted) {
                 fillColor = blendColor(baseColor, 0x1f2a30, 0.55);
-                strokeWidth = 2;
-                strokeAlpha = 0.45;
+                strokeWidth = 6;
                 iconAlpha = 0.6;
                 labelAlpha = 0.65;
+                strokeColor = 0x1f1f1f;
             } else if (availableIds.has(node.id)) {
                 interactive = true;
-            } else if (isLocked) {
-                fillColor = blendColor(baseColor, 0xcfd8dc, 0.5);
+            } else {
+                fillColor = blendColor(baseColor, 0x90a4ae, 0.6);
                 strokeWidth = 2;
                 strokeAlpha = 0.5;
-                iconAlpha = 0.75;
-                labelAlpha = 0.75;
-            } else {
-                fillColor = blendColor(baseColor, 0x90a4ae, 0.35);
-                strokeWidth = 2;
-                strokeAlpha = 0.55;
                 iconAlpha = 0.8;
                 labelAlpha = 0.8;
             }
@@ -227,7 +231,7 @@ export class PathUI {
             cube.setAlpha(1);
             iconText.setAlpha(iconAlpha);
             labelText.setAlpha(labelAlpha);
-            cube.setStrokeStyle(strokeWidth, 0xffffff, strokeAlpha);
+            cube.setStrokeStyle(strokeWidth, strokeColor, strokeAlpha);
             cube.setScale(scale);
 
             if (interactive) {
@@ -266,7 +270,7 @@ export class PathUI {
         this.scene.input.on('pointerupoutside', this.handlePointerUp, this);
     }
 
-    handleWheel(pointer, gameObjects, deltaX, deltaY) {
+    handleWheel(deltaY) {
         if (!this.isActive) {
             return;
         }

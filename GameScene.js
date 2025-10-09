@@ -1013,7 +1013,7 @@ export class GameScene extends Phaser.Scene {
         this.destroyFacilityUI();
 
         const missing = Math.max(0, this.playerMaxHealth - this.playerHealth);
-        const healFullCost = missing * 10;
+        const healFullCost = missing / 2 * 10;
         const canAffordFull = healFullCost > 0 && this.canAfford(healFullCost);
 
         this.activeFacilityUI = new InfirmaryUI(this, {
@@ -1046,7 +1046,7 @@ export class GameScene extends Phaser.Scene {
             if (missing <= 0) {
                 message = 'Already at full health';
             } else {
-                const cost = missing * 10;
+                const cost = missing / 2 * 10;
                 if (cost > 0 && this.canAfford(cost)) {
                     const spent = this.spendGold(cost);
                     if (spent > 0) {

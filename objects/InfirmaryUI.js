@@ -1,10 +1,10 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 
-const PANEL_WIDTH = 860;
-const PANEL_HEIGHT = 500;
-const CARD_WIDTH = 220;
+const PANEL_WIDTH = 880;
+const PANEL_HEIGHT = 480;
+const CARD_WIDTH = 250;
 const CARD_HEIGHT = 250;
-const CARD_GAP = 48;
+const CARD_GAP = 24;
 
 export class InfirmaryUI {
     constructor(scene, { onHealHalf, onIncreaseMax, onHealFull, healFullCost = 0, canAffordFull = false }) {
@@ -54,25 +54,25 @@ export class InfirmaryUI {
 
         const options = [
             {
-                title: 'Patch Up',
-                description: 'Recover half of your missing health for free.',
+                title: 'Patch',
+                description: 'Recover half of your missing health.',
                 accentColor: 0x58d68d,
-                icon: '💉',
-                buttonLabel: 'Recover',
+                icon: '🩹',
+                buttonLabel: 'Use',
                 onClick: () => this.onHealHalf()
             },
             {
-                title: 'Reinforce',
-                description: 'Increase max health by 10% (no immediate healing).',
+                title: 'Fortify',
+                description: 'Increase max health by 10%.',
                 accentColor: 0x2ecc71,
-                icon: '🛡️',
-                buttonLabel: 'Fortify',
+                icon: '🧬',
+                buttonLabel: 'Use',
                 onClick: () => this.onIncreaseMax()
             },
             {
-                title: 'Full Restoration',
+                title: 'Full Restore',
                 description: this.healFullCost > 0
-                    ? `Pay ${this.healFullCost} gold to heal to full.`
+                    ? `Pay ${this.healFullCost} gold to fully heal.`
                     : 'Already at full health!',
                 accentColor: 0xf1c40f,
                 icon: '❤️',

@@ -1,10 +1,10 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 
-const PANEL_WIDTH = 860;
-const PANEL_HEIGHT = 520;
-const CARD_WIDTH = 220;
+const PANEL_WIDTH = 880;
+const PANEL_HEIGHT = 480;
+const CARD_WIDTH = 250;
 const CARD_HEIGHT = 260;
-const CARD_GAP = 48;
+const CARD_GAP = 24;
 
 export class ShopUI {
     constructor(scene, { relics = [], onPurchase, onClose }) {
@@ -32,7 +32,7 @@ export class ShopUI {
                 color: '#f1c40f',
                 fontStyle: 'bold'
             },
-            subtitle: 'Each relic costs 100 gold',
+            subtitle: 'Relics provide permanent bonuses.',
             subtitleStyle: {
                 fontSize: '22px',
                 color: '#f9e79f'
@@ -55,7 +55,7 @@ export class ShopUI {
         const startX = this.relics.length > 1
             ? -((this.relics.length - 1) * cardSpacing) / 2
             : 0;
-        const cardY = 40;
+        const cardY = 2;
 
         this.relics.forEach((relic, index) => {
             const cardX = startX + index * cardSpacing;
