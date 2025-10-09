@@ -7,6 +7,11 @@ import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
 import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
 import { PathUI } from './objects/PathUI.js';
+import { InfirmaryUI } from './objects/InfirmaryUI.js';
+import { ShopUI } from './objects/ShopUI.js';
+import { LuckyPipRelic } from './relics/LuckyPipRelic.js';
+import { ReinforcedCaseRelic } from './relics/ReinforcedCaseRelic.js';
+import { GleamingCoreRelic } from './relics/GleamingCoreRelic.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -43,9 +48,16 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
         this.comboHeaderText = null;
+        this.activeFacilityUI = null;
+        this.relicCatalog = [];
+        this.relics = [];
+        this.ownedRelicIds = new Set();
+        this.relicVisuals = [];
+        this.relicTitleText = null;
     }
 
     init(data) {
+        this.destroyFacilityUI();
         this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
         this.isGameOver = false;
         this.gameOverManager = null;
@@ -59,6 +71,12 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
         this.comboHeaderText = null;
+        this.activeFacilityUI = null;
+        this.relicCatalog = [];
+        this.relics = [];
+        this.ownedRelicIds = new Set();
+        this.relicVisuals = [];
+        this.relicTitleText = null;
     }
 
     preload() {
@@ -82,6 +100,15 @@ export class GameScene extends Phaser.Scene {
         this.playerGold = 0;
         this.currentPathNodeId = null;
         this.inCombat = false;
+        this.relicCatalog = [
+            new LuckyPipRelic(),
+            new ReinforcedCaseRelic(),
+            new GleamingCoreRelic()
+        ];
+        this.relics = [];
+        this.ownedRelicIds = new Set();
+        this.relicVisuals = [];
+        this.relicTitleText = null;
 
         // --- Dice arrays for zones ---
         this.defendDice = [];
@@ -103,7 +130,8 @@ export class GameScene extends Phaser.Scene {
 
         // --- Combo table ---
         displayComboTable(this);
-        
+        this.createRelicShelf();
+
         // --- Health bar ---
         this.healthBar = setupHealthBar(this);
         this.updateHealthUI();
@@ -146,9 +174,60 @@ export class GameScene extends Phaser.Scene {
 
         this.enterMapState();
     }
-    
+
     update() {
         // Update logic here
+    }
+
+    createRelicShelf() {
+        if (this.relicTitleText) {
+            this.relicTitleText.destroy();
+            this.relicTitleText = null;
+        }
+
+        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
+            this.relicVisuals.forEach(obj => obj.destroy());
+        }
+        this.relicVisuals = [];
+
+        const startX = 1070;
+        const titleY = 220;
+        this.relicTitleText = this.add.text(startX, titleY, 'Relics', {
+            fontSize: '24px',
+            color: '#f1c40f'
+        }).setOrigin(1, 0);
+
+        this.updateRelicDisplay();
+    }
+
+    updateRelicDisplay() {
+        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
+            this.relicVisuals.forEach(obj => obj.destroy());
+        }
+        this.relicVisuals = [];
+
+        if (!this.relicTitleText) {
+            return;
+        }
+
+        const startX = this.relicTitleText.x;
+        const baseY = this.relicTitleText.y + 36;
+        const spacing = 64;
+
+        this.relics.forEach((relic, index) => {
+            const x = startX - index * spacing;
+            const iconBg = this.add.rectangle(x, baseY, 44, 44, 0x1c1c1c, 0.85)
+                .setStrokeStyle(2, 0xf1c40f, 0.9);
+            const iconText = this.add.text(x, baseY, relic.icon || '♦', {
+                fontSize: '24px'
+            }).setOrigin(0.5);
+            const label = this.add.text(x, baseY + 28, relic.name, {
+                fontSize: '14px',
+                color: '#f9e79f'
+            }).setOrigin(0.5);
+
+            this.relicVisuals.push(iconBg, iconText, label);
+        });
     }
     
     rollDice() {
@@ -821,10 +900,10 @@ export class GameScene extends Phaser.Scene {
                 this.startCombatEncounter(node);
                 break;
             case PATH_NODE_TYPES.SHOP:
-                this.resolveShopNode(node);
+                this.openShop();
                 break;
-            case PATH_NODE_TYPES.MEDICAL:
-                this.resolveMedicalNode(node);
+            case PATH_NODE_TYPES.INFIRMARY:
+                this.openInfirmary();
                 break;
             default:
                 this.pathManager.completeCurrentNode();
@@ -872,12 +951,53 @@ export class GameScene extends Phaser.Scene {
         this.showNodeMessage(messageText, node.isBoss ? '#ff8c69' : '#ffffff');
     }
 
-    resolveShopNode(node) {
-        const cost = 100;
-        const spent = this.spendGold(cost);
-        this.showNodeMessage(`-${spent} Gold`, '#f1c40f');
+    openShop() {
+        if (this.pathUI) {
+            this.pathUI.hide();
+        }
 
-        this.pathManager.completeCurrentNode();
+        this.destroyFacilityUI();
+
+        this.activeFacilityUI = new ShopUI(this, {
+            relics: this.getRelicShopState(),
+            onPurchase: relicId => this.handleShopPurchase(relicId),
+            onClose: () => this.closeShop()
+        });
+    }
+
+    handleShopPurchase(relicId) {
+        const relic = this.attemptPurchaseRelic(relicId);
+        if (relic) {
+            this.refreshShopInterface();
+            return true;
+        }
+        return false;
+    }
+
+    refreshShopInterface() {
+        if (this.activeFacilityUI instanceof ShopUI) {
+            this.activeFacilityUI.updateRelics(this.getRelicShopState());
+        }
+    }
+
+    getRelicShopState() {
+        return this.relicCatalog.map(relic => ({
+            id: relic.id,
+            name: relic.name,
+            description: relic.description,
+            icon: relic.icon,
+            cost: relic.cost,
+            owned: this.ownedRelicIds.has(relic.id),
+            canAfford: this.playerGold >= relic.cost
+        }));
+    }
+
+    closeShop() {
+        this.destroyFacilityUI();
+
+        if (this.pathManager) {
+            this.pathManager.completeCurrentNode();
+        }
         this.currentPathNodeId = null;
         if (this.pathUI) {
             this.pathUI.updateState();
@@ -885,27 +1005,89 @@ export class GameScene extends Phaser.Scene {
         this.enterMapState();
     }
 
-    resolveMedicalNode(node) {
-        const missing = this.playerMaxHealth - this.playerHealth;
-        const healAmount = Math.floor(missing / 2);
-        const healed = this.healPlayer(healAmount);
-
-        if (healed > 0) {
-            this.showNodeMessage(`Recovered ${healed} HP`, '#2ecc71');
-        } else {
-            this.showNodeMessage('Already at full health', '#2ecc71');
+    openInfirmary() {
+        if (this.pathUI) {
+            this.pathUI.hide();
         }
 
-        this.pathManager.completeCurrentNode();
+        this.destroyFacilityUI();
+
+        const missing = Math.max(0, this.playerMaxHealth - this.playerHealth);
+        const healFullCost = missing * 10;
+        const canAffordFull = healFullCost > 0 && this.canAfford(healFullCost);
+
+        this.activeFacilityUI = new InfirmaryUI(this, {
+            healFullCost,
+            canAffordFull,
+            onHealHalf: () => this.handleInfirmaryChoice('half'),
+            onIncreaseMax: () => this.handleInfirmaryChoice('max'),
+            onHealFull: () => this.handleInfirmaryChoice('full')
+        });
+    }
+
+    handleInfirmaryChoice(selection) {
+        let message = '';
+        let color = '#2ecc71';
+
+        if (selection === 'half') {
+            const missing = this.playerMaxHealth - this.playerHealth;
+            const healAmount = Math.ceil(missing / 2);
+            const healed = this.healPlayer(healAmount);
+            message = healed > 0 ? `Recovered ${healed} HP` : 'Already at full health';
+        } else if (selection === 'max') {
+            const increased = this.increasePlayerMaxHealthByPercent(0.1, { heal: false });
+            if (increased > 0) {
+                message = `Max HP +${increased}`;
+            } else {
+                message = 'Max HP unchanged';
+            }
+        } else if (selection === 'full') {
+            const missing = this.playerMaxHealth - this.playerHealth;
+            if (missing <= 0) {
+                message = 'Already at full health';
+            } else {
+                const cost = missing * 10;
+                if (cost > 0 && this.canAfford(cost)) {
+                    const spent = this.spendGold(cost);
+                    if (spent > 0) {
+                        this.healPlayer(missing);
+                        message = `Fully restored! (-${spent}g)`;
+                        color = '#f1c40f';
+                    }
+                } else {
+                    message = 'Not enough gold';
+                    color = '#e74c3c';
+                }
+            }
+        }
+
+        this.destroyFacilityUI();
+
+        if (message) {
+            this.showNodeMessage(message, color);
+        }
+
+        if (this.pathManager) {
+            this.pathManager.completeCurrentNode();
+        }
         this.currentPathNodeId = null;
         if (this.pathUI) {
             this.pathUI.updateState();
         }
         this.enterMapState();
+    }
+
+    destroyFacilityUI() {
+        if (this.activeFacilityUI && typeof this.activeFacilityUI.destroy === 'function') {
+            this.activeFacilityUI.destroy();
+        }
+        this.activeFacilityUI = null;
     }
 
     enterMapState() {
         const hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+
+        this.destroyFacilityUI();
 
         this.inCombat = false;
         this.updateRollButtonState();
@@ -951,6 +1133,31 @@ export class GameScene extends Phaser.Scene {
         return healed;
     }
 
+    increasePlayerMaxHealth(amount, { heal = true } = {}) {
+        if (!amount || amount <= 0) {
+            return 0;
+        }
+
+        this.playerMaxHealth += amount;
+        if (heal) {
+            this.playerHealth = Math.min(this.playerMaxHealth, this.playerHealth + amount);
+        } else {
+            this.playerHealth = Math.min(this.playerHealth, this.playerMaxHealth);
+        }
+        this.updateHealthUI();
+        return amount;
+    }
+
+    increasePlayerMaxHealthByPercent(percent, { heal = false } = {}) {
+        if (!percent || typeof percent !== 'number') {
+            return 0;
+        }
+
+        const increase = Math.max(1, Math.round(this.playerMaxHealth * percent));
+        this.increasePlayerMaxHealth(increase, { heal });
+        return increase;
+    }
+
     addGold(amount) {
         if (!amount || amount === 0) {
             return 0;
@@ -966,9 +1173,17 @@ export class GameScene extends Phaser.Scene {
             return 0;
         }
 
+        if (this.playerGold < amount) {
+            return 0;
+        }
+
         this.playerGold -= amount;
         this.updateGoldUI();
         return amount;
+    }
+
+    canAfford(amount) {
+        return typeof amount === 'number' && amount > 0 && this.playerGold >= amount;
     }
 
     updateGoldUI() {
@@ -977,6 +1192,30 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.goldText.setText(`Gold: ${this.playerGold}`);
+    }
+
+    attemptPurchaseRelic(relicId) {
+        const relic = this.relicCatalog.find(item => item.id === relicId);
+        if (!relic || this.ownedRelicIds.has(relic.id)) {
+            return false;
+        }
+
+        if (!this.canAfford(relic.cost)) {
+            return false;
+        }
+
+        const spent = this.spendGold(relic.cost);
+        if (spent <= 0) {
+            return false;
+        }
+
+        this.ownedRelicIds.add(relic.id);
+        this.relics.push(relic);
+        if (typeof relic.apply === 'function') {
+            relic.apply(this);
+        }
+        this.updateRelicDisplay();
+        return relic;
     }
 
     showNodeMessage(message, color = '#ffffff') {
@@ -1163,6 +1402,8 @@ export class GameScene extends Phaser.Scene {
 
         applyToArray(this.comboTextGroup, showCombatUI);
         setVisibility(this.comboHeaderText, showCombatUI);
+        applyToArray(this.relicVisuals, showCombatUI);
+        setVisibility(this.relicTitleText, showCombatUI);
         setVisibility(this.defendText, showCombatUI);
         setVisibility(this.attackText, showCombatUI);
 
