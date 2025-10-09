@@ -216,7 +216,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     createMenuUI() {
-        const panelWidth = this.scale.width * 0.25;
+        const panelWidth = this.scale.width * 0.28;
         const panelHeight = this.scale.height;
         const panelX = this.scale.width - panelWidth;
         const padding = 24;
@@ -227,7 +227,7 @@ export class GameScene extends Phaser.Scene {
             this.menuButton = null;
         }
 
-        const menuButton = this.add.text(CONSTANTS.UI_MARGIN, this.scale.height - CONSTANTS.UI_MARGIN, 'MENU ☰', {
+        const menuButton = this.add.text(CONSTANTS.UI_MARGIN, this.scale.height - CONSTANTS.UI_MARGIN, '☰', {
             fontSize: '28px',
             color: '#ecf0f1',
             padding: { x: 18, y: 10 }
@@ -283,13 +283,13 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5, 0);
         menuPanel.add(comboTitle);
 
-        const comboTextStartX = panelWidth / 2 - sectionWidth / 2 + 16;
+        const comboTextStartX = panelWidth / 2 + sectionWidth / 2 - 16;
         const comboTextStartY = comboTop + 52;
         this.comboListTexts = combos.map(([combo, points], index) => {
             const text = this.add.text(comboTextStartX, comboTextStartY + index * lineSpacing, `${combo}: ${points}`, {
                 fontSize: '20px',
                 color: '#ecf0f1'
-            }).setOrigin(0, 0);
+            }).setOrigin(1, 0);
             menuPanel.add(text);
             return text;
         });
@@ -409,7 +409,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         const suffix = this.isMenuOpen ? '✕' : '☰';
-        this.menuButton.setText(`MENU ${suffix}`);
+        this.menuButton.setText(`${suffix}`);
     }
 
     update() {
@@ -438,8 +438,8 @@ export class GameScene extends Phaser.Scene {
         const defendScore = this.computeZoneScore(this.defendDice || []);
         const attackScore = this.computeZoneScore(this.attackDice || []);
 
-        this.defendPreviewText.setText(`Defense Total ${defendScore.total}: ${defendScore.baseSum} + ${defendScore.comboBonus} (${defendScore.comboType})`);
-        this.attackPreviewText.setText(`Attack Total ${attackScore.total}: ${attackScore.baseSum} + ${attackScore.comboBonus} (${attackScore.comboType})`);
+        this.defendPreviewText.setText(`${defendScore.total}: ${defendScore.baseSum}+${defendScore.comboBonus}(${defendScore.comboType})`);
+        this.attackPreviewText.setText(`${attackScore.total}: ${attackScore.baseSum}+${attackScore.comboBonus}(${attackScore.comboType})`);
     }
 
     createRelicShelf() {
@@ -1224,6 +1224,8 @@ export class GameScene extends Phaser.Scene {
             this.pathUI.hide();
         }
 
+        this.pendingLockCount = 0;
+        this.lockedDice.clear();
         this.resetGameState({ destroyDice: true });
         this.setMapMode(false);
 
