@@ -5,6 +5,8 @@ import { setupButtons, setupHealthBar, setupEnemyUI, setupMuteButton } from './o
 import { displayComboTable, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
+import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
+import { PathUI } from './objects/PathUI.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -31,6 +33,14 @@ export class GameScene extends Phaser.Scene {
         this.muteButton = null;
         this.isMuted = false;
         this.isGameOver = false;
+        this.pathManager = null;
+        this.pathUI = null;
+        this.currentPathNodeId = null;
+        this.inCombat = false;
+        this.playerGold = 0;
+        this.goldText = null;
+        this.nodeMessage = null;
+        this.nodeMessageTween = null;
     }
 
     init(data) {
@@ -38,6 +48,13 @@ export class GameScene extends Phaser.Scene {
         this.isGameOver = false;
         this.gameOverManager = null;
         this.muteButton = null;
+        this.pathManager = null;
+        this.pathUI = null;
+        this.currentPathNodeId = null;
+        this.inCombat = false;
+        this.playerGold = 0;
+        this.nodeMessage = null;
+        this.nodeMessageTween = null;
     }
 
     preload() {
@@ -58,6 +75,9 @@ export class GameScene extends Phaser.Scene {
         this.playerHealth = this.playerMaxHealth;
         this.playerBurnText = null;
         this.playerBurnGlowTween = null;
+        this.playerGold = 0;
+        this.currentPathNodeId = null;
+        this.inCombat = false;
 
         // --- Dice arrays for zones ---
         this.defendDice = [];
@@ -81,6 +101,12 @@ export class GameScene extends Phaser.Scene {
         this.healthBar = setupHealthBar(this);
         this.updateHealthUI();
 
+        this.goldText = this.add.text(20, this.healthBar.text.y + 28, '', {
+            fontSize: '20px',
+            color: '#f1c40f'
+        });
+        this.updateGoldUI();
+
         this.playerBurnText = this.add.text(0, 0, '', {
             fontSize: '20px',
             color: '#ffb347',
@@ -96,6 +122,9 @@ export class GameScene extends Phaser.Scene {
         this.updateEnemyHealthUI();
         this.prepareNextEnemyMove();
 
+        this.pathManager = new PathManager();
+        this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
+
         this.sound.mute = this.isMuted;
         this.updateMuteButtonState();
 
@@ -103,10 +132,12 @@ export class GameScene extends Phaser.Scene {
         this.gameOverManager.create();
 
         // --- Roll counter ---
-        this.rollsRemainingText = this.add.text(100, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, { 
-            fontSize: "24px", 
-            color: "#fff" 
+        this.rollsRemainingText = this.add.text(100, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
+            fontSize: "24px",
+            color: "#fff"
         }).setOrigin(0.5);
+
+        this.enterMapState();
     }
     
     update() {
@@ -114,6 +145,10 @@ export class GameScene extends Phaser.Scene {
     }
     
     rollDice() {
+        if (!this.inCombat || this.isGameOver) {
+            return;
+        }
+
         // Determine which sound to play
         let diceInPlay = this.getDiceInPlay();
         const diceSelectedCount = diceInPlay.filter(d => d.selected).length;
@@ -216,6 +251,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     sortDice() {
+        if (!this.inCombat || this.isGameOver) {
+            return;
+        }
+
         this.sound.play('swoosh', { volume: 0.6 });
         this.dice.sort((a, b) => a.value - b.value);
         this.dice.forEach((d, i) => {
@@ -231,6 +270,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     resolveDice() {
+        if (!this.inCombat || this.isGameOver) {
+            return;
+        }
+
         if (this.isResolving) {
             return;
         }
@@ -478,7 +521,7 @@ export class GameScene extends Phaser.Scene {
         const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
         if (!enemy) {
             this.enemyHealthBar.barFill.displayWidth = 0;
-            this.enemyHealthBar.text.setText('HP: 0/0');
+            this.enemyHealthBar.text.setText('HP: --/--');
             return;
         }
 
@@ -496,7 +539,8 @@ export class GameScene extends Phaser.Scene {
         if (!enemy || this.enemyManager.isCurrentEnemyDefeated()) {
             this.upcomingEnemyMove = null;
             if (this.enemyIntentText) {
-                this.enemyIntentText.setText('All enemies defeated');
+                const hasPending = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+                this.enemyIntentText.setText(hasPending ? 'Select your next node' : 'All enemies defeated');
             }
             return;
         }
@@ -636,38 +680,256 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    handleEnemyDefeat() {
-        if (!this.enemyManager) {
+    handlePathNodeSelection(node) {
+        if (!node || !this.pathManager || this.inCombat || this.isResolving || this.isGameOver) {
             return;
         }
 
-        this.resetPlayerBurn();
+        this.pathManager.beginNode(node.id);
+        this.currentPathNodeId = node.id;
 
-        const hasNextEnemy = this.enemyManager.advanceToNextEnemy();
-        if (hasNextEnemy) {
-            this.onNewEnemyEncounter();
-        } else {
-            this.handleAllEnemiesDefeated();
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+
+        switch (node.type) {
+            case PATH_NODE_TYPES.ENEMY:
+                this.startCombatEncounter(node);
+                break;
+            case PATH_NODE_TYPES.SHOP:
+                this.resolveShopNode(node);
+                break;
+            case PATH_NODE_TYPES.MEDICAL:
+                this.resolveMedicalNode(node);
+                break;
+            default:
+                this.pathManager.completeCurrentNode();
+                this.currentPathNodeId = null;
+                this.enterMapState();
+                break;
         }
     }
 
-    onNewEnemyEncounter() {
+    startCombatEncounter(node) {
         if (!this.enemyManager) {
             return;
         }
 
-        const enemy = this.enemyManager.getCurrentEnemy();
-        if (!enemy) {
+        this.inCombat = true;
+        if (this.pathUI) {
+            this.pathUI.hide();
+        }
+
+        this.resetGameState({ destroyDice: true });
+
+        const enemy = this.enemyManager.startEnemyEncounter(node.enemyIndex);
+        if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
+            const baseName = enemy ? enemy.name : '???';
+            const displayName = node.isBoss ? `${baseName} (Boss)` : baseName;
+            this.enemyHealthBar.nameText.setText(displayName);
+        }
+
+        this.updateEnemyHealthUI();
+        this.prepareNextEnemyMove();
+        this.updateRollButtonState();
+
+        if (this.resolveButton) {
+            this.resolveButton.setAlpha(1);
+            this.resolveButton.setInteractive();
+        }
+
+        if (this.sortButton) {
+            this.sortButton.setAlpha(0.5);
+            this.sortButton.disableInteractive();
+        }
+
+        const messageText = node.isBoss ? 'Boss Encounter!' : 'Battle Start';
+        this.showNodeMessage(messageText, node.isBoss ? '#ff8c69' : '#ffffff');
+    }
+
+    resolveShopNode(node) {
+        const cost = 100;
+        const spent = this.spendGold(cost);
+        this.showNodeMessage(`-${spent} Gold`, '#f1c40f');
+
+        this.pathManager.completeCurrentNode();
+        this.currentPathNodeId = null;
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+        this.enterMapState();
+    }
+
+    resolveMedicalNode(node) {
+        const missing = this.playerMaxHealth - this.playerHealth;
+        const healAmount = Math.floor(missing / 2);
+        const healed = this.healPlayer(healAmount);
+
+        if (healed > 0) {
+            this.showNodeMessage(`Recovered ${healed} HP`, '#2ecc71');
+        } else {
+            this.showNodeMessage('Already at full health', '#2ecc71');
+        }
+
+        this.pathManager.completeCurrentNode();
+        this.currentPathNodeId = null;
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+        this.enterMapState();
+    }
+
+    enterMapState() {
+        const hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+
+        this.inCombat = false;
+        this.updateRollButtonState();
+
+        if (this.sortButton) {
+            this.sortButton.disableInteractive();
+            this.sortButton.setAlpha(0.3);
+        }
+
+        if (this.resolveButton) {
+            this.resolveButton.disableInteractive();
+            this.resolveButton.setAlpha(0.3);
+        }
+
+        if (!hasPendingNodes) {
+            if (this.pathUI) {
+                this.pathUI.hide();
+            }
             this.handleAllEnemiesDefeated();
             return;
         }
 
         if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
-            this.enemyHealthBar.nameText.setText(enemy.name);
+            this.enemyHealthBar.nameText.setText('Path Selection');
+        }
+        if (this.enemyIntentText) {
+            this.enemyIntentText.setText('Select your next node');
         }
 
         this.updateEnemyHealthUI();
-        this.prepareNextEnemyMove();
+
+        if (this.pathUI) {
+            this.pathUI.show();
+            this.pathUI.updateState();
+        }
+    }
+
+    healPlayer(amount) {
+        if (!amount || amount <= 0) {
+            return 0;
+        }
+
+        const newHealth = Math.min(this.playerMaxHealth, this.playerHealth + amount);
+        const healed = newHealth - this.playerHealth;
+        if (healed > 0) {
+            this.playerHealth = newHealth;
+            this.updateHealthUI();
+        }
+        return healed;
+    }
+
+    addGold(amount) {
+        if (!amount || amount === 0) {
+            return 0;
+        }
+
+        this.playerGold += amount;
+        this.updateGoldUI();
+        return amount;
+    }
+
+    spendGold(amount) {
+        if (!amount || amount <= 0) {
+            return 0;
+        }
+
+        this.playerGold -= amount;
+        this.updateGoldUI();
+        return amount;
+    }
+
+    updateGoldUI() {
+        if (!this.goldText) {
+            return;
+        }
+
+        this.goldText.setText(`Gold: ${this.playerGold}`);
+    }
+
+    showNodeMessage(message, color = '#ffffff') {
+        if (!message) {
+            return;
+        }
+
+        if (this.nodeMessageTween) {
+            this.nodeMessageTween.stop();
+            this.tweens.remove(this.nodeMessageTween);
+            this.nodeMessageTween = null;
+        }
+
+        if (this.nodeMessage) {
+            this.nodeMessage.destroy();
+            this.nodeMessage = null;
+        }
+
+        this.nodeMessage = this.add.text(this.scale.width / 2, 110, message, {
+            fontSize: '26px',
+            color,
+            fontStyle: 'bold',
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            padding: { x: 16, y: 8 }
+        }).setOrigin(0.5).setDepth(30);
+
+        this.nodeMessageTween = this.tweens.add({
+            targets: this.nodeMessage,
+            alpha: 0,
+            duration: 1000,
+            delay: 1200,
+            onComplete: () => {
+                if (this.nodeMessage) {
+                    this.nodeMessage.destroy();
+                    this.nodeMessage = null;
+                }
+                this.nodeMessageTween = null;
+            }
+        });
+    }
+
+    handleEnemyDefeat() {
+        if (!this.enemyManager) {
+            return;
+        }
+
+        const defeatedNodeId = this.currentPathNodeId;
+        const defeatedNode = this.pathManager && defeatedNodeId
+            ? this.pathManager.getNode(defeatedNodeId)
+            : null;
+        if (defeatedNode && defeatedNode.rewardGold) {
+            const reward = this.addGold(defeatedNode.rewardGold);
+            if (reward > 0) {
+                this.showNodeMessage(`+${reward} Gold`, '#f1c40f');
+            }
+        }
+
+        this.resetPlayerBurn();
+
+        if (this.pathManager) {
+            this.pathManager.completeCurrentNode();
+        }
+
+        this.currentPathNodeId = null;
+
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+
+        this.enemyManager.clearCurrentEnemy();
+        this.updateEnemyHealthUI();
+        this.enterMapState();
     }
 
     handleAllEnemiesDefeated() {
@@ -684,6 +946,10 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateEnemyHealthUI();
+
+        if (this.pathUI) {
+            this.pathUI.hide();
+        }
     }
 
     resetGameState({ destroyDice = true } = {}) {
@@ -720,6 +986,12 @@ export class GameScene extends Phaser.Scene {
     
     updateRollButtonState() {
         if (!this.rollButton) {
+            return;
+        }
+
+        if (!this.inCombat || this.isGameOver) {
+            this.rollButton.setAlpha(0.5);
+            this.rollButton.disableInteractive();
             return;
         }
 
