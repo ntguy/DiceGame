@@ -15,19 +15,9 @@ const ICONS = {
     boss: '🔥'
 };
 
-const LABELS = {
-    legend: {
-        enemy: 'Fight',
-        shop: 'Shop',
-        medical: 'Hospital',
-        boss: 'Boss'
-    }
-};
-
 const LAYOUT = {
-    baseX: 160,
     baseY: 140,
-    columnSpacing: 180,
+    columnSpacing: 220,
     rowSpacing: 120
 };
 
@@ -47,12 +37,14 @@ export class PathUI {
 
         this.createNodes();
         this.drawConnections();
-        this.createLegend();
         this.hide();
     }
 
     getNodePosition(node) {
-        const x = LAYOUT.baseX + (node.column || 0) * LAYOUT.columnSpacing;
+        const columnIndex = typeof node.column === 'number' ? node.column : 1;
+        const offsetFromCenter = (columnIndex - 1) * LAYOUT.columnSpacing;
+        const centerX = this.scene.scale.width / 2;
+        const x = centerX + offsetFromCenter;
         const y = LAYOUT.baseY + (node.row || 0) * LAYOUT.rowSpacing;
         return { x, y };
     }
@@ -120,43 +112,6 @@ export class PathUI {
         });
     }
 
-    createLegend() {
-        const legendContainer = this.scene.add.container(this.scene.scale.width - 140, 160);
-        const header = this.scene.add.text(0, 0, 'Legend', {
-            fontSize: '22px',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5, 0);
-        legendContainer.add(header);
-
-        const entries = [
-            { key: 'enemy', color: COLORS[PATH_NODE_TYPES.ENEMY], icon: ICONS[PATH_NODE_TYPES.ENEMY], label: LABELS.legend.enemy },
-            { key: 'shop', color: COLORS[PATH_NODE_TYPES.SHOP], icon: ICONS[PATH_NODE_TYPES.SHOP], label: LABELS.legend.shop },
-            { key: 'medical', color: COLORS[PATH_NODE_TYPES.MEDICAL], icon: ICONS[PATH_NODE_TYPES.MEDICAL], label: LABELS.legend.medical },
-            { key: 'boss', color: COLORS.boss, icon: ICONS.boss, label: LABELS.legend.boss }
-        ];
-
-        entries.forEach((entry, index) => {
-            const y = 40 + index * 48;
-            const circle = this.scene.add.circle(-50, y, 18, entry.color, 1)
-                .setStrokeStyle(2, 0xffffff, 0.8);
-            const icon = this.scene.add.text(-50, y, entry.icon, {
-                fontSize: '20px',
-                color: '#000000'
-            }).setOrigin(0.5);
-            const label = this.scene.add.text(-10, y, entry.label, {
-                fontSize: '18px',
-                color: '#ffffff'
-            }).setOrigin(0, 0.5);
-            legendContainer.add(circle);
-            legendContainer.add(icon);
-            legendContainer.add(label);
-        });
-
-        this.legendContainer = legendContainer;
-        this.legendContainer.setDepth(20);
-    }
-
     isNodeSelectable(nodeId) {
         const availableIds = this.pathManager.getAvailableNodeIds();
         return availableIds.includes(nodeId);
@@ -217,16 +172,10 @@ export class PathUI {
     show() {
         this.container.setVisible(true);
         this.connectionGraphics.setVisible(true);
-        if (this.legendContainer) {
-            this.legendContainer.setVisible(true);
-        }
     }
 
     hide() {
         this.container.setVisible(false);
         this.connectionGraphics.setVisible(false);
-        if (this.legendContainer) {
-            this.legendContainer.setVisible(false);
-        }
     }
 }

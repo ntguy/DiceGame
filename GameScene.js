@@ -41,6 +41,8 @@ export class GameScene extends Phaser.Scene {
         this.goldText = null;
         this.nodeMessage = null;
         this.nodeMessageTween = null;
+        this.zoneVisuals = [];
+        this.comboHeaderText = null;
     }
 
     init(data) {
@@ -55,6 +57,8 @@ export class GameScene extends Phaser.Scene {
         this.playerGold = 0;
         this.nodeMessage = null;
         this.nodeMessageTween = null;
+        this.zoneVisuals = [];
+        this.comboHeaderText = null;
     }
 
     preload() {
@@ -87,6 +91,9 @@ export class GameScene extends Phaser.Scene {
 
         // --- Zones ---
         setupZones(this);
+        if (!this.zoneVisuals) {
+            this.zoneVisuals = [];
+        }
 
         // --- Buttons ---
         setupButtons(this);
@@ -625,7 +632,9 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        if (this.playerBurn > 0) {
+        const shouldShowBurn = this.playerBurn > 0 && this.inCombat;
+
+        if (shouldShowBurn) {
             const bounds = this.healthBar.text.getBounds();
             const burnX = bounds.x + bounds.width + 20;
             const burnY = bounds.y + bounds.height / 2;
@@ -721,6 +730,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.resetGameState({ destroyDice: true });
+        this.setMapMode(false);
 
         const enemy = this.enemyManager.startEnemyEncounter(node.enemyIndex);
         if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
@@ -799,18 +809,12 @@ export class GameScene extends Phaser.Scene {
             if (this.pathUI) {
                 this.pathUI.hide();
             }
+            this.setMapMode(false);
             this.handleAllEnemiesDefeated();
             return;
         }
 
-        if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
-            this.enemyHealthBar.nameText.setText('Path Selection');
-        }
-        if (this.enemyIntentText) {
-            this.enemyIntentText.setText('Select your next node');
-        }
-
-        this.updateEnemyHealthUI();
+        this.setMapMode(true);
 
         if (this.pathUI) {
             this.pathUI.show();
@@ -981,7 +985,81 @@ export class GameScene extends Phaser.Scene {
         this.lockedDice.clear();
 
         // Reset combo highlights
-        this.comboTextGroup.forEach(t => t.setColor("#ffffff"));
+        if (this.comboTextGroup) {
+            this.comboTextGroup.forEach(t => t.setColor("#ffffff"));
+        }
+    }
+
+    setMapMode(isMapView) {
+        const showCombatUI = !isMapView;
+        const setVisibility = (obj, visible) => {
+            if (obj && typeof obj.setVisible === 'function') {
+                obj.setVisible(visible);
+            }
+        };
+
+        const applyToArray = (arr, visible) => {
+            if (!arr || typeof arr.forEach !== 'function') {
+                return;
+            }
+            arr.forEach(item => setVisibility(item, visible));
+        };
+
+        setVisibility(this.rollButton, showCombatUI);
+        if (this.rollButton) {
+            if (showCombatUI) {
+                this.updateRollButtonState();
+            } else {
+                this.rollButton.disableInteractive();
+            }
+        }
+
+        setVisibility(this.sortButton, showCombatUI);
+        if (this.sortButton && !showCombatUI) {
+            this.sortButton.disableInteractive();
+        }
+
+        setVisibility(this.resolveButton, showCombatUI);
+        if (this.resolveButton && !showCombatUI) {
+            this.resolveButton.disableInteractive();
+        }
+
+        setVisibility(this.rollsRemainingText, showCombatUI);
+
+        if (this.muteButton) {
+            setVisibility(this.muteButton, showCombatUI);
+            if (showCombatUI) {
+                this.muteButton.setInteractive({ useHandCursor: true });
+            } else {
+                this.muteButton.disableInteractive();
+            }
+        }
+
+        setVisibility(this.playerBurnText, showCombatUI && this.playerBurn > 0 && this.inCombat);
+
+        applyToArray(this.zoneVisuals, showCombatUI);
+
+        if (this.defendHighlight) {
+            this.defendHighlight.setVisible(false);
+        }
+        if (this.attackHighlight) {
+            this.attackHighlight.setVisible(false);
+        }
+
+        applyToArray(this.comboTextGroup, showCombatUI);
+        setVisibility(this.comboHeaderText, showCombatUI);
+        setVisibility(this.defendText, showCombatUI);
+        setVisibility(this.attackText, showCombatUI);
+
+        if (this.enemyHealthBar) {
+            const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText'];
+            elements.forEach(key => {
+                const element = this.enemyHealthBar[key];
+                if (element) {
+                    setVisibility(element, showCombatUI);
+                }
+            });
+        }
     }
     
     updateRollButtonState() {

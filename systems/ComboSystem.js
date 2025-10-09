@@ -89,9 +89,12 @@ export function displayComboTable(scene) {
     }
     scene.comboTextGroup = [];
 
-    scene.attackText = scene.add.text(startX, startY - 40, "Combo Bonuses", { 
-        fontSize: "28px", 
-        color: "#f1c40f" 
+    if (scene.comboHeaderText) {
+        scene.comboHeaderText.destroy();
+    }
+    scene.comboHeaderText = scene.add.text(startX, startY - 40, "Combo Bonuses", {
+        fontSize: "28px",
+        color: "#f1c40f"
     }).setOrigin(1, 0);
 
     // Iterate over COMBO_POINTS
