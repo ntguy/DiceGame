@@ -1,7 +1,7 @@
 const NODE_TYPES = {
     ENEMY: 'enemy',
     SHOP: 'shop',
-    MEDICAL: 'medical'
+    INFIRMARY: 'infirmary'
 };
 
 const ENEMY_SEQUENCE = [
@@ -74,8 +74,8 @@ export class PathManager {
 
             const nextEnemyId = `enemy-${index + 1}`;
             const branchTypes = this.randomFn() < 0.5
-                ? [NODE_TYPES.SHOP, NODE_TYPES.MEDICAL]
-                : [NODE_TYPES.MEDICAL, NODE_TYPES.SHOP];
+                ? [NODE_TYPES.SHOP, NODE_TYPES.INFIRMARY]
+                : [NODE_TYPES.INFIRMARY, NODE_TYPES.SHOP];
 
             const branchRow = currentRow + 1;
             const branchColumns = [0, 2];
@@ -85,7 +85,7 @@ export class PathManager {
                 const branchNode = {
                     id: branchId,
                     type,
-                    label: type === NODE_TYPES.SHOP ? 'Shop' : 'Med Station',
+                    label: type === NODE_TYPES.SHOP ? 'Shop' : 'Infirmary',
                     connections: [nextEnemyId],
                     row: branchRow,
                     column: branchColumns[branchIndex]

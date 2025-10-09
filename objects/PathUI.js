@@ -1,9 +1,11 @@
 import { PATH_NODE_TYPES } from '../systems/PathManager.js';
 
+const NODE_SIZE = 60;
+
 const COLORS = {
     [PATH_NODE_TYPES.ENEMY]: 0xe74c3c,
     [PATH_NODE_TYPES.SHOP]: 0xf1c40f,
-    [PATH_NODE_TYPES.MEDICAL]: 0x27ae60,
+    [PATH_NODE_TYPES.INFIRMARY]: 0x27ae60,
     boss: 0x9b59b6,
     completed: 0x7f8c8d
 };
@@ -11,7 +13,7 @@ const COLORS = {
 const ICONS = {
     [PATH_NODE_TYPES.ENEMY]: '⚔️',
     [PATH_NODE_TYPES.SHOP]: '🛒',
-    [PATH_NODE_TYPES.MEDICAL]: '➕',
+    [PATH_NODE_TYPES.INFIRMARY]: '🏥',
     boss: '🔥'
 };
 
@@ -25,6 +27,45 @@ const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
 const BOTTOM_MARGIN = 80;
 const WHEEL_SCROLL_MULTIPLIER = 0.5;
+
+function lightenColor(color, amount = 20) {
+    const base = Phaser.Display.Color.ValueToColor(color);
+    base.brighten(amount);
+    return base.color;
+}
+
+function darkenColor(color, amount = 20) {
+    const base = Phaser.Display.Color.ValueToColor(color);
+    base.darken(amount);
+    return base.color;
+}
+
+function createCube(scene, size, color) {
+    const container = scene.add.container(0, 0);
+    const shadow = scene.add.rectangle(6, 8, size, size, 0x000000, 0.25).setOrigin(0.5);
+    const side = scene.add.rectangle(4, 4, size, size, darkenColor(color, 25)).setOrigin(0.5);
+    const face = scene.add.rectangle(0, 0, size, size, color).setOrigin(0.5);
+    const highlight = scene.add.rectangle(-size * 0.15, -size * 0.15, size * 0.45, size * 0.45, lightenColor(color, 35))
+        .setOrigin(0.5)
+        .setAngle(-45)
+        .setAlpha(0.75);
+
+    container.add([shadow, side, face, highlight]);
+
+    return { container, shadow, side, face, highlight };
+}
+
+function applyCubeColors(cube, color) {
+    cube.face.setFillStyle(color, 1);
+    cube.side.setFillStyle(darkenColor(color, 25), 1);
+    cube.highlight.setFillStyle(lightenColor(color, 35), 0.8);
+}
+
+function highlightCube(cube, color) {
+    cube.face.setFillStyle(lightenColor(color, 15), 1);
+    cube.side.setFillStyle(darkenColor(color, 10), 1);
+    cube.highlight.setFillStyle(lightenColor(color, 50), 0.9);
+}
 
 export class PathUI {
     constructor(scene, pathManager, onSelect) {
@@ -84,24 +125,34 @@ export class PathUI {
             const color = COLORS[typeKey] || 0xffffff;
             const icon = isBoss ? ICONS.boss : ICONS[node.type];
 
-            const circle = this.scene.add.circle(0, 0, 28, color, 1)
-                .setStrokeStyle(3, 0xffffff, 0.9)
-                .setInteractive({ useHandCursor: true });
+            const cube = createCube(this.scene, NODE_SIZE, color);
+            applyCubeColors(cube, color);
 
             const iconText = this.scene.add.text(0, -4, icon || '?', {
                 fontSize: '24px',
                 color: '#000000'
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, 40, node.label || '', {
+            const labelText = this.scene.add.text(0, NODE_SIZE / 2 + 20, node.label || '', {
                 fontSize: '18px',
                 color: '#ffffff'
             }).setOrigin(0.5);
 
-            container.add([circle, iconText, labelText]);
+            container.add([cube.container, iconText, labelText]);
             this.container.add(container);
 
-            circle.on('pointerup', pointer => {
+            const ref = {
+                node,
+                container,
+                cube,
+                iconText,
+                labelText,
+                isBoss,
+                currentColor: color
+            };
+
+            cube.face.setInteractive({ useHandCursor: true });
+            cube.face.on('pointerup', pointer => {
                 if (!this.isNodeSelectable(node.id)) {
                     return;
                 }
@@ -120,17 +171,23 @@ export class PathUI {
                 this.onSelect(node);
             });
 
-            this.nodeRefs.set(node.id, {
-                node,
-                container,
-                circle,
-                iconText,
-                labelText,
-                isBoss
+            cube.face.on('pointerover', () => {
+                if (!cube.face.input || !cube.face.input.enabled) {
+                    return;
+                }
+                highlightCube(ref.cube, ref.currentColor);
             });
 
-            const top = y - 28;
-            const bottom = y + 40 + 24;
+            cube.face.on('pointerout', () => {
+                applyCubeColors(ref.cube, ref.currentColor);
+            });
+
+            cube.face.disableInteractive();
+
+            this.nodeRefs.set(node.id, ref);
+
+            const top = y - NODE_SIZE / 2 - 10;
+            const bottom = y + NODE_SIZE / 2 + 40;
             minY = Math.min(minY, top);
             maxY = Math.max(maxY, bottom);
         });
@@ -171,51 +228,52 @@ export class PathUI {
         const availableIds = new Set(this.pathManager.getAvailableNodeIds());
         const currentId = this.pathManager.getCurrentNodeId();
 
-        this.nodeRefs.forEach(({ node, circle, iconText, labelText, isBoss }) => {
+        this.nodeRefs.forEach(ref => {
+            const { node, cube, iconText, labelText, isBoss } = ref;
             const typeKey = isBoss ? 'boss' : node.type;
-            const color = COLORS[typeKey] || 0xffffff;
+            const baseColor = COLORS[typeKey] || 0xffffff;
             const isCompleted = this.pathManager.isNodeCompleted(node.id);
             const isLocked = this.pathManager.isNodeLocked(node.id);
             const isCurrent = currentId === node.id;
+            const isAvailable = availableIds.has(node.id);
 
-            circle.setFillStyle(color, 1);
+            const displayColor = isCompleted ? COLORS.completed : baseColor;
+            applyCubeColors(cube, displayColor);
+            ref.currentColor = displayColor;
+
+            let alpha = 1;
+            let iconAlpha = 1;
+            let labelAlpha = 1;
 
             if (isCurrent) {
-                circle.setAlpha(1);
-                iconText.setAlpha(1);
-                labelText.setAlpha(1);
-                circle.setStrokeStyle(4, 0xffffff, 1);
-                circle.setScale(1.05);
-                circle.disableInteractive();
+                cube.container.setScale(1.08);
+                cube.face.disableInteractive();
             } else if (isCompleted) {
-                circle.setAlpha(0.35);
-                iconText.setAlpha(0.45);
-                labelText.setAlpha(0.45);
-                circle.setStrokeStyle(2, 0xffffff, 0.4);
-                circle.setScale(1);
-                circle.disableInteractive();
-            } else if (availableIds.has(node.id)) {
-                circle.setAlpha(1);
-                iconText.setAlpha(1);
-                labelText.setAlpha(1);
-                circle.setStrokeStyle(4, 0xffffff, 1);
-                circle.setScale(isCurrent ? 1.05 : 1);
-                circle.setInteractive({ useHandCursor: true });
+                alpha = 0.35;
+                iconAlpha = 0.45;
+                labelAlpha = 0.45;
+                cube.container.setScale(1);
+                cube.face.disableInteractive();
+            } else if (isAvailable) {
+                cube.container.setScale(1);
+                cube.face.setInteractive({ useHandCursor: true });
             } else if (isLocked) {
-                circle.setAlpha(0.15);
-                iconText.setAlpha(0.25);
-                labelText.setAlpha(0.25);
-                circle.setStrokeStyle(2, 0xffffff, 0.25);
-                circle.setScale(1);
-                circle.disableInteractive();
+                alpha = 0.2;
+                iconAlpha = 0.25;
+                labelAlpha = 0.25;
+                cube.container.setScale(1);
+                cube.face.disableInteractive();
             } else {
-                circle.setAlpha(0.25);
-                iconText.setAlpha(0.4);
-                labelText.setAlpha(0.4);
-                circle.setStrokeStyle(2, 0xffffff, 0.45);
-                circle.setScale(1);
-                circle.disableInteractive();
+                alpha = 0.4;
+                iconAlpha = 0.4;
+                labelAlpha = 0.4;
+                cube.container.setScale(1);
+                cube.face.disableInteractive();
             }
+
+            cube.container.setAlpha(alpha);
+            iconText.setAlpha(iconAlpha);
+            labelText.setAlpha(labelAlpha);
         });
     }
 
