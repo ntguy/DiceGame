@@ -6,14 +6,34 @@ import { SlapperEnemy } from '../enemies/Slapper.js';
 export class EnemyManager {
     constructor() {
         this.enemies = [new SlapperEnemy(), new LockjawEnemy(), new HotfixEnemy(), new InfernoEnemy()];
-        this.currentEnemyIndex = 0;
-        this.currentEnemy = this.enemies[this.currentEnemyIndex] || null;
+        this.currentEnemyIndex = -1;
+        this.currentEnemy = null;
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
     }
 
     getCurrentEnemy() {
         return this.currentEnemy;
+    }
+
+    startEnemyEncounter(index) {
+        if (typeof index !== 'number' || index < 0 || index >= this.enemies.length) {
+            this.clearCurrentEnemy();
+            return null;
+        }
+
+        this.currentEnemyIndex = index;
+        this.currentEnemy = this.enemies[index];
+        this.upcomingMove = null;
+        this.enemyBlockValue = 0;
+        return this.currentEnemy;
+    }
+
+    clearCurrentEnemy() {
+        this.currentEnemyIndex = -1;
+        this.currentEnemy = null;
+        this.upcomingMove = null;
+        this.enemyBlockValue = 0;
     }
 
     getEnemyBlock() {
@@ -68,17 +88,13 @@ export class EnemyManager {
     }
 
     advanceToNextEnemy() {
-        if (this.currentEnemyIndex + 1 >= this.enemies.length) {
-            this.currentEnemy = null;
-            this.enemyBlockValue = 0;
-            this.upcomingMove = null;
+        const nextIndex = this.currentEnemyIndex + 1;
+        if (nextIndex >= this.enemies.length) {
+            this.clearCurrentEnemy();
             return false;
         }
 
-        this.currentEnemyIndex += 1;
-        this.currentEnemy = this.enemies[this.currentEnemyIndex];
-        this.enemyBlockValue = 0;
-        this.upcomingMove = null;
+        this.startEnemyEncounter(nextIndex);
         return true;
     }
 }
