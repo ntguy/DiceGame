@@ -53,7 +53,10 @@ export class GameScene extends Phaser.Scene {
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicBackgrounds = new Map();
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
+        this.selectedRelicId = null;
     }
 
     init(data) {
@@ -76,7 +79,10 @@ export class GameScene extends Phaser.Scene {
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicBackgrounds = new Map();
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
+        this.selectedRelicId = null;
     }
 
     preload() {
@@ -108,7 +114,10 @@ export class GameScene extends Phaser.Scene {
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicBackgrounds = new Map();
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
+        this.selectedRelicId = null;
 
         // --- Dice arrays for zones ---
         this.defendDice = [];
@@ -180,54 +189,131 @@ export class GameScene extends Phaser.Scene {
     }
 
     createRelicShelf() {
-        if (this.relicTitleText) {
-            this.relicTitleText.destroy();
-            this.relicTitleText = null;
+        this.clearRelicVisuals();
+
+        if (this.relicInfoTitleText) {
+            this.relicInfoTitleText.destroy();
+            this.relicInfoTitleText = null;
         }
 
-        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
-            this.relicVisuals.forEach(obj => obj.destroy());
+        if (this.relicInfoDescriptionText) {
+            this.relicInfoDescriptionText.destroy();
+            this.relicInfoDescriptionText = null;
         }
-        this.relicVisuals = [];
 
-        const startX = 1070;
-        const titleY = 220;
-        this.relicTitleText = this.add.text(startX, titleY, 'Relics', {
+        this.relicInfoTitleText = this.add.text(CONSTANTS.RIGHT_COLUMN_X, CONSTANTS.RELIC_INFO_TITLE_Y, '', {
             fontSize: '24px',
-            color: '#f1c40f'
+            color: '#f1c40f',
+            fontStyle: 'bold'
         }).setOrigin(1, 0);
 
+        this.relicInfoDescriptionText = this.add.text(CONSTANTS.RIGHT_COLUMN_X, CONSTANTS.RELIC_INFO_TITLE_Y + 32, '', {
+            fontSize: '18px',
+            color: '#f9e79f',
+            wordWrap: { width: CONSTANTS.RELIC_INFO_WRAP_WIDTH },
+            lineSpacing: 6
+        }).setOrigin(1, 0);
+
+        this.setRelicInfoText('', this.relics.length ? 'Select a relic to view details.' : 'No relics owned yet.');
         this.updateRelicDisplay();
     }
 
     updateRelicDisplay() {
-        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
-            this.relicVisuals.forEach(obj => obj.destroy());
-        }
-        this.relicVisuals = [];
+        this.clearRelicVisuals();
 
-        if (!this.relicTitleText) {
+        if (!this.relicInfoTitleText || !this.relicInfoDescriptionText) {
             return;
         }
 
-        const startX = this.relicTitleText.x;
-        const baseY = this.relicTitleText.y + 36;
-        const spacing = 64;
+        const ownedRelics = this.relics.filter(relic => this.ownedRelicIds.has(relic.id));
 
-        this.relics.forEach((relic, index) => {
+        if (ownedRelics.length === 0) {
+            this.selectedRelicId = null;
+            this.setRelicInfoText('', 'No relics owned yet.');
+            return;
+        }
+
+        const startX = CONSTANTS.RIGHT_COLUMN_X;
+        const baseY = CONSTANTS.RELIC_TRAY_Y;
+        const spacing = CONSTANTS.RELIC_ICON_SPACING;
+        const iconSize = CONSTANTS.RELIC_ICON_SIZE;
+
+        ownedRelics.forEach((relic, index) => {
             const x = startX - index * spacing;
-            const iconBg = this.add.rectangle(x, baseY, 44, 44, 0x1c1c1c, 0.85)
-                .setStrokeStyle(2, 0xf1c40f, 0.9);
+            const iconBg = this.add.rectangle(x, baseY, iconSize, iconSize, 0x1c1c1c, 0.85)
+                .setStrokeStyle(2, 0xf1c40f, 0.9)
+                .setInteractive({ useHandCursor: true });
             const iconText = this.add.text(x, baseY, relic.icon || '♦', {
-                fontSize: '24px'
-            }).setOrigin(0.5);
-            const label = this.add.text(x, baseY + 28, relic.name, {
-                fontSize: '14px',
-                color: '#f9e79f'
-            }).setOrigin(0.5);
+                fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE
+            }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-            this.relicVisuals.push(iconBg, iconText, label);
+            iconBg.on('pointerdown', () => this.showRelicDetails(relic));
+            iconText.on('pointerdown', () => this.showRelicDetails(relic));
+
+            this.relicVisuals.push(iconBg, iconText);
+            this.relicBackgrounds.set(relic.id, iconBg);
         });
+
+        const selectedRelic = ownedRelics.find(relic => relic.id === this.selectedRelicId);
+        if (selectedRelic) {
+            this.setRelicInfoText(selectedRelic.name, selectedRelic.description);
+        } else {
+            this.selectedRelicId = null;
+            this.setRelicInfoText('', 'Select a relic to view details.');
+        }
+
+        this.updateRelicSelectionHighlight();
+    }
+
+    clearRelicVisuals() {
+        if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
+            this.relicVisuals.forEach(obj => {
+                if (obj && typeof obj.destroy === 'function') {
+                    obj.destroy();
+                }
+            });
+        }
+        this.relicVisuals = [];
+        if (this.relicBackgrounds && typeof this.relicBackgrounds.clear === 'function') {
+            this.relicBackgrounds.clear();
+        }
+    }
+
+    setRelicInfoText(title = '', description = '') {
+        if (this.relicInfoTitleText) {
+            this.relicInfoTitleText.setText(title || '');
+        }
+        if (this.relicInfoDescriptionText) {
+            this.relicInfoDescriptionText.setText(description || '');
+        }
+    }
+
+    updateRelicSelectionHighlight() {
+        if (!this.relicBackgrounds || typeof this.relicBackgrounds.forEach !== 'function') {
+            return;
+        }
+
+        this.relicBackgrounds.forEach((bg, relicId) => {
+            if (!bg || typeof bg.setStrokeStyle !== 'function') {
+                return;
+            }
+            const isSelected = relicId === this.selectedRelicId;
+            bg.setStrokeStyle(2, isSelected ? 0xffffff : 0xf1c40f, isSelected ? 1 : 0.9);
+        });
+    }
+
+    showRelicDetails(relic) {
+        if (!relic || !this.ownedRelicIds.has(relic.id)) {
+            this.selectedRelicId = null;
+            const hasOwnedRelics = this.relics.some(item => this.ownedRelicIds.has(item.id));
+            this.setRelicInfoText('', hasOwnedRelics ? 'Select a relic to view details.' : 'No relics owned yet.');
+            this.updateRelicSelectionHighlight();
+            return;
+        }
+
+        this.selectedRelicId = relic.id;
+        this.setRelicInfoText(relic.name, relic.description);
+        this.updateRelicSelectionHighlight();
     }
     
     rollDice() {
@@ -1215,6 +1301,7 @@ export class GameScene extends Phaser.Scene {
             relic.apply(this);
         }
         this.updateRelicDisplay();
+        this.showRelicDetails(relic);
         return relic;
     }
 
@@ -1403,7 +1490,8 @@ export class GameScene extends Phaser.Scene {
         applyToArray(this.comboTextGroup, showCombatUI);
         setVisibility(this.comboHeaderText, showCombatUI);
         applyToArray(this.relicVisuals, showCombatUI);
-        setVisibility(this.relicTitleText, showCombatUI);
+        setVisibility(this.relicInfoTitleText, showCombatUI);
+        setVisibility(this.relicInfoDescriptionText, showCombatUI);
         setVisibility(this.defendText, showCombatUI);
         setVisibility(this.attackText, showCombatUI);
 
