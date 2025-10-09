@@ -793,8 +793,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         const mitigated = Math.min(this.playerBlockValue, amount);
+        this.playerBlockValue = Math.max(0, this.playerBlockValue - mitigated);
         const damage = Math.max(0, amount - mitigated);
-        this.playerBlockValue = Math.max(0, this.playerBlockValue - amount);
 
         if (damage > 0) {
             this.applyDamage(damage);
