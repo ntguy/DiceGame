@@ -5,7 +5,9 @@ const COLORS = {
     [PATH_NODE_TYPES.SHOP]: 0xf1c40f,
     [PATH_NODE_TYPES.INFIRMARY]: 0x27ae60,
     boss: 0x9b59b6,
-    completed: 0x7f8c8d
+    completed: 0x7f8c8d,
+    whiteStroke: 0xffeeee,
+    blackStroke: 0x111111
 };
 
 const ICONS = {
@@ -93,18 +95,18 @@ export class PathUI {
             const container = this.scene.add.container(x, y);
             const isBoss = node.isBoss;
             const typeKey = isBoss ? 'boss' : node.type;
-            const color = COLORS[typeKey] || 0xffffff;
+            const color = COLORS[typeKey] || COLORS.whiteStroke;
             const icon = isBoss ? ICONS.boss : ICONS[node.type];
 
             const cube = this.scene.add.rectangle(0, 0, 56, 56, color, 1)
-                .setStrokeStyle(3, 0xffffff, 0.9)
+                .setStrokeStyle(3, COLORS.whiteStroke, 0.9)
                 .setInteractive({ useHandCursor: true })
                 .setAngle(45);
 
             // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
             cube.on('pointerover', () => {
             if (!this.isNodeSelectable(node.id)) return;
-                cube.setStrokeStyle(4, 0x111111, 1); // change stroke color & width on hover
+                cube.setStrokeStyle(4, COLORS.blackStroke, 1); // change stroke color & width on hover
             });
         
             cube.on('pointerout', () => {
@@ -198,20 +200,16 @@ export class PathUI {
             const typeKey = isBoss ? 'boss' : node.type;
             const baseColor = COLORS[typeKey] || 0xffffff;
             const isCompleted = this.pathManager.isNodeCompleted(node.id);
-            const isCurrent = currentId === node.id;
 
             let fillColor = baseColor;
             let strokeWidth = 4;
             let strokeAlpha = 1;
-            let strokeColor = 0xffffff;
+            let strokeColor = COLORS.blackStroke;
             let iconAlpha = 1;
             let labelAlpha = 1;
-            let scale = 1;
             let interactive = false;
 
-            if (isCurrent) {
-                scale = 1.05;
-            } else if (isCompleted) {
+            if (isCompleted) {
                 fillColor = blendColor(baseColor, 0x1f2a30, 0.55);
                 strokeWidth = 6;
                 iconAlpha = 0.6;
@@ -232,7 +230,6 @@ export class PathUI {
             iconText.setAlpha(iconAlpha);
             labelText.setAlpha(labelAlpha);
             cube.setStrokeStyle(strokeWidth, strokeColor, strokeAlpha);
-            cube.setScale(scale);
 
             if (interactive) {
                 cube.setInteractive({ useHandCursor: true });
@@ -270,12 +267,13 @@ export class PathUI {
         this.scene.input.on('pointerupoutside', this.handlePointerUp, this);
     }
 
-    handleWheel(deltaY) {
+    handleWheel(pointer, gameObjects, deltaX, deltaY) {
         if (!this.isActive) {
             return;
         }
 
-        const delta = -deltaY * WHEEL_SCROLL_MULTIPLIER;
+        const scrollDeltaY = typeof deltaY === 'number' ? deltaY : 0;
+        const delta = -scrollDeltaY * WHEEL_SCROLL_MULTIPLIER;
         this.setScrollY(this.scrollY + delta);
     }
 
