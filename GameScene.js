@@ -53,7 +53,9 @@ export class GameScene extends Phaser.Scene {
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicInteractiveAreas = [];
+        this.relicInfoText = null;
+        this.selectedRelicId = null;
     }
 
     init(data) {
@@ -76,7 +78,9 @@ export class GameScene extends Phaser.Scene {
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicInteractiveAreas = [];
+        this.relicInfoText = null;
+        this.selectedRelicId = null;
     }
 
     preload() {
@@ -108,7 +112,9 @@ export class GameScene extends Phaser.Scene {
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.relicVisuals = [];
-        this.relicTitleText = null;
+        this.relicInteractiveAreas = [];
+        this.relicInfoText = null;
+        this.selectedRelicId = null;
 
         // --- Dice arrays for zones ---
         this.defendDice = [];
@@ -180,23 +186,26 @@ export class GameScene extends Phaser.Scene {
     }
 
     createRelicShelf() {
-        if (this.relicTitleText) {
-            this.relicTitleText.destroy();
-            this.relicTitleText = null;
+        if (this.relicInfoText) {
+            this.relicInfoText.destroy();
+            this.relicInfoText = null;
         }
 
         if (this.relicVisuals && Array.isArray(this.relicVisuals)) {
             this.relicVisuals.forEach(obj => obj.destroy());
         }
         this.relicVisuals = [];
+        this.relicInteractiveAreas = [];
 
-        const startX = 1070;
-        const titleY = 220;
-        this.relicTitleText = this.add.text(startX, titleY, 'Relics', {
-            fontSize: '24px',
-            color: '#f1c40f'
+        this.relicInfoText = this.add.text(CONSTANTS.RIGHT_UI_X, CONSTANTS.RELIC_INFO_Y, '', {
+            fontSize: '20px',
+            color: '#f9e79f',
+            align: 'right',
+            wordWrap: { width: 260 }
         }).setOrigin(1, 0);
+        this.relicInfoText.setText('');
 
+        this.selectedRelicId = null;
         this.updateRelicDisplay();
     }
 
@@ -205,28 +214,68 @@ export class GameScene extends Phaser.Scene {
             this.relicVisuals.forEach(obj => obj.destroy());
         }
         this.relicVisuals = [];
+        this.relicInteractiveAreas = [];
 
-        if (!this.relicTitleText) {
-            return;
-        }
-
-        const startX = this.relicTitleText.x;
-        const baseY = this.relicTitleText.y + 36;
-        const spacing = 64;
+        const startX = CONSTANTS.RIGHT_UI_X;
+        const baseY = CONSTANTS.RELIC_TRAY_Y;
+        const spacing = CONSTANTS.RELIC_SPACING;
+        const size = CONSTANTS.RELIC_ICON_SIZE;
 
         this.relics.forEach((relic, index) => {
             const x = startX - index * spacing;
-            const iconBg = this.add.rectangle(x, baseY, 44, 44, 0x1c1c1c, 0.85)
-                .setStrokeStyle(2, 0xf1c40f, 0.9);
-            const iconText = this.add.text(x, baseY, relic.icon || '♦', {
-                fontSize: '24px'
-            }).setOrigin(0.5);
-            const label = this.add.text(x, baseY + 28, relic.name, {
-                fontSize: '14px',
-                color: '#f9e79f'
-            }).setOrigin(0.5);
+            const iconBg = this.add.rectangle(x, baseY, size, size, 0x1c1c1c, 0.85)
+                .setOrigin(0.5)
+                .setStrokeStyle(2, 0xf1c40f, 0.9)
+                .setInteractive({ useHandCursor: true });
+            iconBg.setFillStyle(0x1c1c1c, 0.85);
 
-            this.relicVisuals.push(iconBg, iconText, label);
+            const iconText = this.add.text(x, baseY, relic.icon || '♦', {
+                fontSize: `${CONSTANTS.RELIC_ICON_FONT}px`
+            }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+            const handleClick = () => this.showRelicDetails(relic);
+            iconBg.on('pointerdown', handleClick);
+            iconText.on('pointerdown', handleClick);
+
+            this.relicVisuals.push(iconBg, iconText);
+            this.relicInteractiveAreas.push({ id: relic.id, bg: iconBg, icon: iconText });
+        });
+
+        this.updateRelicHighlights();
+    }
+
+    showRelicDetails(relic) {
+        if (!relic || !this.relicInfoText) {
+            return;
+        }
+
+        this.selectedRelicId = relic.id;
+        this.relicInfoText.setText([relic.name, relic.description]);
+        this.updateRelicHighlights();
+    }
+
+    updateRelicHighlights() {
+        if (!Array.isArray(this.relicInteractiveAreas)) {
+            return;
+        }
+
+        this.relicInteractiveAreas.forEach(area => {
+            if (!area || !area.bg) {
+                return;
+            }
+
+            const isSelected = this.selectedRelicId === area.id;
+            if (isSelected) {
+                area.bg.setStrokeStyle(3, 0xffffff, 1);
+                area.bg.setFillStyle(0x3a2f0f, 0.95);
+            } else {
+                area.bg.setStrokeStyle(2, 0xf1c40f, 0.9);
+                area.bg.setFillStyle(0x1c1c1c, 0.85);
+            }
+
+            if (area.icon) {
+                area.icon.setAlpha(isSelected ? 1 : 0.9);
+            }
         });
     }
     
@@ -1215,6 +1264,7 @@ export class GameScene extends Phaser.Scene {
             relic.apply(this);
         }
         this.updateRelicDisplay();
+        this.showRelicDetails(relic);
         return relic;
     }
 
@@ -1403,7 +1453,28 @@ export class GameScene extends Phaser.Scene {
         applyToArray(this.comboTextGroup, showCombatUI);
         setVisibility(this.comboHeaderText, showCombatUI);
         applyToArray(this.relicVisuals, showCombatUI);
-        setVisibility(this.relicTitleText, showCombatUI);
+        setVisibility(this.relicInfoText, showCombatUI);
+        if (Array.isArray(this.relicInteractiveAreas)) {
+            this.relicInteractiveAreas.forEach(area => {
+                if (!area) {
+                    return;
+                }
+                if (area.bg) {
+                    if (showCombatUI) {
+                        area.bg.setInteractive({ useHandCursor: true });
+                    } else {
+                        area.bg.disableInteractive();
+                    }
+                }
+                if (area.icon) {
+                    if (showCombatUI) {
+                        area.icon.setInteractive({ useHandCursor: true });
+                    } else {
+                        area.icon.disableInteractive();
+                    }
+                }
+            });
+        }
         setVisibility(this.defendText, showCombatUI);
         setVisibility(this.attackText, showCombatUI);
 

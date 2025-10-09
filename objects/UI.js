@@ -40,10 +40,10 @@ export function setupButtons(scene) {
 }
 
 export function setupMuteButton(scene, onToggle) {
-    const button = scene.add.text(scene.scale.width - 5, scene.scale.height - 5, '', {
+    const button = scene.add.text(CONSTANTS.UI_MARGIN, scene.scale.height - CONSTANTS.UI_MARGIN, '', {
         fontSize: '28px',
         padding: { x: 16, y: 10 }
-    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+    }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
 
     button.on('pointerdown', () => {
         if (typeof onToggle === 'function') {
