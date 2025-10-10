@@ -11,6 +11,7 @@ import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
 import { PathUI } from './objects/PathUI.js';
 import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
+import { TowerOfTenUI } from './objects/TowerOfTenUI.js';
 import { RelicUIManager } from './objects/RelicUI.js';
 import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
 import { BeefyRelic } from './relics/BeefyRelic.js';
@@ -1144,6 +1145,9 @@ export class GameScene extends Phaser.Scene {
             case PATH_NODE_TYPES.INFIRMARY:
                 this.openInfirmary();
                 break;
+            case PATH_NODE_TYPES.TOWER:
+                this.openTowerOfTen();
+                break;
             default:
                 this.pathManager.completeCurrentNode();
                 this.currentPathNodeId = null;
@@ -1300,6 +1304,18 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
+    openTowerOfTen() {
+        if (this.pathUI) {
+            this.pathUI.hide();
+        }
+
+        this.destroyFacilityUI();
+
+        this.activeFacilityUI = new TowerOfTenUI(this, {
+            onComplete: result => this.handleTowerOfTenResult(result)
+        });
+    }
+
     handleInfirmaryChoice(selection) {
         let message = '';
         let color = '#2ecc71';
@@ -1349,6 +1365,43 @@ export class GameScene extends Phaser.Scene {
         if (this.pathUI) {
             this.pathUI.updateState();
         }
+        this.enterMapState();
+    }
+
+    handleTowerOfTenResult({ gold = 0, total = 0, outcome = 'leave' } = {}) {
+        this.destroyFacilityUI();
+
+        if (gold > 0) {
+            this.addGold(gold);
+        }
+
+        let message = '';
+        let color = '#5dade2';
+
+        if (outcome === 'cashout' && gold > 0) {
+            message = `Tower of Ten: Total ${total} → +${gold} gold`;
+            color = '#f7c873';
+        } else if (outcome === 'cashout') {
+            message = `Tower of Ten: Total ${total} (0 gold)`;
+        } else if (outcome === 'bust') {
+            message = `Tower of Ten: Bust with ${total}`;
+            color = '#e74c3c';
+        } else {
+            message = 'Tower of Ten: You walk away.';
+        }
+
+        if (this.pathManager) {
+            this.pathManager.completeCurrentNode();
+        }
+        this.currentPathNodeId = null;
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+
+        if (message) {
+            this.showNodeMessage(message, color);
+        }
+
         this.enterMapState();
     }
 
