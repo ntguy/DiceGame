@@ -137,6 +137,12 @@ export function setupEnemyUI(scene, enemyName) {
         color: "#f1c40f"
     }).setOrigin(1, 0);
 
+    const statusText = scene.add.text(scene.scale.width - 20, y + barHeight + 66, "", {
+        fontSize: "16px",
+        color: "#ecf0f1",
+        align: "right"
+    }).setOrigin(1, 0);
+
     return {
         barWidth,
         barHeight,
@@ -147,6 +153,7 @@ export function setupEnemyUI(scene, enemyName) {
         damageColor: 0x641e16,
         text,
         nameText,
-        intentText
+        intentText,
+        statusText
     };
 }
