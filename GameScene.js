@@ -12,9 +12,9 @@ import { PathUI } from './objects/PathUI.js';
 import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
 import { RelicUIManager } from './objects/RelicUI.js';
-import { LuckyPipRelic } from './relics/LuckyPipRelic.js';
-import { ReinforcedCaseRelic } from './relics/ReinforcedCaseRelic.js';
-import { GleamingCoreRelic } from './relics/GleamingCoreRelic.js';
+import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
+import { BeefyRelic } from './relics/BeefyRelic.js';
+import { FamilyRelic } from './relics/FamilyRelic.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -68,8 +68,15 @@ export class GameScene extends Phaser.Scene {
         this.relicCatalog = [];
         this.relics = [];
         this.ownedRelicIds = new Set();
+        this.hasBlockbusterRelic = false;
+        this.blockDamageMultiplier = 1;
+        this.hasFamilyRelic = false;
+        this.familyHealPerFullHouse = 0;
         if (this.relicUI) {
             this.relicUI.reset();
+        }
+        if (this.enemyManager && typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
+            this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
         }
     }
 
@@ -129,9 +136,9 @@ export class GameScene extends Phaser.Scene {
         this.pendingPostCombatTransition = false;
         this.resetRelicState();
         this.relicCatalog = [
-            new LuckyPipRelic(),
-            new ReinforcedCaseRelic(),
-            new GleamingCoreRelic()
+            new BlockbusterRelic(),
+            new BeefyRelic(),
+            new FamilyRelic()
         ];
         this.resetMenuState();
 
@@ -174,6 +181,9 @@ export class GameScene extends Phaser.Scene {
 
         // --- Enemy ---
         this.enemyManager = new EnemyManager();
+        if (typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
+            this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
+        }
         const initialEnemy = this.enemyManager.getCurrentEnemy();
         this.enemyHealthBar = setupEnemyUI(this, initialEnemy ? initialEnemy.name : '???');
         this.enemyIntentText = this.enemyHealthBar.intentText;
@@ -476,6 +486,19 @@ export class GameScene extends Phaser.Scene {
         const attackResult = this.computeZoneScore(this.attackDice || []);
         const defendScore = defendResult.total;
         const attackScore = attackResult.total;
+
+        if (this.familyHealPerFullHouse > 0) {
+            let healAmount = 0;
+            if (defendResult.comboType === 'Full House') {
+                healAmount += this.familyHealPerFullHouse;
+            }
+            if (attackResult.comboType === 'Full House') {
+                healAmount += this.familyHealPerFullHouse;
+            }
+            if (healAmount > 0) {
+                this.healPlayer(healAmount);
+            }
+        }
 
         this.updateZonePreviewText();
 

@@ -11,6 +11,7 @@ export class EnemyManager {
         this.currentEnemy = null;
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
+        this.blockDamageMultiplier = 1;
     }
 
     getCurrentEnemy() {
@@ -61,8 +62,13 @@ export class EnemyManager {
             return { damageDealt: 0, blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)) };
         }
 
-        const blockedAmount = Math.min(this.enemyBlockValue, amount);
-        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - blockedAmount);
+        const blockMultiplier = Math.max(1, this.blockDamageMultiplier || 1);
+        const maxBlockConsumed = amount * blockMultiplier;
+        const blockConsumed = Math.min(this.enemyBlockValue, maxBlockConsumed);
+        const blockedAmount = Math.min(amount, blockMultiplier === 1
+            ? blockConsumed
+            : Math.ceil(blockConsumed / blockMultiplier));
+        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - blockConsumed);
         const damageDealt = Math.max(0, amount - blockedAmount);
 
         if (damageDealt > 0) {
@@ -91,6 +97,11 @@ export class EnemyManager {
         if (amount > 0) {
             this.enemyBlockValue += amount;
         }
+    }
+
+    setBlockDamageMultiplier(multiplier = 1) {
+        const value = typeof multiplier === 'number' && multiplier > 0 ? multiplier : 1;
+        this.blockDamageMultiplier = value;
     }
 
     healCurrentEnemy(amount) {
