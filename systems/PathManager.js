@@ -1,8 +1,26 @@
 const NODE_TYPES = {
     ENEMY: 'enemy',
     SHOP: 'shop',
-    INFIRMARY: 'infirmary'
+    INFIRMARY: 'infirmary',
+    TOWER: 'tower'
 };
+
+function pickFacilities(randomFn, count = 2) {
+    const pool = [NODE_TYPES.SHOP, NODE_TYPES.INFIRMARY, NODE_TYPES.TOWER];
+    const selections = [];
+    const copy = pool.slice();
+
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(randomFn() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+
+    while (selections.length < count && copy.length > 0) {
+        selections.push(copy.shift());
+    }
+
+    return selections;
+}
 
 const ENEMY_SEQUENCE = [
     {
@@ -72,9 +90,7 @@ export class PathManager {
             }
 
             const nextEnemyId = `enemy-${index + 1}`;
-            const branchTypes = this.randomFn() < 0.5
-                ? [NODE_TYPES.SHOP, NODE_TYPES.INFIRMARY]
-                : [NODE_TYPES.INFIRMARY, NODE_TYPES.SHOP];
+            const branchTypes = pickFacilities(this.randomFn);
 
             const branchRow = currentRow + 1;
             const branchColumns = [0, 2];
@@ -84,7 +100,11 @@ export class PathManager {
                 const branchNode = {
                     id: branchId,
                     type,
-                    label: type === NODE_TYPES.SHOP ? 'Shop' : 'Infirmary',
+                    label: type === NODE_TYPES.SHOP
+                        ? 'Shop'
+                        : type === NODE_TYPES.INFIRMARY
+                            ? 'Infirmary'
+                            : 'Tower of Ten',
                     connections: [nextEnemyId],
                     row: branchRow,
                     column: branchColumns[branchIndex]
