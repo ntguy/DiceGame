@@ -1,20 +1,20 @@
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { createDieFace, setDieBackgroundFill } from './ui/DieFace.js';
 
 const PANEL_WIDTH = 940;
 const PANEL_HEIGHT = 520;
-const INSTRUCTIONS_WIDTH = 260;
+const INSTRUCTIONS_WIDTH = 320;
 const ACTION_BUTTON_WIDTH = 200;
-const DICE_SIZE = 96;
-const DICE_SPACING = 110;
+const DICE_SIZE = 80;
+const DICE_SPACING = 126;
 const TOWER_STEP_COUNT = 10;
-const TOWER_STEP_HEIGHT = 28;
-const TOWER_STEP_WIDTH = 80;
+const TOWER_STEP_SIZE = 44;
+const TOWER_STEP_SPACING = 6;
 
 const COLORS = {
-    diceBase: 0x10293d,
-    diceHeldStroke: 0xf1c40f,
-    diceIdleStroke: 0x1f4d74,
+    diceBase: 0x444444,
+    diceSelected: 0x2ecc71,
     diceText: '#f8fbff',
     towerBase: 0xecf0f1,
     towerHighlight: 0xf7c873,
@@ -96,8 +96,8 @@ export class TowerOfTenUI {
         this.diceCountButtons = [];
         const topY = -PANEL_HEIGHT / 2 + 120;
         const configs = [
-            { count: 2, label: 'Play 2 Dice', x: -240 },
-            { count: 3, label: 'Play 3 Dice', x: -40 }
+            { count: 2, label: 'Play 2 Dice', x: -100 },
+            { count: 3, label: 'Play 3 Dice', x: 100 }
         ];
 
         configs.forEach(({ count, label, x }) => {
@@ -131,9 +131,21 @@ export class TowerOfTenUI {
         });
     }
 
+    hideDiceCountButtons() {
+        if (!this.diceCountButtons) {
+            return;
+        }
+        this.diceCountButtons.forEach(({ container, background }) => {
+            container.setVisible(false);
+            background.disableInteractive();
+        });
+    }
+
     createTowerDisplay() {
-        const towerContainer = this.scene.add.container(140, 30);
-        const header = this.scene.add.text(0, -TOWER_STEP_COUNT * TOWER_STEP_HEIGHT / 2 - 40, 'Tower Fill', {
+        const towerX = -PANEL_WIDTH / 2 + 150;
+        const towerContainer = this.scene.add.container(towerX, 20);
+        const totalHeight = TOWER_STEP_COUNT * TOWER_STEP_SIZE + (TOWER_STEP_COUNT - 1) * TOWER_STEP_SPACING;
+        const header = this.scene.add.text(0, -totalHeight / 2 - 36, 'Tower Fill', {
             fontSize: '22px',
             color: '#eaf6fb',
             fontStyle: 'bold'
@@ -143,11 +155,11 @@ export class TowerOfTenUI {
 
         for (let i = 0; i < TOWER_STEP_COUNT; i += 1) {
             const level = TOWER_STEP_COUNT - i;
-            const y = (i - (TOWER_STEP_COUNT - 1) / 2) * (TOWER_STEP_HEIGHT + 4);
-            const stepRect = this.scene.add.rectangle(0, y, TOWER_STEP_WIDTH, TOWER_STEP_HEIGHT, COLORS.towerBase, 0.7)
+            const y = -totalHeight / 2 + i * (TOWER_STEP_SIZE + TOWER_STEP_SPACING) + TOWER_STEP_SIZE / 2;
+            const stepRect = this.scene.add.rectangle(0, y, TOWER_STEP_SIZE, TOWER_STEP_SIZE, COLORS.towerBase, 0.7)
                 .setStrokeStyle(2, COLORS.buttonStroke, 0.6);
             const label = this.scene.add.text(0, y, `${level}`, {
-                fontSize: '16px',
+                fontSize: '18px',
                 color: '#0b1a2b'
             }).setOrigin(0.5);
 
@@ -160,24 +172,24 @@ export class TowerOfTenUI {
     }
 
     createDiceDisplay() {
-        this.diceContainer = this.scene.add.container(-220, 40);
+        this.diceContainer = this.scene.add.container(0, 20);
         this.container.add(this.diceContainer);
     }
 
     createStatusTexts() {
         const totalY = PANEL_HEIGHT / 2 - 150;
-        this.totalText = this.scene.add.text(-220, totalY, 'Total: --', {
+        this.totalText = this.scene.add.text(0, totalY, 'Total: --', {
             fontSize: '22px',
             color: '#d6eaf8',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.payoutText = this.scene.add.text(-220, totalY + 36, 'Potential Reward: --', {
+        this.payoutText = this.scene.add.text(0, totalY + 34, 'Potential Reward: --', {
             fontSize: '18px',
             color: '#d6eaf8'
         }).setOrigin(0.5);
 
-        this.statusText = this.scene.add.text(140, totalY + 36, '', {
+        this.statusText = this.scene.add.text(0, totalY + 80, '', {
             fontSize: '18px',
             color: COLORS.statusInfo
         }).setOrigin(0.5);
@@ -221,7 +233,7 @@ export class TowerOfTenUI {
 
         const bodyText = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, title.y + 40,
             '• Pick 2 or 3 dice before rolling.\n' +
-            '• Roll to climb the tower. Totals of 1-10 turn tiers gold; 11+ stays white.\n' +
+            '• Dice show ? until rolled. Totals of 1-10 turn tiers gold; 11+ stays white.\n' +
             '• After the first roll, click dice to choose which ones will roll again.\n' +
             '• Cash out with the right button — totals 11+ earn no gold.',
             {
@@ -283,7 +295,7 @@ export class TowerOfTenUI {
     }
 
     setDiceCount(count) {
-        if (![2, 3].includes(count) || count === this.diceCount) {
+        if (this.hasRolled || ![2, 3].includes(count) || count === this.diceCount) {
             return;
         }
         this.diceCount = count;
@@ -302,7 +314,12 @@ export class TowerOfTenUI {
     }
 
     refreshDiceSlots() {
-        this.diceSlots.forEach(slot => slot.container.destroy(true));
+        this.diceSlots.forEach(slot => {
+            if (slot.dieFace && typeof slot.dieFace.destroy === 'function') {
+                slot.dieFace.destroy();
+            }
+            slot.container.destroy(true);
+        });
         this.diceSlots = [];
 
         const spacing = DICE_SPACING;
@@ -310,28 +327,29 @@ export class TowerOfTenUI {
 
         for (let i = 0; i < this.diceCount; i += 1) {
             const container = this.scene.add.container(startX + i * spacing, 0);
-            const background = this.scene.add.rectangle(0, 0, DICE_SIZE, DICE_SIZE, COLORS.diceBase, 0.92)
-                .setStrokeStyle(3, COLORS.diceIdleStroke, 0.95)
-                .setInteractive({ useHandCursor: true });
+            const dieFace = createDieFace(this.scene, {
+                size: DICE_SIZE,
+                questionMarkStyle: {
+                    fontSize: `${Math.round(DICE_SIZE * 0.55)}px`,
+                    color: COLORS.diceText,
+                    fontStyle: 'bold'
+                }
+            });
 
-            background.on('pointerup', () => {
+            dieFace.showUnknown();
+            dieFace.background.setInteractive({ useHandCursor: true });
+            dieFace.background.on('pointerup', () => {
                 this.toggleDieSelection(i);
             });
 
-            const valueText = this.scene.add.text(0, -6, '?', {
-                fontSize: '46px',
-                color: COLORS.diceText,
-                fontStyle: 'bold'
-            }).setOrigin(0.5);
-
-            const selectionText = this.scene.add.text(0, DICE_SIZE / 2 - 20, 'Roll', {
+            const selectionText = this.scene.add.text(0, DICE_SIZE / 2 + 18, 'Roll', {
                 fontSize: '16px',
                 color: '#f7c873'
             }).setOrigin(0.5);
 
-            container.add([background, valueText, selectionText]);
+            container.add([dieFace.container, selectionText]);
             this.diceContainer.add(container);
-            this.diceSlots.push({ container, background, valueText, selectionText });
+            this.diceSlots.push({ container, dieFace, selectionText });
         }
     }
 
@@ -376,9 +394,14 @@ export class TowerOfTenUI {
         this.diceSlots.forEach((slot, index) => {
             const value = this.diceValues[index];
             const selected = this.diceSelected[index];
+            const dieFace = slot.dieFace;
 
-            slot.valueText.setText(value != null ? `${value}` : '?');
-            slot.valueText.setAlpha(value != null ? 1 : 0.6);
+            if (value != null) {
+                dieFace.setValue(value);
+            } else {
+                dieFace.showUnknown();
+            }
+
             slot.selectionText.setVisible(this.hasRolled && !this.rerollUsed);
             if (this.hasRolled && !this.rerollUsed) {
                 slot.selectionText.setText(selected ? 'Roll' : 'Keep');
@@ -387,20 +410,19 @@ export class TowerOfTenUI {
                 slot.selectionText.setText('');
             }
 
-            const highlightSelection = selected && this.canAdjustSelection();
-            const strokeColor = highlightSelection ? COLORS.diceHeldStroke : COLORS.diceIdleStroke;
-            const strokeAlpha = highlightSelection ? 0.95 : 0.75;
-            slot.background.setStrokeStyle(highlightSelection ? 4 : 3, strokeColor, strokeAlpha);
+            const canAdjust = this.canAdjustSelection();
+            const highlightSelection = selected && canAdjust;
+            setDieBackgroundFill(dieFace, highlightSelection ? COLORS.diceSelected : COLORS.diceBase);
 
-            if (this.canAdjustSelection()) {
-                slot.background.setInteractive({ useHandCursor: true });
-                slot.background.setAlpha(1);
+            if (canAdjust) {
+                dieFace.background.setInteractive({ useHandCursor: true });
+                dieFace.background.setAlpha(1);
             } else if (!this.hasRolled) {
-                slot.background.disableInteractive();
-                slot.background.setAlpha(0.7);
+                dieFace.background.disableInteractive();
+                dieFace.background.setAlpha(0.85);
             } else {
-                slot.background.disableInteractive();
-                slot.background.setAlpha(1);
+                dieFace.background.disableInteractive();
+                dieFace.background.setAlpha(1);
             }
         });
     }
@@ -479,8 +501,9 @@ export class TowerOfTenUI {
         this.hasRolled = true;
         this.rerollUsed = false;
         this.diceSelected = this.diceSelected.map(() => false);
-        this.statusText.setText('Select dice to roll again, then press Re-roll.');
+        this.statusText.setText('Select dice to roll again, then press Re-Roll Dice.');
         this.statusText.setColor(COLORS.statusInfo);
+        this.hideDiceCountButtons();
         this.updateDiceDisplay();
         this.updateTowerFill();
         this.updateOutcomeText();
@@ -505,7 +528,7 @@ export class TowerOfTenUI {
         if (!this.hasRolled) {
             this.rollButton.text.setText('Roll Dice');
         } else if (!this.rerollUsed) {
-            this.rollButton.text.setText('Re-roll Selected Dice');
+            this.rollButton.text.setText('Re-Roll Dice');
         } else {
             this.rollButton.text.setText('Re-roll Used');
         }
