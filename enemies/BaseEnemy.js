@@ -2,6 +2,7 @@ export class BaseEnemy {
     constructor({ name, maxHealth, moves = [] }) {
         this.name = name;
         this.maxHealth = maxHealth;
+        this.baseMaxHealth = maxHealth;
         this.health = maxHealth;
         this.moveIndex = 0;
         this.moves = moves;
