@@ -20,6 +20,7 @@ import { ReRollWithItRelic } from './relics/ReRollWithItRelic.js';
 import { WildOneRelic } from './relics/WildOneRelic.js';
 import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
+import { MAP_CONFIGS } from './maps/MapConfigs.js';
 
 const SHOP_RELIC_COUNT = 3;
 
@@ -70,6 +71,10 @@ export class GameScene extends Phaser.Scene {
 
         this.resetRelicState();
         this.resetMenuState();
+
+        this.maps = Array.isArray(MAP_CONFIGS) ? [...MAP_CONFIGS] : [];
+        this.currentMapIndex = -1;
+        this.currentMapConfig = null;
     }
 
     resetRelicState() {
@@ -127,6 +132,10 @@ export class GameScene extends Phaser.Scene {
         this.defendComboText = null;
         this.attackComboText = null;
         this.comboListTexts = [];
+
+        this.maps = Array.isArray(MAP_CONFIGS) ? [...MAP_CONFIGS] : [];
+        this.currentMapIndex = -1;
+        this.currentMapConfig = null;
     }
 
     preload() {
@@ -207,11 +216,13 @@ export class GameScene extends Phaser.Scene {
         const initialEnemy = this.enemyManager.getCurrentEnemy();
         this.enemyHealthBar = setupEnemyUI(this, initialEnemy ? initialEnemy.name : '???');
         this.enemyIntentText = this.enemyHealthBar.intentText;
-        this.updateEnemyHealthUI();
-        this.prepareNextEnemyMove();
-
-        this.pathManager = new PathManager();
-        this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
+        const mapLoaded = this.loadMap(0);
+        if (!mapLoaded) {
+            this.pathManager = new PathManager();
+            this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
+            this.updateEnemyHealthUI();
+            this.prepareNextEnemyMove();
+        }
 
         this.sound.mute = this.isMuted;
         this.updateMuteButtonState();
@@ -925,6 +936,70 @@ export class GameScene extends Phaser.Scene {
         this.enterMapState();
     }
 
+    loadMap(mapIndex = 0) {
+        if (!Array.isArray(this.maps) || mapIndex < 0 || mapIndex >= this.maps.length) {
+            return false;
+        }
+
+        const config = this.maps[mapIndex];
+        this.currentMapIndex = mapIndex;
+        this.currentMapConfig = config;
+
+        const enemyFactory = config && typeof config.createEnemies === 'function'
+            ? config.createEnemies
+            : null;
+        const enemies = enemyFactory ? enemyFactory() : [];
+        if (this.enemyManager && typeof this.enemyManager.setEnemies === 'function') {
+            this.enemyManager.setEnemies(Array.isArray(enemies) ? enemies : []);
+        }
+
+        if (this.pathUI) {
+            this.pathUI.destroy();
+            this.pathUI = null;
+        }
+
+        const enemySequence = config && Array.isArray(config.enemySequence)
+            ? config.enemySequence.map(entry => ({ ...entry }))
+            : undefined;
+
+        this.pathManager = new PathManager({ enemySequence });
+        this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
+        this.currentPathNodeId = null;
+
+        if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
+            const mapLabel = config && config.displayName ? config.displayName : 'Map';
+            this.enemyHealthBar.nameText.setText(`${mapLabel}: Choose a Node`);
+        }
+
+        this.updateEnemyHealthUI();
+        this.prepareNextEnemyMove();
+
+        return true;
+    }
+
+    hasNextMap() {
+        if (!Array.isArray(this.maps)) {
+            return false;
+        }
+
+        const nextIndex = typeof this.currentMapIndex === 'number' ? this.currentMapIndex + 1 : 0;
+        return nextIndex >= 0 && nextIndex < this.maps.length;
+    }
+
+    advanceToNextMapIfAvailable() {
+        if (!this.hasNextMap()) {
+            return false;
+        }
+
+        const nextIndex = (typeof this.currentMapIndex === 'number' ? this.currentMapIndex + 1 : 0);
+        const nextConfig = this.maps[nextIndex];
+        const loaded = this.loadMap(nextIndex);
+        if (loaded && nextConfig && nextConfig.displayName) {
+            this.showNodeMessage(`Entering ${nextConfig.displayName}`, '#ffffff');
+        }
+        return loaded;
+    }
+
     processTurnOutcome({ attackScore, defendScore }) {
         if (!this.enemyManager) {
             return;
@@ -1434,7 +1509,7 @@ export class GameScene extends Phaser.Scene {
     enterMapState() {
         this.pendingPostCombatTransition = false;
         this.input.enabled = true;
-        const hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+        let hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
 
         this.destroyFacilityUI();
 
@@ -1447,6 +1522,13 @@ export class GameScene extends Phaser.Scene {
 
         if (this.resolveButton) {
             setTextButtonEnabled(this.resolveButton, false, { disabledAlpha: 0.3 });
+        }
+
+        if (!hasPendingNodes) {
+            const advanced = this.advanceToNextMapIfAvailable();
+            if (advanced) {
+                hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+            }
         }
 
         if (!hasPendingNodes) {

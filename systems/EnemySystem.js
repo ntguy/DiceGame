@@ -1,17 +1,16 @@
-import { LockjawEnemy } from '../enemies/Lockjaw.js';
-import { HotfixEnemy } from '../enemies/Hotfix.js';
-import { InfernoEnemy } from '../enemies/Inferno.js';
-import { SlapperEnemy } from '../enemies/Slapper.js';
-
 export class EnemyManager {
-    constructor() {
-        this.enemies = [new SlapperEnemy(), new HotfixEnemy(), new LockjawEnemy(), new InfernoEnemy()];
-        // this.enemies = [new InfernoEnemy(), new LockjawEnemy(), new SlapperEnemy(), new HotfixEnemy()];
+    constructor(enemies = []) {
+        this.enemies = Array.isArray(enemies) ? enemies : [];
         this.currentEnemyIndex = -1;
         this.currentEnemy = null;
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
         this.blockDamageMultiplier = 1;
+    }
+
+    setEnemies(enemies = []) {
+        this.enemies = Array.isArray(enemies) ? enemies : [];
+        this.clearCurrentEnemy();
     }
 
     getCurrentEnemy() {
