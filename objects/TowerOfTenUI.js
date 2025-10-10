@@ -51,7 +51,7 @@ export class TowerOfTenUI {
         this.isDestroyed = false;
         this.diceCount = 3;
         this.diceValues = new Array(this.diceCount).fill(null);
-        this.heldDice = new Array(this.diceCount).fill(false);
+        this.diceSelected = new Array(this.diceCount).fill(true);
         this.hasRolled = false;
         this.rerollUsed = false;
 
@@ -89,6 +89,7 @@ export class TowerOfTenUI {
         this.updateDiceDisplay();
         this.updateOutcomeText();
         this.updateButtonState();
+        this.updateRollButtonLabel();
     }
 
     createDiceCountButtons() {
@@ -190,24 +191,17 @@ export class TowerOfTenUI {
         const bottomY = PANEL_HEIGHT / 2 - 60;
 
         this.rollButton = this.createActionButton({
-            x: -260,
+            x: -160,
             y: bottomY,
             label: 'Roll Dice',
-            onClick: () => this.handleRoll()
+            onClick: () => this.handleRollAction()
         });
 
-        this.rerollButton = this.createActionButton({
-            x: 0,
+        this.finishButton = this.createActionButton({
+            x: 180,
             y: bottomY,
-            label: 'Use Re-roll',
-            onClick: () => this.handleReroll()
-        });
-
-        this.cashOutButton = this.createActionButton({
-            x: 260,
-            y: bottomY,
-            label: 'Cash Out',
-            onClick: () => this.handleCashOut()
+            label: 'Leave (0g)',
+            onClick: () => this.handleFinish()
         });
     }
 
@@ -228,8 +222,8 @@ export class TowerOfTenUI {
         const bodyText = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, title.y + 40,
             '• Pick 2 or 3 dice before rolling.\n' +
             '• Roll to climb the tower. Totals of 1-10 turn tiers gold; 11+ stays white.\n' +
-            '• After the first roll you may lock dice by clicking them, then use your single re-roll.\n' +
-            '• Cash out whenever you like — but totals 11+ earn no gold.',
+            '• After the first roll, click dice to choose which ones will roll again.\n' +
+            '• Cash out with the right button — totals 11+ earn no gold.',
             {
                 fontSize: '16px',
                 color: '#d6f1ff',
@@ -254,33 +248,7 @@ export class TowerOfTenUI {
                 lineSpacing: 6
             }
         );
-
-        const leaveY = panelHeight / 2 - 40;
-        const leaveBackground = this.scene.add.rectangle(0, leaveY, INSTRUCTIONS_WIDTH - 40, 48, COLORS.button, 0.9)
-            .setStrokeStyle(2, COLORS.buttonStroke, 0.85)
-            .setInteractive({ useHandCursor: true });
-
-        applyRectangleButtonStyle(leaveBackground, {
-            baseColor: COLORS.button,
-            baseAlpha: 0.9,
-            hoverBlend: 0.16,
-            pressBlend: 0.28,
-            disabledBlend: 0.45,
-            enabledAlpha: 1,
-            disabledAlpha: 0.35
-        });
-
-        leaveBackground.on('pointerup', () => {
-            const total = this.hasRolled ? this.getCurrentTotal() : 0;
-            this.finish({ gold: 0, total, outcome: 'leave' });
-        });
-
-        const leaveText = this.scene.add.text(0, leaveY, 'Leave (0 gold)', {
-            fontSize: '18px',
-            color: '#eaf2f8'
-        }).setOrigin(0.5);
-
-        instructionsContainer.add([background, title, bodyText, payoutsTitle, payoutDetails, leaveBackground, leaveText]);
+        instructionsContainer.add([background, title, bodyText, payoutsTitle, payoutDetails]);
         this.container.add(instructionsContainer);
     }
 
@@ -320,7 +288,7 @@ export class TowerOfTenUI {
         }
         this.diceCount = count;
         this.diceValues = new Array(count).fill(null);
-        this.heldDice = new Array(count).fill(false);
+        this.diceSelected = new Array(count).fill(true);
         this.hasRolled = false;
         this.rerollUsed = false;
         this.statusText.setText('');
@@ -330,6 +298,7 @@ export class TowerOfTenUI {
         this.updateTowerFill();
         this.updateOutcomeText();
         this.updateButtonState();
+        this.updateRollButtonLabel();
     }
 
     refreshDiceSlots() {
@@ -346,7 +315,7 @@ export class TowerOfTenUI {
                 .setInteractive({ useHandCursor: true });
 
             background.on('pointerup', () => {
-                this.toggleDieHeld(i);
+                this.toggleDieSelection(i);
             });
 
             const valueText = this.scene.add.text(0, -6, '?', {
@@ -355,26 +324,26 @@ export class TowerOfTenUI {
                 fontStyle: 'bold'
             }).setOrigin(0.5);
 
-            const heldText = this.scene.add.text(0, DICE_SIZE / 2 - 20, 'Locked', {
+            const selectionText = this.scene.add.text(0, DICE_SIZE / 2 - 20, 'Roll', {
                 fontSize: '16px',
                 color: '#f7c873'
             }).setOrigin(0.5);
 
-            container.add([background, valueText, heldText]);
+            container.add([background, valueText, selectionText]);
             this.diceContainer.add(container);
-            this.diceSlots.push({ container, background, valueText, heldText });
+            this.diceSlots.push({ container, background, valueText, selectionText });
         }
     }
 
-    toggleDieHeld(index) {
-        if (!this.canAdjustLocks()) {
+    toggleDieSelection(index) {
+        if (!this.canAdjustSelection()) {
             return;
         }
-        this.heldDice[index] = !this.heldDice[index];
+        this.diceSelected[index] = !this.diceSelected[index];
         this.updateDiceDisplay();
     }
 
-    canAdjustLocks() {
+    canAdjustSelection() {
         return this.hasRolled && !this.rerollUsed;
     }
 
@@ -406,17 +375,24 @@ export class TowerOfTenUI {
 
         this.diceSlots.forEach((slot, index) => {
             const value = this.diceValues[index];
-            const held = this.heldDice[index];
+            const selected = this.diceSelected[index];
 
             slot.valueText.setText(value != null ? `${value}` : '?');
             slot.valueText.setAlpha(value != null ? 1 : 0.6);
-            slot.heldText.setVisible(held && this.hasRolled && !this.rerollUsed);
+            slot.selectionText.setVisible(this.hasRolled && !this.rerollUsed);
+            if (this.hasRolled && !this.rerollUsed) {
+                slot.selectionText.setText(selected ? 'Roll' : 'Keep');
+                slot.selectionText.setColor(selected ? '#f7c873' : '#d6eaf8');
+            } else {
+                slot.selectionText.setText('');
+            }
 
-            const strokeColor = held ? COLORS.diceHeldStroke : COLORS.diceIdleStroke;
-            const strokeAlpha = held ? 0.95 : 0.75;
-            slot.background.setStrokeStyle(held ? 4 : 3, strokeColor, strokeAlpha);
+            const highlightSelection = selected && this.canAdjustSelection();
+            const strokeColor = highlightSelection ? COLORS.diceHeldStroke : COLORS.diceIdleStroke;
+            const strokeAlpha = highlightSelection ? 0.95 : 0.75;
+            slot.background.setStrokeStyle(highlightSelection ? 4 : 3, strokeColor, strokeAlpha);
 
-            if (this.canAdjustLocks()) {
+            if (this.canAdjustSelection()) {
                 slot.background.setInteractive({ useHandCursor: true });
                 slot.background.setAlpha(1);
             } else if (!this.hasRolled) {
@@ -424,7 +400,7 @@ export class TowerOfTenUI {
                 slot.background.setAlpha(0.7);
             } else {
                 slot.background.disableInteractive();
-                slot.background.setAlpha(held ? 0.95 : 1);
+                slot.background.setAlpha(1);
             }
         });
     }
@@ -460,7 +436,7 @@ export class TowerOfTenUI {
         if (!this.hasRolled) {
             this.totalText.setText('Total: --');
             this.payoutText.setText('Potential Reward: --');
-            this.cashOutButton.text.setText('Cash Out');
+            this.finishButton.text.setText('Leave (0g)');
             return;
         }
 
@@ -472,60 +448,79 @@ export class TowerOfTenUI {
             this.payoutText.setText(`Potential Reward: ${payout} gold`);
         }
         const cashLabel = payout > 0 ? `Cash Out (+${payout}g)` : 'Cash Out (0g)';
-        this.cashOutButton.text.setText(cashLabel);
+        this.finishButton.text.setText(cashLabel);
     }
 
     updateButtonState() {
-        setRectangleButtonEnabled(this.rollButton.background, !this.hasRolled);
-        setRectangleButtonEnabled(this.rerollButton.background, this.hasRolled && !this.rerollUsed);
-        setRectangleButtonEnabled(this.cashOutButton.background, this.hasRolled);
+        setRectangleButtonEnabled(this.rollButton.background, !this.hasRolled || !this.rerollUsed);
+        setRectangleButtonEnabled(this.finishButton.background, true);
     }
 
-    handleRoll() {
-        if (this.hasRolled) {
+    handleRollAction() {
+        if (!this.hasRolled) {
+            this.performFirstRoll();
             return;
         }
+
+        if (this.rerollUsed) {
+            return;
+        }
+        const anySelected = this.diceSelected.some(selected => selected);
+        if (!anySelected) {
+            this.statusText.setText('Select at least one die to roll, or cash out.');
+            this.statusText.setColor(COLORS.statusWarning);
+            return;
+        }
+        this.performReroll();
+    }
+
+    performFirstRoll() {
         this.diceValues = this.diceValues.map(() => rollDie());
-        this.heldDice = this.heldDice.map(() => false);
         this.hasRolled = true;
         this.rerollUsed = false;
-        this.statusText.setText('Click dice to lock them before your re-roll.');
+        this.diceSelected = this.diceSelected.map(() => false);
+        this.statusText.setText('Select dice to roll again, then press Re-roll.');
         this.statusText.setColor(COLORS.statusInfo);
         this.updateDiceDisplay();
         this.updateTowerFill();
         this.updateOutcomeText();
+        this.updateRollButtonLabel();
         this.updateButtonState();
     }
 
-    handleReroll() {
-        if (!this.hasRolled || this.rerollUsed) {
-            return;
-        }
-        const anyUnlocked = this.heldDice.some(held => !held);
-        if (!anyUnlocked) {
-            this.statusText.setText('Unlock at least one die to re-roll.');
-            this.statusText.setColor(COLORS.statusWarning);
-            return;
-        }
-
-        this.diceValues = this.diceValues.map((value, index) => (this.heldDice[index] ? value : rollDie()));
+    performReroll() {
+        this.diceValues = this.diceValues.map((value, index) => (this.diceSelected[index] ? rollDie() : value));
         this.rerollUsed = true;
+        this.diceSelected = this.diceSelected.map(() => false);
         this.statusText.setText('Final result locked in. Cash out to continue.');
         this.statusText.setColor(COLORS.statusInfo);
         this.updateDiceDisplay();
         this.updateTowerFill();
         this.updateOutcomeText();
+        this.updateRollButtonLabel();
         this.updateButtonState();
     }
 
-    handleCashOut() {
+    updateRollButtonLabel() {
         if (!this.hasRolled) {
-            return;
+            this.rollButton.text.setText('Roll Dice');
+        } else if (!this.rerollUsed) {
+            this.rollButton.text.setText('Re-roll Selected Dice');
+        } else {
+            this.rollButton.text.setText('Re-roll Used');
         }
-        const total = this.getCurrentTotal();
-        const payout = calculatePayout(total);
-        const outcome = total > 10 ? 'bust' : 'cashout';
-        this.finish({ gold: payout, total, outcome });
+    }
+
+    handleFinish() {
+        const total = this.hasRolled ? this.getCurrentTotal() : 0;
+        let outcome = 'leave';
+        let gold = 0;
+        if (this.hasRolled) {
+            const payout = calculatePayout(total);
+            gold = payout;
+            outcome = total > 10 ? 'bust' : 'cashout';
+        }
+        this.finish({ gold, total, outcome });
     }
 
     finish({ gold, total, outcome }) {
