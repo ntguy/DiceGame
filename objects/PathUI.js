@@ -19,6 +19,8 @@ const ICONS = {
     boss: '🔥'
 };
 
+const EMOJI_TEXT_PADDING = { top: 6, bottom: 6 };
+
 const LAYOUT = {
     baseY: 140,
     columnSpacing: 220,
@@ -117,7 +119,8 @@ export class PathUI {
 
             const iconText = this.scene.add.text(0, 0, icon || '?', {
                 fontSize: '24px',
-                color: '#000000'
+                color: '#000000',
+                padding: EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
             const labelText = this.scene.add.text(0, 50, node.label || '', {
