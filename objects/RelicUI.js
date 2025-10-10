@@ -97,7 +97,8 @@ export class RelicUIManager {
                 iconBg.setInteractive({ useHandCursor: true });
 
                 const iconText = this.scene.add.text(x, baseY, relic.icon || '♦', {
-                    fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE
+                    fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE,
+                    padding: CONSTANTS.EMOJI_TEXT_PADDING
                 }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
                 iconBg.on('pointerdown', () => this.showRelicDetails(relic));

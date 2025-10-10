@@ -1,5 +1,6 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
+import { CONSTANTS } from '../config.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;
@@ -72,7 +73,8 @@ export class ShopUI {
             cardContainer.setPosition(cardX, cardY);
 
             const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, relic.icon || '♦', {
-                fontSize: '52px'
+                fontSize: '52px',
+                padding: CONSTANTS.EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
             const nameText = this.scene.add.text(0, icon.y + 46, relic.name, {
