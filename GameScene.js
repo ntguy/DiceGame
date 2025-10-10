@@ -47,6 +47,7 @@ export class GameScene extends Phaser.Scene {
         this.muteButton = null;
         this.isMuted = false;
         this.isGameOver = false;
+        this.testingModeEnabled = true;
         this.pathManager = null;
         this.pathUI = null;
         this.currentPathNodeId = null;
@@ -96,12 +97,16 @@ export class GameScene extends Phaser.Scene {
         this.menuPanel = null;
         this.menuCloseButton = null;
         this.muteButton = null;
+        this.testingModeButton = null;
         this.isMenuOpen = false;
     }
 
     init(data) {
         this.destroyFacilityUI();
         this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
+        this.testingModeEnabled = data && typeof data.testingModeEnabled === 'boolean'
+            ? data.testingModeEnabled
+            : true;
         this.isGameOver = false;
         this.gameOverManager = null;
         this.pathManager = null;
@@ -288,6 +293,7 @@ export class GameScene extends Phaser.Scene {
 
         this.updateMenuButtonLabel();
         this.updateMuteButtonState();
+        this.updateTestingModeButtonState();
     }
 
     closeMenu() {
@@ -1169,6 +1175,13 @@ export class GameScene extends Phaser.Scene {
         this.setMapMode(false);
 
         const enemy = this.enemyManager.startEnemyEncounter(node.enemyIndex);
+        if (enemy) {
+            if (this.testingModeEnabled) {
+                this.applyTestingModeToEnemy(enemy);
+            } else {
+                this.restoreEnemyBaseStats(enemy);
+            }
+        }
         if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
             const baseName = enemy ? enemy.name : '???';
             const displayName = node.isBoss ? `${baseName} (Boss)` : baseName;
@@ -1542,11 +1555,18 @@ export class GameScene extends Phaser.Scene {
         const defeatedNode = this.pathManager && defeatedNodeId
             ? this.pathManager.getNode(defeatedNodeId)
             : null;
+
+        let totalGoldReward = 0;
         if (defeatedNode && defeatedNode.rewardGold) {
-            const reward = this.addGold(defeatedNode.rewardGold);
-            if (reward > 0) {
-                this.showNodeMessage(`+${reward} Gold`, '#f1c40f');
-            }
+            totalGoldReward += this.addGold(defeatedNode.rewardGold);
+        }
+
+        if (this.testingModeEnabled) {
+            totalGoldReward += this.addGold(900);
+        }
+
+        if (totalGoldReward > 0) {
+            this.showNodeMessage(`+${totalGoldReward} Gold`, '#f1c40f');
         }
 
         this.resetPlayerBurn();
@@ -1732,6 +1752,74 @@ export class GameScene extends Phaser.Scene {
         this.muteButton.setText(statusText);
     }
 
+    toggleTestingMode() {
+        this.testingModeEnabled = !this.testingModeEnabled;
+        this.updateTestingModeButtonState();
+
+        const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
+        if (enemy) {
+            if (this.testingModeEnabled) {
+                this.applyTestingModeToEnemy(enemy);
+            } else {
+                this.restoreEnemyBaseStats(enemy);
+            }
+            this.updateEnemyHealthUI();
+        }
+    }
+
+    updateTestingModeButtonState() {
+        if (!this.testingModeButton) {
+            return;
+        }
+
+        const statusText = this.testingModeEnabled ? 'Testing Mode: On 🧪' : 'Testing Mode: Off';
+        this.testingModeButton.setText(statusText);
+    }
+
+    applyTestingModeToEnemy(enemy) {
+        if (!enemy) {
+            return;
+        }
+
+        const baseMax = typeof enemy.baseMaxHealth === 'number' && enemy.baseMaxHealth > 0
+            ? enemy.baseMaxHealth
+            : enemy.maxHealth;
+
+        if (!enemy._testingModeApplied) {
+            enemy._testingModePreviousHealth = Math.min(enemy.health, baseMax);
+        }
+
+        enemy.baseMaxHealth = baseMax;
+        enemy.maxHealth = 1;
+        enemy.health = Math.min(enemy.health, 1);
+        enemy._testingModeApplied = true;
+    }
+
+    restoreEnemyBaseStats(enemy) {
+        if (!enemy) {
+            return;
+        }
+
+        const baseMax = typeof enemy.baseMaxHealth === 'number' && enemy.baseMaxHealth > 0
+            ? enemy.baseMaxHealth
+            : enemy.maxHealth;
+
+        enemy.maxHealth = baseMax;
+
+        if (enemy._testingModeApplied) {
+            const previousHealth = typeof enemy._testingModePreviousHealth === 'number'
+                ? enemy._testingModePreviousHealth
+                : enemy.health;
+            const clampedHealth = Math.max(0, Math.min(previousHealth, enemy.maxHealth));
+            enemy.health = clampedHealth;
+        } else {
+            enemy.health = Math.min(enemy.health, enemy.maxHealth);
+        }
+
+        enemy._testingModeApplied = false;
+        enemy._testingModePreviousHealth = null;
+    }
+
     triggerGameOver() {
         if (this.isGameOver) {
             return;
@@ -1763,6 +1851,9 @@ export class GameScene extends Phaser.Scene {
             this.gameOverManager.hide();
         }
 
-        this.scene.restart({ isMuted: this.isMuted });
+        this.scene.restart({
+            isMuted: this.isMuted,
+            testingModeEnabled: this.testingModeEnabled
+        });
     }
 }

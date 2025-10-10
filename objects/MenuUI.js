@@ -86,7 +86,7 @@ export function createMenuUI(scene) {
     const closeButtonMargin = 32;
     const closeButtonY = panelHeight - closeButtonMargin - closeButtonHeight / 2;
     const settingsBottomLimit = closeButtonY - closeButtonHeight / 2 - gapBetweenSections;
-    const minSettingsHeight = 120;
+    const minSettingsHeight = 180;
     const settingsTopBase = comboTop + comboSectionHeight + gapBetweenSections;
     let settingsTop = Math.min(settingsTopBase, settingsBottomLimit - minSettingsHeight);
     settingsTop = Math.max(settingsTop, padding);
@@ -112,7 +112,10 @@ export function createMenuUI(scene) {
     }).setOrigin(0.5, 0);
     menuPanel.add(settingsTitle);
 
-    scene.muteButton = scene.add.text(panelWidth / 2, settingsTop + 74, '', {
+    const muteButtonY = settingsTop + 74;
+    const toggleSpacing = 60;
+
+    scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
         fontSize: '22px',
         color: '#ecf0f1',
         padding: { x: 18, y: 10 }
@@ -127,6 +130,23 @@ export function createMenuUI(scene) {
     setTextButtonEnabled(scene.muteButton, true);
     scene.muteButton.on('pointerdown', () => scene.toggleMute());
     menuPanel.add(scene.muteButton);
+
+    const testingButtonY = muteButtonY + toggleSpacing;
+    scene.testingModeButton = scene.add.text(panelWidth / 2, testingButtonY, '', {
+        fontSize: '22px',
+        color: '#ecf0f1',
+        padding: { x: 18, y: 10 }
+    }).setOrigin(0.5);
+    applyTextButtonStyle(scene.testingModeButton, {
+        baseColor: '#34495e',
+        textColor: '#ecf0f1',
+        hoverBlend: 0.2,
+        pressBlend: 0.3,
+        disabledBlend: 0.45
+    });
+    setTextButtonEnabled(scene.testingModeButton, true);
+    scene.testingModeButton.on('pointerdown', () => scene.toggleTestingMode());
+    menuPanel.add(scene.testingModeButton);
 
     scene.menuCloseButton = scene.add.rectangle(panelWidth / 2, closeButtonY, sectionWidth, 58, 0x2d1b3d, 0.92)
         .setInteractive({ useHandCursor: true });
@@ -152,4 +172,5 @@ export function createMenuUI(scene) {
     scene.menuPanel = menuPanel;
     scene.isMenuOpen = false;
     scene.updateMenuButtonLabel();
+    scene.updateTestingModeButtonState();
 }
