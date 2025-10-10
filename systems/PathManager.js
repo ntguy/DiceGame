@@ -8,13 +8,13 @@ const NODE_TYPES = {
 const ENEMY_SEQUENCE = [
     {
         enemyIndex: 0,
-        rewardGold: 600,
+        rewardGold: 50,
         label: 'Battle',
         start: true
     },
     {
         enemyIndex: 1,
-        rewardGold: 500, // TODO reduce
+        rewardGold: 70,
         label: 'Battle'
     },
     {

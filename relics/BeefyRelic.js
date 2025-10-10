@@ -7,7 +7,7 @@ export class BeefyRelic extends Relic {
             name: 'Beefy',
             description: '+20 Max HP and heal 20.',
             icon: '🥩',
-            cost: 120
+            cost: 100
         });
     }
 

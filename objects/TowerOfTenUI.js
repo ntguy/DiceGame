@@ -259,7 +259,7 @@ export class TowerOfTenUI {
                 fontSize: '16px',
                 color: '#d6f1ff',
                 wordWrap: { width: INSTRUCTIONS_WIDTH - 16 },
-                lineSpacing: 6
+                lineSpacing: 16
             }
         );
 
@@ -653,8 +653,8 @@ export class TowerOfTenUI {
             const instructionLines = [
                 '• Roll either 2 or 3 dice.',
                 '• Aim for a total as close to 10 without going over.',
+                `• 11+ loses (${penaltyText}) gold.`,
                 '• After rolling: cash out early, or re-roll some/all dice once.',
-                `• Busting loses half your gold (${penaltyText}).`
             ];
             this.instructionsBodyText.setText(instructionLines.join('\n'));
         }

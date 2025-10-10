@@ -7,7 +7,7 @@ export class ReRollWithItRelic extends Relic {
             name: 'Re-Roll with it',
             description: 'Gain 1 Defense per dice re-rolled.',
             icon: '🎲',
-            cost: 90
+            cost: 120
         });
     }
 
