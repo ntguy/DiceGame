@@ -15,12 +15,14 @@ export function resolveWildcardCombo(values, evaluateComboFn, {
         .map(entry => entry.index);
 
     if (wildcardIndices.length === 0) {
-        return evaluateComboFn(baseValues);
+        const evaluation = evaluateComboFn(baseValues);
+        return { ...evaluation, assignments: [...baseValues] };
     }
 
     let bestResult = null;
     let bestComboScore = -Infinity;
     let bestTotal = -Infinity;
+    let bestAssignments = null;
 
     const assignValue = (depth, workingValues) => {
         if (depth === wildcardIndices.length) {
@@ -35,6 +37,7 @@ export function resolveWildcardCombo(values, evaluateComboFn, {
                 bestComboScore = comboScore;
                 bestTotal = totalValue;
                 bestResult = evaluation;
+                bestAssignments = [...workingValues];
             }
             return;
         }
@@ -48,5 +51,13 @@ export function resolveWildcardCombo(values, evaluateComboFn, {
 
     assignValue(0, [...baseValues]);
 
-    return bestResult || { type: 'No combo' };
+    if (!bestResult) {
+        const evaluation = evaluateComboFn(baseValues);
+        return { ...evaluation, assignments: [...baseValues] };
+    }
+
+    return {
+        ...bestResult,
+        assignments: bestAssignments ? [...bestAssignments] : [...baseValues]
+    };
 }
