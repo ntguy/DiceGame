@@ -1,7 +1,5 @@
 import { CONSTANTS } from '../config.js';
 
-const EMOJI_TEXT_PADDING = { top: 6, bottom: 6 };
-
 export class RelicUIManager {
     constructor(scene) {
         this.scene = scene;
@@ -100,7 +98,7 @@ export class RelicUIManager {
 
                 const iconText = this.scene.add.text(x, baseY, relic.icon || '♦', {
                     fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE,
-                    padding: EMOJI_TEXT_PADDING
+                    padding: CONSTANTS.EMOJI_TEXT_PADDING
                 }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
                 iconBg.on('pointerdown', () => this.showRelicDetails(relic));

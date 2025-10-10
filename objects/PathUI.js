@@ -1,4 +1,5 @@
 import { PATH_NODE_TYPES } from '../systems/PathManager.js';
+import { CONSTANTS } from '../config.js';
 
 const COLORS = {
     [PATH_NODE_TYPES.ENEMY]: 0xe74c3c,
@@ -18,8 +19,6 @@ const ICONS = {
     [PATH_NODE_TYPES.TOWER]: '🎲',
     boss: '🔥'
 };
-
-const EMOJI_TEXT_PADDING = { top: 6, bottom: 6 };
 
 const LAYOUT = {
     baseY: 140,
@@ -120,7 +119,7 @@ export class PathUI {
             const iconText = this.scene.add.text(0, 0, icon || '?', {
                 fontSize: '24px',
                 color: '#000000',
-                padding: EMOJI_TEXT_PADDING
+                padding: CONSTANTS.EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
             const labelText = this.scene.add.text(0, 50, node.label || '', {

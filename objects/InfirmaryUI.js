@@ -1,7 +1,6 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
-
-const EMOJI_TEXT_PADDING = { top: 6, bottom: 6 };
+import { CONSTANTS } from '../config.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;
@@ -114,7 +113,7 @@ export class InfirmaryUI {
 
         const iconText = this.scene.add.text(0, -CARD_HEIGHT / 2 + 44, icon, {
             fontSize: '48px',
-            padding: EMOJI_TEXT_PADDING
+            padding: CONSTANTS.EMOJI_TEXT_PADDING
         }).setOrigin(0.5);
 
         const titleText = this.scene.add.text(0, iconText.y + 46, title, {
