@@ -5,7 +5,7 @@ const NODE_TYPES = {
     TOWER: 'tower'
 };
 
-const ENEMY_SEQUENCE = [
+const DEFAULT_ENEMY_SEQUENCE = [
     {
         enemyIndex: 0,
         rewardGold: 50,
@@ -31,13 +31,16 @@ const ENEMY_SEQUENCE = [
 ];
 
 export class PathManager {
-    constructor(randomSource = Math.random) {
+    constructor({ enemySequence } = {}, randomSource = Math.random) {
         this.randomFn = typeof randomSource === 'function' ? randomSource : Math.random;
         this.nodes = [];
         this.nodeMap = new Map();
         this.currentNodeId = null;
         this.completedNodeIds = new Set();
         this.previousFrontier = [];
+        this.enemySequence = Array.isArray(enemySequence) && enemySequence.length > 0
+            ? enemySequence.map(entry => ({ ...entry }))
+            : DEFAULT_ENEMY_SEQUENCE.map(entry => ({ ...entry }));
 
         this.generatePath();
 
@@ -50,7 +53,7 @@ export class PathManager {
     generatePath() {
         let currentRow = 0;
 
-        ENEMY_SEQUENCE.forEach((enemyData, index) => {
+        this.enemySequence.forEach((enemyData, index) => {
             const enemyId = `enemy-${index}`;
             const enemyNode = {
                 id: enemyId,
@@ -67,7 +70,7 @@ export class PathManager {
 
             this.addNode(enemyNode);
 
-            const isLastEnemy = index === ENEMY_SEQUENCE.length - 1;
+            const isLastEnemy = index === this.enemySequence.length - 1;
             if (isLastEnemy) {
                 return;
             }
@@ -177,3 +180,4 @@ export class PathManager {
 }
 
 export const PATH_NODE_TYPES = NODE_TYPES;
+export const DEFAULT_PATH_ENEMY_SEQUENCE = DEFAULT_ENEMY_SEQUENCE;
