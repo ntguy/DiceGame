@@ -2,15 +2,14 @@ import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 import { createDieFace, setDieBackgroundFill } from './ui/DieFace.js';
 
-const PANEL_WIDTH = 940;
-const PANEL_HEIGHT = 520;
-const INSTRUCTIONS_WIDTH = 320;
-const ACTION_BUTTON_WIDTH = 200;
+const PANEL_WIDTH = 820;
+const PANEL_HEIGHT = 550;
+const INSTRUCTIONS_WIDTH = 280;
 const DICE_SIZE = 80;
-const DICE_SPACING = 126;
-const TOWER_STEP_COUNT = 10;
-const TOWER_STEP_SIZE = 44;
-const TOWER_STEP_SPACING = 6;
+const DICE_SPACING = 100;
+const TOWER_STEP_COUNT = 11;
+const TOWER_STEP_SIZE = 40;
+const TOWER_STEP_SPACING = 2;
 
 const COLORS = {
     diceBase: 0x444444,
@@ -23,7 +22,26 @@ const COLORS = {
     button: 0x1c3a4d,
     buttonStroke: 0x5dade2,
     statusInfo: '#aed6f1',
-    statusWarning: '#f5b041'
+    statusWarning: '#f5b041',
+    rewardBronze: '#cd7f32',
+    rewardSilver: '#d5d8dc',
+    rewardGold: '#f9e79f',
+    rewardBust: '#ff7675',
+    towerBustFill: 0x000000
+};
+
+const TOWER_REWARD_INFO = {
+    1: { text: '10', color: COLORS.rewardBronze },
+    2: { text: '20', color: COLORS.rewardBronze },
+    3: { text: '30', color: COLORS.rewardBronze },
+    4: { text: '40', color: COLORS.rewardBronze },
+    5: { text: '50', color: COLORS.rewardBronze },
+    6: { text: '120', color: COLORS.rewardSilver },
+    7: { text: '140', color: COLORS.rewardSilver },
+    8: { text: '160', color: COLORS.rewardSilver },
+    9: { text: '270', color: COLORS.rewardGold },
+    10: { text: '300', color: COLORS.rewardGold },
+    11: { text: '💥', color: COLORS.rewardBust }
 };
 
 function rollDie() {
@@ -70,7 +88,6 @@ export class TowerOfTenUI {
             strokeColor: 0x5dade2,
             strokeAlpha: 0.95,
             title: 'Tower of Ten',
-            subtitle: 'Press your luck to climb the tower'
         });
 
         this.modal = modal;
@@ -94,15 +111,15 @@ export class TowerOfTenUI {
 
     createDiceCountButtons() {
         this.diceCountButtons = [];
-        const topY = -PANEL_HEIGHT / 2 + 120;
+        const topY = -PANEL_HEIGHT / 2 + 150;
         const configs = [
-            { count: 2, label: 'Play 2 Dice', x: -100 },
-            { count: 3, label: 'Play 3 Dice', x: 100 }
+            { count: 2, label: '2 Dice', x: -150 },
+            { count: 3, label: '3 Dice', x: -50 }
         ];
 
         configs.forEach(({ count, label, x }) => {
             const container = this.scene.add.container(x, topY);
-            const background = this.scene.add.rectangle(0, 0, 170, 52, COLORS.button, 0.92)
+            const background = this.scene.add.rectangle(0, 0, 100, 52, COLORS.button, 0.92)
                 .setStrokeStyle(2, COLORS.buttonStroke, 0.9)
                 .setInteractive({ useHandCursor: true });
 
@@ -142,54 +159,55 @@ export class TowerOfTenUI {
     }
 
     createTowerDisplay() {
-        const towerX = -PANEL_WIDTH / 2 + 150;
+        const towerX = -PANEL_WIDTH / 2 + 100;
         const towerContainer = this.scene.add.container(towerX, 20);
         const totalHeight = TOWER_STEP_COUNT * TOWER_STEP_SIZE + (TOWER_STEP_COUNT - 1) * TOWER_STEP_SPACING;
-        const header = this.scene.add.text(0, -totalHeight / 2 - 36, 'Tower Fill', {
-            fontSize: '22px',
-            color: '#eaf6fb',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        towerContainer.add(header);
 
         for (let i = 0; i < TOWER_STEP_COUNT; i += 1) {
             const level = TOWER_STEP_COUNT - i;
             const y = -totalHeight / 2 + i * (TOWER_STEP_SIZE + TOWER_STEP_SPACING) + TOWER_STEP_SIZE / 2;
             const stepRect = this.scene.add.rectangle(0, y, TOWER_STEP_SIZE, TOWER_STEP_SIZE, COLORS.towerBase, 0.7)
                 .setStrokeStyle(2, COLORS.buttonStroke, 0.6);
-            const label = this.scene.add.text(0, y, `${level}`, {
+            const labelText = level === 11 ? '11+' : `${level}`;
+            const label = this.scene.add.text(0, y, labelText, {
                 fontSize: '18px',
                 color: '#0b1a2b'
             }).setOrigin(0.5);
 
+            const rewardInfo = TOWER_REWARD_INFO[level] || { text: '', color: '#ffffff' };
+            const rewardLabel = this.scene.add.text(-(TOWER_STEP_SIZE / 2) - 12, y, rewardInfo.text, {
+                fontSize: '16px',
+                color: rewardInfo.color
+            }).setOrigin(1, 0.5);
+
             towerContainer.add(stepRect);
             towerContainer.add(label);
-            this.towerSteps.push({ level, rect: stepRect, label });
+            towerContainer.add(rewardLabel);
+            this.towerSteps.push({ level, rect: stepRect, label, rewardLabel, rewardColor: rewardInfo.color });
         }
 
         this.container.add(towerContainer);
     }
 
     createDiceDisplay() {
-        this.diceContainer = this.scene.add.container(0, 20);
+        this.diceContainer = this.scene.add.container(-100, 0);
         this.container.add(this.diceContainer);
     }
 
     createStatusTexts() {
-        const totalY = PANEL_HEIGHT / 2 - 150;
-        this.totalText = this.scene.add.text(0, totalY, 'Total: --', {
+        const totalY = PANEL_HEIGHT / 2 - 180;
+        this.totalText = this.scene.add.text(-100, totalY, 'Total: --', {
             fontSize: '22px',
             color: '#d6eaf8',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.payoutText = this.scene.add.text(0, totalY + 34, 'Potential Reward: --', {
+        this.payoutText = this.scene.add.text(-100, totalY + 34, 'Potential Reward: --', {
             fontSize: '18px',
             color: '#d6eaf8'
         }).setOrigin(0.5);
 
-        this.statusText = this.scene.add.text(0, totalY + 80, '', {
+        this.statusText = this.scene.add.text(-100, totalY - 180, '', {
             fontSize: '18px',
             color: COLORS.statusInfo
         }).setOrigin(0.5);
@@ -203,68 +221,53 @@ export class TowerOfTenUI {
         const bottomY = PANEL_HEIGHT / 2 - 60;
 
         this.rollButton = this.createActionButton({
-            x: -160,
+            x: -100,
             y: bottomY,
             label: 'Roll Dice',
-            onClick: () => this.handleRollAction()
+            onClick: () => this.handleRollAction(),
+            width: 160,
         });
 
         this.finishButton = this.createActionButton({
-            x: 180,
+            x: PANEL_WIDTH / 2 - INSTRUCTIONS_WIDTH / 2 - 32,
             y: bottomY,
             label: 'Leave (0g)',
-            onClick: () => this.handleFinish()
+            onClick: () => this.handleFinish(),
+            width: 200,
         });
     }
 
     createInstructionPanel() {
-        const panelHeight = PANEL_HEIGHT - 120;
+        const panelHeight = PANEL_HEIGHT - 250;
         const x = PANEL_WIDTH / 2 - INSTRUCTIONS_WIDTH / 2 - 32;
         const instructionsContainer = this.scene.add.container(x, 20);
 
         const background = this.scene.add.rectangle(0, 0, INSTRUCTIONS_WIDTH, panelHeight, COLORS.instructionsBg, 0.92)
             .setStrokeStyle(2, COLORS.instructionsStroke, 0.8);
 
-        const title = this.scene.add.text(0, -panelHeight / 2 + 24, 'How it works', {
+        const title = this.scene.add.text(0, -panelHeight / 2 + 24, 'Instructions', {
             fontSize: '22px',
             color: '#eaf6fb',
             fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
         const bodyText = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, title.y + 40,
-            '• Pick 2 or 3 dice before rolling.\n' +
-            '• Dice show ? until rolled. Totals of 1-10 turn tiers gold; 11+ stays white.\n' +
-            '• After the first roll, click dice to choose which ones will roll again.\n' +
-            '• Cash out with the right button — totals 11+ earn no gold.',
+            '• Roll either 2 or 3 dice.\n' +
+            '• Aim for a total as close to 10 without going over.\n' +
+            '• After rolling: cash out early, or re-roll some/all dice once.\n',
             {
                 fontSize: '16px',
                 color: '#d6f1ff',
-                wordWrap: { width: INSTRUCTIONS_WIDTH - 32 },
+                wordWrap: { width: INSTRUCTIONS_WIDTH - 16 },
                 lineSpacing: 6
             }
         );
 
-        const payoutsTitle = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, bodyText.y + bodyText.height + 28,
-            'Payout Tiers', {
-                fontSize: '18px',
-                color: '#f7c873',
-                fontStyle: 'bold'
-            }
-        );
-
-        const payoutDetails = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, payoutsTitle.y + 26,
-            '1 – 5  → total ×10 gold\n6 – 8  → total ×20 gold\n9 – 10 → total ×30 gold\n11+    → bust (0 gold)',
-            {
-                fontSize: '16px',
-                color: '#d6f1ff',
-                lineSpacing: 6
-            }
-        );
-        instructionsContainer.add([background, title, bodyText, payoutsTitle, payoutDetails]);
+        instructionsContainer.add([background, title, bodyText]);
         this.container.add(instructionsContainer);
     }
 
-    createActionButton({ x, y, label, onClick, width = ACTION_BUTTON_WIDTH }) {
+    createActionButton({ x, y, label, onClick, width }) {
         const container = this.scene.add.container(x, y);
         const background = this.scene.add.rectangle(0, 0, width, 52, COLORS.button, 0.92)
             .setStrokeStyle(2, COLORS.buttonStroke, 0.9)
@@ -436,19 +439,46 @@ export class TowerOfTenUI {
 
     updateTowerFill() {
         const total = this.getCurrentTotal();
-        this.towerSteps.forEach(({ level, rect, label }) => {
+        this.towerSteps.forEach(({ level, rect, label, rewardLabel, rewardColor }) => {
+            const baseLabelColor = '#0b1a2b';
+            const fadedColor = '#5b6a7f';
+            const bustTextColor = '#f8f8f8';
+
             if (!this.hasRolled) {
-                rect.setFillStyle(COLORS.towerBase, 0.35);
-                label.setColor('#0b1a2b');
+                rect.setStrokeStyle(2, COLORS.buttonStroke, 0.6);
+                rect.setFillStyle(COLORS.towerBase, level === 11 ? 0.25 : 0.35);
+                label.setColor(baseLabelColor);
+                rewardLabel.setColor(rewardColor);
+                return;
+            }
+
+            if (total > 11) {
+                rect.setStrokeStyle(2, COLORS.towerBustFill, 0.9);
+                rect.setFillStyle(COLORS.towerBustFill, 0.98);
+                label.setColor(bustTextColor);
+                rewardLabel.setColor(bustTextColor);
+                return;
+            }
+
+            if (total === 11 && level === 11) {
+                rect.setStrokeStyle(2, COLORS.buttonStroke, 0.9);
+                rect.setFillStyle(COLORS.towerHighlight, 0.95);
+                label.setColor(baseLabelColor);
+                rewardLabel.setColor(rewardColor);
                 return;
             }
 
             if (total >= level && total <= 10) {
+                rect.setStrokeStyle(2, COLORS.buttonStroke, 0.9);
                 rect.setFillStyle(COLORS.towerHighlight, 0.95);
-                label.setColor('#0b1a2b');
+                label.setColor(baseLabelColor);
+                rewardLabel.setColor(rewardColor);
             } else {
+                rect.setStrokeStyle(2, COLORS.buttonStroke, 0.6);
                 rect.setFillStyle(COLORS.towerBase, total > 10 ? 0.25 : 0.55);
-                label.setColor(total > 10 ? '#5b6a7f' : '#0b1a2b');
+                const textColor = total > 10 ? fadedColor : baseLabelColor;
+                label.setColor(textColor);
+                rewardLabel.setColor(total > 10 ? fadedColor : rewardColor);
             }
         });
     }
@@ -489,7 +519,7 @@ export class TowerOfTenUI {
         }
         const anySelected = this.diceSelected.some(selected => selected);
         if (!anySelected) {
-            this.statusText.setText('Select at least one die to roll, or cash out.');
+            this.statusText.setText('Select dice to roll, or cash out.');
             this.statusText.setColor(COLORS.statusWarning);
             return;
         }
@@ -501,7 +531,7 @@ export class TowerOfTenUI {
         this.hasRolled = true;
         this.rerollUsed = false;
         this.diceSelected = this.diceSelected.map(() => false);
-        this.statusText.setText('Select dice to roll again, then press Re-Roll Dice.');
+        this.statusText.setText('Select dice to re-roll, or cash out.');
         this.statusText.setColor(COLORS.statusInfo);
         this.hideDiceCountButtons();
         this.updateDiceDisplay();
@@ -515,7 +545,9 @@ export class TowerOfTenUI {
         this.diceValues = this.diceValues.map((value, index) => (this.diceSelected[index] ? rollDie() : value));
         this.rerollUsed = true;
         this.diceSelected = this.diceSelected.map(() => false);
-        this.statusText.setText('Final result locked in. Cash out to continue.');
+        this.statusText.setText(
+            'Final result locked in.\n' +
+            ' Cash out to continue.');
         this.statusText.setColor(COLORS.statusInfo);
         this.updateDiceDisplay();
         this.updateTowerFill();
@@ -530,7 +562,7 @@ export class TowerOfTenUI {
         } else if (!this.rerollUsed) {
             this.rollButton.text.setText('Re-Roll Dice');
         } else {
-            this.rollButton.text.setText('Re-roll Used');
+            this.rollButton.text.setText('Re-Roll Used');
         }
     }
 
