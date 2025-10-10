@@ -4,6 +4,9 @@ import { LockjawEnemy } from '../enemies/Lockjaw.js';
 import { InfernoEnemy } from '../enemies/Inferno.js';
 import { WallopEnemy } from '../enemies/Wallop.js';
 import { DEFAULT_PATH_ENEMY_SEQUENCE } from '../systems/PathManager.js';
+import { WeakenerEnemy } from '../enemies/Weakener.js';
+import { StraightArrowEnemy } from '../enemies/StraightArrow.js';
+import { LockdownEnemy } from '../enemies/Lockdown.js';
 
 const mapOneEnemyFactories = () => [
     new SlapperEnemy(),
@@ -14,9 +17,9 @@ const mapOneEnemyFactories = () => [
 
 const mapTwoEnemyFactories = () => [
     new WallopEnemy(),
-    new HotfixEnemy(),
-    new LockjawEnemy(),
-    new InfernoEnemy()
+    new WeakenerEnemy(),
+    new StraightArrowEnemy(),
+    new LockdownEnemy()
 ];
 
 const mapTwoEnemySequence = [
@@ -38,7 +41,7 @@ const mapTwoEnemySequence = [
     },
     {
         enemyIndex: 3,
-        rewardGold: 200,
+        rewardGold: 220,
         label: 'Boss',
         isBoss: true
     }

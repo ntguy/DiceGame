@@ -37,6 +37,7 @@ export class GameScene extends Phaser.Scene {
         this.enemyManager = null;
         this.enemyHealthBar = null;
         this.enemyIntentText = null;
+        this.enemyStatusText = null;
         this.upcomingEnemyMove = null;
         this.isResolving = false;
         this.playerBlockValue = 0;
@@ -45,6 +46,8 @@ export class GameScene extends Phaser.Scene {
         this.playerBurnGlowTween = null;
         this.lockedDice = new Set();
         this.pendingLockCount = 0;
+        this.weakenedDice = new Set();
+        this.pendingWeakenCount = 0;
         this.gameOverManager = null;
         this.muteButton = null;
         this.isMuted = false;
@@ -75,6 +78,11 @@ export class GameScene extends Phaser.Scene {
         this.maps = Array.isArray(MAP_CONFIGS) ? [...MAP_CONFIGS] : [];
         this.currentMapIndex = -1;
         this.currentMapConfig = null;
+
+        this.lockedDice = new Set();
+        this.pendingLockCount = 0;
+        this.weakenedDice = new Set();
+        this.pendingWeakenCount = 0;
     }
 
     resetRelicState() {
@@ -150,6 +158,8 @@ export class GameScene extends Phaser.Scene {
         this.dice = [];
         this.lockedDice = new Set();
         this.pendingLockCount = 0;
+        this.weakenedDice = new Set();
+        this.pendingWeakenCount = 0;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerBlockValue = 0;
         this.playerBurn = 0;
@@ -216,6 +226,11 @@ export class GameScene extends Phaser.Scene {
         const initialEnemy = this.enemyManager.getCurrentEnemy();
         this.enemyHealthBar = setupEnemyUI(this, initialEnemy ? initialEnemy.name : '???');
         this.enemyIntentText = this.enemyHealthBar.intentText;
+        this.enemyStatusText = this.enemyHealthBar.statusText;
+        if (this.enemyStatusText) {
+            this.enemyStatusText.setText('');
+            this.enemyStatusText.setVisible(false);
+        }
         const mapLoaded = this.loadMap(0);
         if (!mapLoaded) {
             this.pathManager = new PathManager();
@@ -334,7 +349,14 @@ export class GameScene extends Phaser.Scene {
         const diceValues = Array.isArray(diceList)
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
             : [];
-        const baseDiceSum = diceValues.reduce((sum, value) => sum + value, 0);
+        const baseDiceSum = Array.isArray(diceList)
+            ? diceList.reduce((sum, die) => {
+                if (!die || typeof die.value !== 'number') {
+                    return sum;
+                }
+                return sum + (die.isWeakened ? 0 : die.value);
+            }, 0)
+            : 0;
         const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0;
         const comboInfo = this.hasWildOneRelic
             ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) })
@@ -360,6 +382,18 @@ export class GameScene extends Phaser.Scene {
 
         const gained = count * this.rerollDefensePerDie;
         this.rerollDefenseBonus += gained;
+    }
+
+    notifyEnemyOfRerolls(count) {
+        if (!this.enemyManager || count <= 0) {
+            return;
+        }
+
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (enemy && typeof enemy.onPlayerReroll === 'function') {
+            enemy.onPlayerReroll(count, this.enemyManager);
+            this.updateEnemyStatusText();
+        }
     }
 
     updateWildcardDisplays({ defendAssignments, attackAssignments } = {}) {
@@ -489,10 +523,12 @@ export class GameScene extends Phaser.Scene {
 
         if (!isFirstRoll && rerolledCount > 0) {
             this.applyRerollDefenseBonus(rerolledCount);
+            this.notifyEnemyOfRerolls(rerolledCount);
         }
 
         if (isFirstRoll) {
             this.applyPendingLocks();
+            this.applyPendingWeaken();
         }
 
 
@@ -535,6 +571,32 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
     }
 
+    applyPendingWeaken() {
+        if (this.pendingWeakenCount <= 0 || this.dice.length === 0) {
+            return;
+        }
+
+        const availableDice = this.dice.filter(die => die && !this.weakenedDice.has(die));
+        if (availableDice.length === 0) {
+            return;
+        }
+
+        const weakenToApply = Math.min(this.pendingWeakenCount, availableDice.length);
+        let remaining = weakenToApply;
+        const candidates = [...availableDice];
+
+        while (remaining > 0 && candidates.length > 0) {
+            const index = Phaser.Math.Between(0, candidates.length - 1);
+            const die = candidates.splice(index, 1)[0];
+            if (this.weakenDie(die)) {
+                remaining--;
+            }
+        }
+
+        this.pendingWeakenCount = Math.max(0, this.pendingWeakenCount - weakenToApply);
+        this.updateZonePreviewText();
+    }
+
     lockDie(die) {
         if (!die || die.isLocked) {
             return false;
@@ -542,6 +604,24 @@ export class GameScene extends Phaser.Scene {
 
         die.setLocked(true);
         this.lockedDice.add(die);
+        return true;
+    }
+
+    weakenDie(die) {
+        if (!die || die.isWeakened) {
+            return false;
+        }
+
+        if (typeof die.setWeakened === 'function') {
+            die.setWeakened(true);
+        } else {
+            die.isWeakened = true;
+            if (typeof die.updateVisualState === 'function') {
+                die.updateVisualState();
+            }
+        }
+
+        this.weakenedDice.add(die);
         return true;
     }
 
@@ -561,6 +641,40 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + count);
+    }
+
+    clearDieWeaken(die) {
+        if (!die || !this.weakenedDice.has(die)) {
+            return;
+        }
+
+        const canUpdateVisuals = die && die.active && die.scene && die.scene.sys && die.scene.sys.isActive();
+
+        if (typeof die.setWeakened === 'function' && canUpdateVisuals) {
+            die.setWeakened(false);
+        } else {
+            die.isWeakened = false;
+            if (typeof die.updateVisualState === 'function' && canUpdateVisuals) {
+                die.updateVisualState();
+            }
+        }
+
+        this.weakenedDice.delete(die);
+    }
+
+    clearAllWeakenedDice() {
+        const dice = Array.from(this.weakenedDice);
+        dice.forEach(die => this.clearDieWeaken(die));
+        this.weakenedDice.clear();
+        this.updateZonePreviewText();
+    }
+
+    queueEnemyWeaken(count) {
+        if (!count || count <= 0) {
+            return;
+        }
+
+        this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + count);
     }
 
     sortDice() {
@@ -634,13 +748,20 @@ export class GameScene extends Phaser.Scene {
         const locksToCarryOver = Array.from(this.lockedDice).filter(die =>
             this.defendDice.includes(die) || this.attackDice.includes(die)
         ).length;
+        const weakenedToCarryOver = Array.from(this.weakenedDice).filter(die =>
+            this.defendDice.includes(die) || this.attackDice.includes(die)
+        ).length;
 
         const diceToResolve = this.getDiceInPlay();
         const finishResolution = () => {
             if (locksToCarryOver > 0) {
                 this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + locksToCarryOver);
             }
+            if (weakenedToCarryOver > 0) {
+                this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + weakenedToCarryOver);
+            }
             this.lockedDice.clear();
+            this.clearAllWeakenedDice();
             this.resetGameState({ destroyDice: false });
             if (this.pendingPostCombatTransition) {
                 this.disableAllInputs();
@@ -654,7 +775,7 @@ export class GameScene extends Phaser.Scene {
             this.tryEnterMapStateAfterCombat();
         };
 
-        this.processTurnOutcome({ attackScore, defendScore });
+        this.processTurnOutcome({ attackScore, defendScore, attackResult, defendResult });
 
         if (diceToResolve.length === 0) {
             this.time.delayedCall(1000, finishResolution);
@@ -711,7 +832,7 @@ export class GameScene extends Phaser.Scene {
 
             die.disableInteractive();
             die.setDepth(10);
-            die.setAlpha(1);
+            die.setAlpha(die.isWeakened ? 0.5 : 1);
 
             const inZone = this.defendDice.includes(die) || this.attackDice.includes(die);
 
@@ -1000,7 +1121,7 @@ export class GameScene extends Phaser.Scene {
         return loaded;
     }
 
-    processTurnOutcome({ attackScore, defendScore }) {
+    processTurnOutcome({ attackScore, defendScore, attackResult, defendResult }) {
         if (!this.enemyManager) {
             return;
         }
@@ -1016,8 +1137,21 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        let effectiveAttackScore = attackScore;
+        if (enemy && typeof enemy.modifyIncomingAttack === 'function') {
+            const modified = enemy.modifyIncomingAttack({
+                attackScore,
+                defendScore,
+                attackResult,
+                defendResult
+            });
+            if (typeof modified === 'number' && !Number.isNaN(modified)) {
+                effectiveAttackScore = Math.max(0, modified);
+            }
+        }
+
         this.enemyManager.primeUpcomingDefenses();
-        this.enemyManager.applyPlayerAttack(attackScore);
+        this.enemyManager.applyPlayerAttack(effectiveAttackScore);
         this.updateEnemyHealthUI();
 
         if (this.enemyManager.isCurrentEnemyDefeated()) {
@@ -1062,6 +1196,7 @@ export class GameScene extends Phaser.Scene {
                 const hasPending = this.pathManager ? this.pathManager.hasPendingNodes() : false;
                 this.enemyIntentText.setText(hasPending ? 'Select your next node' : 'All enemies defeated');
             }
+            this.updateEnemyStatusText();
             return;
         }
 
@@ -1069,6 +1204,36 @@ export class GameScene extends Phaser.Scene {
         if (this.enemyIntentText) {
             const label = this.upcomingEnemyMove ? this.upcomingEnemyMove.label : '...';
             this.enemyIntentText.setText(`Next: ${label}`);
+        }
+        this.updateEnemyStatusText();
+    }
+
+    updateEnemyStatusText() {
+        if (!this.enemyStatusText) {
+            return;
+        }
+
+        const hasEnemyManager = !!this.enemyManager;
+        const enemy = hasEnemyManager ? this.enemyManager.getCurrentEnemy() : null;
+        const isEnemyActive = hasEnemyManager && enemy && !this.enemyManager.isCurrentEnemyDefeated();
+
+        if (!isEnemyActive) {
+            this.enemyStatusText.setText('');
+            this.enemyStatusText.setVisible(false);
+            return;
+        }
+
+        let statusDescription = '';
+        if (enemy && typeof enemy.getStatusDescription === 'function') {
+            statusDescription = enemy.getStatusDescription(this.upcomingEnemyMove) || '';
+        }
+
+        if (statusDescription) {
+            this.enemyStatusText.setText(statusDescription);
+            this.enemyStatusText.setVisible(true);
+        } else {
+            this.enemyStatusText.setText('');
+            this.enemyStatusText.setVisible(false);
         }
     }
 
@@ -1103,6 +1268,8 @@ export class GameScene extends Phaser.Scene {
                 }
             } else if (action.type === 'lock') {
                 this.queueEnemyLocks(action.count || 1);
+            } else if (action.type === 'weaken') {
+                this.queueEnemyWeaken(action.count || 1);
             } else if (action.type === 'burn') {
                 this.applyPlayerBurn(action.value);
             }
@@ -1250,11 +1417,16 @@ export class GameScene extends Phaser.Scene {
 
         this.pendingLockCount = 0;
         this.lockedDice.clear();
+        this.pendingWeakenCount = 0;
+        this.weakenedDice.clear();
         this.resetGameState({ destroyDice: true });
         this.setMapMode(false);
 
         const enemy = this.enemyManager.startEnemyEncounter(node.enemyIndex);
         if (enemy) {
+            if (typeof enemy.onEncounterStart === 'function') {
+                enemy.onEncounterStart();
+            }
             if (this.testingModeEnabled) {
                 this.applyTestingModeToEnemy(enemy);
             } else {
@@ -1269,6 +1441,7 @@ export class GameScene extends Phaser.Scene {
 
         this.updateEnemyHealthUI();
         this.prepareNextEnemyMove();
+        this.updateEnemyStatusText();
         this.updateRollButtonState();
 
         if (this.resolveButton) {
@@ -1739,6 +1912,7 @@ export class GameScene extends Phaser.Scene {
         if (this.enemyIntentText) {
             this.enemyIntentText.setText('All enemies defeated');
         }
+        this.updateEnemyStatusText();
 
         this.updateEnemyHealthUI();
 
@@ -1748,6 +1922,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     resetGameState({ destroyDice = true } = {}) {
+        this.clearAllWeakenedDice();
         if (destroyDice) {
             this.getDiceInPlay().forEach(d => d.destroy());
         }
@@ -1841,7 +2016,7 @@ export class GameScene extends Phaser.Scene {
         setVisibility(this.attackComboText, showCombatUI);
 
         if (this.enemyHealthBar) {
-            const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText'];
+            const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText', 'statusText'];
             elements.forEach(key => {
                 const element = this.enemyHealthBar[key];
                 if (element) {

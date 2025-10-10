@@ -25,6 +25,7 @@ export function createDie(scene, slotIndex) {
     container.slotIndex = slotIndex;
     container.pips = [];
     container.isLocked = false;
+    container.isWeakened = false;
     container.displayValue = container.value;
     container.displayPipColor = 0xffffff;
 
@@ -48,6 +49,11 @@ export function createDie(scene, slotIndex) {
         this.updateVisualState();
     };
 
+    container.setWeakened = function(isWeakened) {
+        this.isWeakened = !!isWeakened;
+        this.updateVisualState();
+    };
+
     container.updateVisualState = function() {
         if (this.isLocked) {
             this.bg.fillColor = 0x5b2c6f;
@@ -56,6 +62,7 @@ export function createDie(scene, slotIndex) {
             this.lockOverlay.setVisible(false);
             this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
         }
+        this.setAlpha(this.isWeakened ? 0.5 : 1);
     };
 
     const initialPipColor = container.value === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
