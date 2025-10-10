@@ -15,6 +15,12 @@ import { RelicUIManager } from './objects/RelicUI.js';
 import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
 import { BeefyRelic } from './relics/BeefyRelic.js';
 import { FamilyRelic } from './relics/FamilyRelic.js';
+import { ReRollWithItRelic } from './relics/ReRollWithItRelic.js';
+import { WildOneRelic } from './relics/WildOneRelic.js';
+import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
+import { resolveWildcardCombo } from './systems/WildcardLogic.js';
+
+const SHOP_RELIC_COUNT = 3;
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -68,10 +74,15 @@ export class GameScene extends Phaser.Scene {
         this.relicCatalog = [];
         this.relics = [];
         this.ownedRelicIds = new Set();
+        this.currentShopRelics = [];
         this.hasBlockbusterRelic = false;
         this.blockDamageMultiplier = 1;
         this.hasFamilyRelic = false;
         this.familyHealPerFullHouse = 0;
+        this.rerollDefensePerDie = 0;
+        this.rerollDefenseBonus = 0;
+        this.hasWildOneRelic = false;
+        this.unlocksOnLongStraights = false;
         if (this.relicUI) {
             this.relicUI.reset();
         }
@@ -138,7 +149,10 @@ export class GameScene extends Phaser.Scene {
         this.relicCatalog = [
             new BlockbusterRelic(),
             new BeefyRelic(),
-            new FamilyRelic()
+            new FamilyRelic(),
+            new ReRollWithItRelic(),
+            new WildOneRelic(),
+            new UnlockedAndLoadedRelic()
         ];
         this.resetMenuState();
 
@@ -298,18 +312,35 @@ export class GameScene extends Phaser.Scene {
         // Update logic here
     }
 
-    computeZoneScore(diceList) {
+    computeZoneScore(diceList, { zone } = {}) {
         const baseSum = diceList.reduce((sum, die) => sum + die.value, 0);
-        const comboInfo = evaluateCombo(diceList);
+        const comboInfo = this.hasWildOneRelic
+            ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) })
+            : evaluateCombo(diceList);
         const comboType = comboInfo.type;
         const comboBonus = scoreCombo(comboType);
+        let extraBonus = 0;
+
+        if (zone === 'defend' && this.rerollDefenseBonus > 0) {
+            extraBonus += this.rerollDefenseBonus;
+        }
 
         return {
             baseSum,
             comboBonus,
+            extraBonus,
             comboType,
-            total: baseSum + comboBonus
+            total: baseSum + comboBonus + extraBonus
         };
+    }
+
+    applyRerollDefenseBonus(count) {
+        if (!this.rerollDefensePerDie || count <= 0) {
+            return;
+        }
+
+        const gained = count * this.rerollDefensePerDie;
+        this.rerollDefenseBonus += gained;
     }
 
     updateZonePreviewText() {
@@ -317,10 +348,16 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        const defendScore = this.computeZoneScore(this.defendDice || []);
-        const attackScore = this.computeZoneScore(this.attackDice || []);
+        const defendScore = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
+        const attackScore = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
 
-        const formatScoreLine = score => `${score.total}: ${score.baseSum}+${score.comboBonus}`;
+        const formatScoreLine = score => {
+            const breakdown = [`${score.baseSum}`, `${score.comboBonus}`];
+            if (score.extraBonus) {
+                breakdown.push(`${score.extraBonus}`);
+            }
+            return `${score.total}: ${breakdown.join('+')}`;
+        };
         const formatComboLine = score => `${score.comboType}`;
 
         this.defendPreviewText.setText(formatScoreLine(defendScore));
@@ -371,13 +408,21 @@ export class GameScene extends Phaser.Scene {
         }
 
         // Roll dice (first roll = all dice, later rolls = only selected dice)
+        let rerolledCount = 0;
         diceInPlay.forEach(d => {
             if (isFirstRoll || d.selected) {
+                if (!isFirstRoll && d.selected) {
+                    rerolledCount++;
+                }
                 d.roll();
                 d.selected = false;
                 d.updateVisualState();
             }
         });
+
+        if (!isFirstRoll && rerolledCount > 0) {
+            this.applyRerollDefenseBonus(rerolledCount);
+        }
 
         if (isFirstRoll) {
             this.applyPendingLocks();
@@ -433,6 +478,16 @@ export class GameScene extends Phaser.Scene {
         return true;
     }
 
+    unlockAllDice() {
+        const diceInPlay = this.getDiceInPlay();
+        diceInPlay.forEach(die => {
+            if (die && die.isLocked) {
+                die.setLocked(false);
+            }
+        });
+        this.lockedDice.clear();
+    }
+
     queueEnemyLocks(count) {
         if (!count || count <= 0) {
             return;
@@ -482,8 +537,8 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Calculate scores
-        const defendResult = this.computeZoneScore(this.defendDice || []);
-        const attackResult = this.computeZoneScore(this.attackDice || []);
+        const defendResult = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
+        const attackResult = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
         const defendScore = defendResult.total;
         const attackScore = attackResult.total;
 
@@ -497,6 +552,13 @@ export class GameScene extends Phaser.Scene {
             }
             if (healAmount > 0) {
                 this.healPlayer(healAmount);
+            }
+        }
+
+        if (this.unlocksOnLongStraights) {
+            const unlockCombos = ['Straight Penta', 'Straight Sex'];
+            if (unlockCombos.includes(defendResult.comboType) || unlockCombos.includes(attackResult.comboType)) {
+                this.unlockAllDice();
             }
         }
 
@@ -1086,6 +1148,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.destroyFacilityUI();
+        this.currentShopRelics = this.rollShopRelics(SHOP_RELIC_COUNT);
 
         this.activeFacilityUI = new ShopUI(this, {
             relics: this.getRelicShopState(),
@@ -1097,6 +1160,7 @@ export class GameScene extends Phaser.Scene {
     handleShopPurchase(relicId) {
         const relic = this.attemptPurchaseRelic(relicId);
         if (relic) {
+            this.updateShopSelectionAfterPurchase(relicId);
             this.refreshShopInterface();
             return true;
         }
@@ -1110,19 +1174,55 @@ export class GameScene extends Phaser.Scene {
     }
 
     getRelicShopState() {
-        return this.relicCatalog.map(relic => ({
+        if (!Array.isArray(this.currentShopRelics) || this.currentShopRelics.length === 0) {
+            this.currentShopRelics = this.rollShopRelics(SHOP_RELIC_COUNT);
+        }
+
+        return this.currentShopRelics.map(relic => ({
             id: relic.id,
             name: relic.name,
             description: relic.description,
             icon: relic.icon,
             cost: relic.cost,
-            owned: this.ownedRelicIds.has(relic.id),
             canAfford: this.playerGold >= relic.cost
         }));
     }
 
+    rollShopRelics(count = SHOP_RELIC_COUNT) {
+        const available = this.getUnownedRelics();
+        const pool = available.slice();
+        const selections = [];
+
+        while (selections.length < count && pool.length > 0) {
+            const index = Phaser.Math.Between(0, pool.length - 1);
+            selections.push(pool.splice(index, 1)[0]);
+        }
+
+        return selections;
+    }
+
+    getUnownedRelics() {
+        return this.relicCatalog.filter(relic => !this.ownedRelicIds.has(relic.id));
+    }
+
+    updateShopSelectionAfterPurchase(purchasedId) {
+        if (!Array.isArray(this.currentShopRelics) || this.currentShopRelics.length === 0) {
+            return;
+        }
+
+        const desiredCount = this.currentShopRelics.length;
+        this.currentShopRelics = this.currentShopRelics.filter(relic => relic.id !== purchasedId);
+
+        const available = this.getUnownedRelics().filter(relic => !this.currentShopRelics.some(current => current.id === relic.id));
+        while (this.currentShopRelics.length < desiredCount && available.length > 0) {
+            const index = Phaser.Math.Between(0, available.length - 1);
+            this.currentShopRelics.push(available.splice(index, 1)[0]);
+        }
+    }
+
     closeShop() {
         this.destroyFacilityUI();
+        this.currentShopRelics = [];
 
         if (this.pathManager) {
             this.pathManager.completeCurrentNode();
@@ -1451,6 +1551,7 @@ export class GameScene extends Phaser.Scene {
         this.attackSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
 
         this.playerBlockValue = 0;
+        this.rerollDefenseBonus = 0;
 
         // Reset roll counter
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;

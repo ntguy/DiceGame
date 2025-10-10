@@ -14,17 +14,20 @@ export const COMBO_POINTS = {
     "No combo": 0
 };
 
-export function evaluateCombo(diceArray) {
-    // Extract values from dice objects
-    const values = diceArray.map(d => d.value).sort((a, b) => a - b);
-    const counts = {};
-    values.forEach(v => counts[v] = (counts[v] || 0) + 1);
+function evaluateComboInternal(values) {
+    if (!Array.isArray(values) || values.length === 0) {
+        return { type: "No combo" };
+    }
 
-    const numDice = values.length;
+    const sortedValues = [...values].sort((a, b) => a - b);
+    const counts = {};
+    sortedValues.forEach(v => counts[v] = (counts[v] || 0) + 1);
+
+    const numDice = sortedValues.length;
 
     // --- Straight ---
     if (numDice >= 3) {
-        if (isStraight(values)) {
+        if (isStraight(sortedValues)) {
             switch (numDice) {
                 case 6: return { type: "Straight Sex" };
                 case 5: return { type: "Straight Penta" };
@@ -63,6 +66,22 @@ export function evaluateCombo(diceArray) {
 
     // --- No combo ---
     return { type: "No combo" };
+}
+
+export function evaluateCombo(diceArray, options = {}) {
+    const values = Array.isArray(diceArray)
+        ? diceArray.map(d => typeof d.value === 'number' ? d.value : 0)
+        : [];
+
+    const resolver = options.resolveWildcards;
+    if (typeof resolver === 'function') {
+        const resolved = resolver([...values], evaluateComboInternal);
+        if (resolved && typeof resolved.type === 'string') {
+            return resolved;
+        }
+    }
+
+    return evaluateComboInternal(values);
 }
 
 export function scoreCombo(comboType) {

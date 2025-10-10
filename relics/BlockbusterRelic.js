@@ -6,7 +6,8 @@ export class BlockbusterRelic extends Relic {
             id: 'blockbuster',
             name: 'Blockbuster',
             description: 'Deal double damage to enemy block.',
-            icon: '🎬'
+            icon: '🎬',
+            cost: 150
         });
     }
 
