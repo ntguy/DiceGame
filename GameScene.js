@@ -1381,11 +1381,15 @@ export class GameScene extends Phaser.Scene {
         this.enterMapState();
     }
 
-    handleTowerOfTenResult({ gold = 0, total = 0, outcome = 'leave' } = {}) {
+    handleTowerOfTenResult({ gold = 0, penalty = 0, total = 0, outcome = 'leave' } = {}) {
         this.destroyFacilityUI();
 
         if (gold > 0) {
             this.addGold(gold);
+        }
+
+        if (penalty > 0) {
+            this.spendGold(penalty);
         }
 
         let message = '';
@@ -1397,7 +1401,9 @@ export class GameScene extends Phaser.Scene {
         } else if (outcome === 'cashout') {
             message = `Tower of Ten: Total ${total} (0 gold)`;
         } else if (outcome === 'bust') {
-            message = `Tower of Ten: Bust with ${total}`;
+            message = penalty > 0
+                ? `Tower of Ten: Bust with ${total} (-${penalty} gold)`
+                : `Tower of Ten: Bust with ${total}`;
             color = '#e74c3c';
         } else {
             message = 'Tower of Ten: You walk away.';
