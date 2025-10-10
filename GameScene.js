@@ -11,6 +11,7 @@ import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
 import { PathUI } from './objects/PathUI.js';
 import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
+import { TowerOfTenUI } from './objects/TowerOfTenUI.js';
 import { RelicUIManager } from './objects/RelicUI.js';
 import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
 import { BeefyRelic } from './relics/BeefyRelic.js';
@@ -1144,6 +1145,9 @@ export class GameScene extends Phaser.Scene {
             case PATH_NODE_TYPES.INFIRMARY:
                 this.openInfirmary();
                 break;
+            case PATH_NODE_TYPES.TOWER:
+                this.openTowerOfTen();
+                break;
             default:
                 this.pathManager.completeCurrentNode();
                 this.currentPathNodeId = null;
@@ -1269,6 +1273,53 @@ export class GameScene extends Phaser.Scene {
     closeShop() {
         this.destroyFacilityUI();
         this.currentShopRelics = null;
+
+        if (this.pathManager) {
+            this.pathManager.completeCurrentNode();
+        }
+        this.currentPathNodeId = null;
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+        this.enterMapState();
+    }
+
+    openTowerOfTen() {
+        if (this.pathUI) {
+            this.pathUI.hide();
+        }
+
+        this.destroyFacilityUI();
+
+        this.activeFacilityUI = new TowerOfTenUI(this, {
+            onComplete: result => this.handleTowerResult(result)
+        });
+    }
+
+    handleTowerResult(result = {}) {
+        const { rewardGold = 0, total = 0, bust = false, cashedOut = false, leftEarly = false } = result;
+
+        let message = 'Left the Tower of Ten';
+        let color = '#f8f3ff';
+
+        if (leftEarly) {
+            message = 'You walk away from the tower.';
+        } else if (bust) {
+            message = 'Tower bust! No gold earned.';
+            color = '#ff7675';
+        } else if (rewardGold > 0 && cashedOut) {
+            const winnings = this.addGold(rewardGold);
+            message = `Tower payout: ${winnings}g (Total ${total})`;
+            color = '#f1c40f';
+        } else if (cashedOut) {
+            message = `Tower total ${total}. No winnings.`;
+        }
+
+        this.destroyFacilityUI();
+
+        if (message) {
+            this.showNodeMessage(message, color);
+        }
 
         if (this.pathManager) {
             this.pathManager.completeCurrentNode();
