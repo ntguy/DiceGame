@@ -5,7 +5,7 @@ export class BlockbusterRelic extends Relic {
         super({
             id: 'blockbuster',
             name: 'Blockbuster',
-            description: 'Deal X2 damage to enemy block.',
+            description: 'Deal double damage to enemy block.',
             icon: '🎬'
         });
     }

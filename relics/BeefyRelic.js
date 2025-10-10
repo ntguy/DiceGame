@@ -5,7 +5,7 @@ export class BeefyRelic extends Relic {
         super({
             id: 'beefy',
             name: 'Beefy',
-            description: '+20 max HP and heal the same amount.',
+            description: '+20 Max HP and heal 20.',
             icon: '🥩'
         });
     }
