@@ -11,6 +11,7 @@ import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
 import { PathUI } from './objects/PathUI.js';
 import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
+import { TowerOfTenUI } from './objects/TowerOfTenUI.js';
 import { RelicUIManager } from './objects/RelicUI.js';
 import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
 import { BeefyRelic } from './relics/BeefyRelic.js';
@@ -1144,6 +1145,9 @@ export class GameScene extends Phaser.Scene {
             case PATH_NODE_TYPES.INFIRMARY:
                 this.openInfirmary();
                 break;
+            case PATH_NODE_TYPES.TOWER:
+                this.openTowerOfTen();
+                break;
             default:
                 this.pathManager.completeCurrentNode();
                 this.currentPathNodeId = null;
@@ -1300,6 +1304,18 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
+    openTowerOfTen() {
+        if (this.pathUI) {
+            this.pathUI.hide();
+        }
+
+        this.destroyFacilityUI();
+
+        this.activeFacilityUI = new TowerOfTenUI(this, {
+            onComplete: result => this.handleTowerOfTenComplete(result)
+        });
+    }
+
     handleInfirmaryChoice(selection) {
         let message = '';
         let color = '#2ecc71';
@@ -1350,6 +1366,55 @@ export class GameScene extends Phaser.Scene {
             this.pathUI.updateState();
         }
         this.enterMapState();
+    }
+
+    handleTowerOfTenComplete(result = {}) {
+        const { reward = 0, total = 0, bust = false, abandoned = false } = result;
+
+        this.destroyFacilityUI();
+
+        let message = '';
+        let color = '#f7dc6f';
+
+        if (reward > 0) {
+            this.addGold(reward);
+            message = `Tower payout: +${reward}g (Total ${total})`;
+        } else if (bust) {
+            message = total > 0
+                ? `Tower bust! Total ${total}`
+                : 'Tower bust!';
+            color = '#e74c3c';
+        } else if (abandoned) {
+            message = 'You left the Tower of Ten.';
+            color = '#95a5a6';
+        } else if (this.hasRolledTower(result)) {
+            message = `Tower yielded no gold (Total ${total})`;
+            color = '#d5d8dc';
+        } else {
+            message = 'Tower attempt skipped.';
+            color = '#d5d8dc';
+        }
+
+        if (this.pathManager) {
+            this.pathManager.completeCurrentNode();
+        }
+        this.currentPathNodeId = null;
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+
+        if (message) {
+            this.showNodeMessage(message, color);
+        }
+
+        this.enterMapState();
+    }
+
+    hasRolledTower(result) {
+        if (!result || typeof result.total !== 'number') {
+            return false;
+        }
+        return result.total > 0 || result.bust === true || result.didReroll === true;
     }
 
     destroyFacilityUI() {

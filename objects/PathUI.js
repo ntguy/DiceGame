@@ -4,6 +4,7 @@ const COLORS = {
     [PATH_NODE_TYPES.ENEMY]: 0xe74c3c,
     [PATH_NODE_TYPES.SHOP]: 0xf1c40f,
     [PATH_NODE_TYPES.INFIRMARY]: 0x27ae60,
+    [PATH_NODE_TYPES.TOWER]: 0x5dade2,
     boss: 0x9b59b6,
     completed: 0x7f8c8d,
     whiteStroke: 0xffeeee,
@@ -14,6 +15,7 @@ const ICONS = {
     [PATH_NODE_TYPES.ENEMY]: '⚔️',
     [PATH_NODE_TYPES.SHOP]: '🛒',
     [PATH_NODE_TYPES.INFIRMARY]: '⊕',
+    [PATH_NODE_TYPES.TOWER]: '🎲',
     boss: '🔥'
 };
 
