@@ -40,8 +40,7 @@ const TOWER_REWARD_INFO = {
     7: { text: '140', color: COLORS.rewardSilver },
     8: { text: '160', color: COLORS.rewardSilver },
     9: { text: '270', color: COLORS.rewardGold },
-    10: { text: '300', color: COLORS.rewardGold },
-    11: { text: '💥', color: COLORS.rewardBust }
+    10: { text: '300', color: COLORS.rewardGold }
 };
 
 function rollDie() {
@@ -75,6 +74,7 @@ export class TowerOfTenUI {
 
         this.diceSlots = [];
         this.towerSteps = [];
+        this.instructionsBodyText = null;
 
         this.create();
     }
@@ -174,7 +174,9 @@ export class TowerOfTenUI {
                 color: '#0b1a2b'
             }).setOrigin(0.5);
 
-            const rewardInfo = TOWER_REWARD_INFO[level] || { text: '', color: '#ffffff' };
+            const rewardInfo = level === 11
+                ? { text: this.getBustPenaltyText(), color: COLORS.rewardBust }
+                : (TOWER_REWARD_INFO[level] || { text: '', color: '#ffffff' });
             const rewardLabel = this.scene.add.text(-(TOWER_STEP_SIZE / 2) - 12, y, rewardInfo.text, {
                 fontSize: '16px',
                 color: rewardInfo.color
@@ -252,19 +254,19 @@ export class TowerOfTenUI {
         }).setOrigin(0.5, 0);
 
         const bodyText = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, title.y + 40,
-            '• Roll either 2 or 3 dice.\n' +
-            '• Aim for a total as close to 10 without going over.\n' +
-            '• After rolling: cash out early, or re-roll some/all dice once.\n',
+            '',
             {
                 fontSize: '16px',
                 color: '#d6f1ff',
                 wordWrap: { width: INSTRUCTIONS_WIDTH - 16 },
-                lineSpacing: 6
+                lineSpacing: 16
             }
         );
 
         instructionsContainer.add([background, title, bodyText]);
         this.container.add(instructionsContainer);
+        this.instructionsBodyText = bodyText;
+        this.updateBustPenaltyDisplay();
     }
 
     createActionButton({ x, y, label, onClick, width }) {
@@ -489,18 +491,48 @@ export class TowerOfTenUI {
             this.totalText.setText('Total: --');
             this.payoutText.setText('Potential Reward: --');
             this.finishButton.text.setText('Leave (0g)');
+            this.statusText.setText('');
+            this.updateBustPenaltyDisplay();
             return;
         }
 
         this.totalText.setText(`Total: ${total}`);
         const payout = calculatePayout(total);
         if (total > 10) {
-            this.payoutText.setText('Bust! No gold.');
+            const penalty = this.getBustPenalty();
+            if (penalty > 0) {
+                this.payoutText.setText(`Bust! Lose ${penalty} gold if you finish.`);
+            } else {
+                this.payoutText.setText('Bust! No gold to lose.');
+            }
+            if (this.rerollUsed) {
+                this.statusText.setText(
+                    penalty > 0
+                        ? `Busted! You'll lose ${penalty} gold.`
+                        : 'Busted! No gold to lose.'
+                );
+            } else {
+                this.statusText.setText(
+                    penalty > 0
+                        ? `Bust! Re-roll to avoid losing ${penalty} gold.`
+                        : 'Bust! Re-roll to try again.'
+                );
+            }
+            this.statusText.setColor(COLORS.statusWarning);
+            const penaltyText = this.getBustPenaltyText();
+            this.finishButton.text.setText(`Accept Bust (${penaltyText})`);
         } else {
             this.payoutText.setText(`Potential Reward: ${payout} gold`);
+            if (this.rerollUsed) {
+                this.statusText.setText('Final result locked in.\n Cash out to continue.');
+            } else {
+                this.statusText.setText('Select dice to re-roll, or cash out.');
+            }
+            this.statusText.setColor(COLORS.statusInfo);
+            const cashLabel = payout > 0 ? `Cash Out (+${payout}g)` : 'Cash Out (0g)';
+            this.finishButton.text.setText(cashLabel);
         }
-        const cashLabel = payout > 0 ? `Cash Out (+${payout}g)` : 'Cash Out (0g)';
-        this.finishButton.text.setText(cashLabel);
+        this.updateBustPenaltyDisplay();
     }
 
     updateButtonState() {
@@ -531,8 +563,6 @@ export class TowerOfTenUI {
         this.hasRolled = true;
         this.rerollUsed = false;
         this.diceSelected = this.diceSelected.map(() => false);
-        this.statusText.setText('Select dice to re-roll, or cash out.');
-        this.statusText.setColor(COLORS.statusInfo);
         this.hideDiceCountButtons();
         this.updateDiceDisplay();
         this.updateTowerFill();
@@ -545,10 +575,6 @@ export class TowerOfTenUI {
         this.diceValues = this.diceValues.map((value, index) => (this.diceSelected[index] ? rollDie() : value));
         this.rerollUsed = true;
         this.diceSelected = this.diceSelected.map(() => false);
-        this.statusText.setText(
-            'Final result locked in.\n' +
-            ' Cash out to continue.');
-        this.statusText.setColor(COLORS.statusInfo);
         this.updateDiceDisplay();
         this.updateTowerFill();
         this.updateOutcomeText();
@@ -570,20 +596,26 @@ export class TowerOfTenUI {
         const total = this.hasRolled ? this.getCurrentTotal() : 0;
         let outcome = 'leave';
         let gold = 0;
+        let penalty = 0;
         if (this.hasRolled) {
             const payout = calculatePayout(total);
-            gold = payout;
-            outcome = total > 10 ? 'bust' : 'cashout';
+            if (total > 10) {
+                outcome = 'bust';
+                penalty = this.getBustPenalty();
+            } else {
+                gold = payout;
+                outcome = 'cashout';
+            }
         }
-        this.finish({ gold, total, outcome });
+        this.finish({ gold, penalty, total, outcome });
     }
 
-    finish({ gold, total, outcome }) {
+    finish({ gold, penalty = 0, total, outcome }) {
         if (this.isDestroyed) {
             return;
         }
         this.destroy();
-        this.onComplete({ gold, total, outcome });
+        this.onComplete({ gold, penalty, total, outcome });
     }
 
     destroy() {
@@ -595,5 +627,36 @@ export class TowerOfTenUI {
         this.modal = null;
         this.diceSlots = [];
         this.towerSteps = [];
+        this.instructionsBodyText = null;
+    }
+
+    getBustPenalty() {
+        const currentGold = this.scene && typeof this.scene.playerGold === 'number'
+            ? this.scene.playerGold
+            : 0;
+        return Math.floor(Math.max(0, currentGold) / 2);
+    }
+
+    getBustPenaltyText() {
+        const penalty = this.getBustPenalty();
+        return `-${penalty}g`;
+    }
+
+    updateBustPenaltyDisplay() {
+        const penaltyText = this.getBustPenaltyText();
+        this.towerSteps.forEach(step => {
+            if (step.level === 11) {
+                step.rewardLabel.setText(penaltyText);
+            }
+        });
+        if (this.instructionsBodyText) {
+            const instructionLines = [
+                '• Roll either 2 or 3 dice.',
+                '• Aim for a total as close to 10 without going over.',
+                `• 11+ loses (${penaltyText}) gold.`,
+                '• After rolling: cash out early, or re-roll some/all dice once.',
+            ];
+            this.instructionsBodyText.setText(instructionLines.join('\n'));
+        }
     }
 }

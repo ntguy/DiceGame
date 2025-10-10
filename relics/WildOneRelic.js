@@ -7,7 +7,7 @@ export class WildOneRelic extends Relic {
             name: 'Wild One',
             description: '1s act as wildcards during combo evaluation.',
             icon: '🃏',
-            cost: 140
+            cost: 200
         });
     }
 

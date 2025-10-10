@@ -7,7 +7,7 @@ export class UnlockedAndLoadedRelic extends Relic {
             name: 'Unlocked and Loaded',
             description: 'Penta & Sex Straights unlock all dice.',
             icon: '🔓',
-            cost: 130
+            cost: 80
         });
     }
 
