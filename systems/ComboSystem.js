@@ -77,11 +77,15 @@ export function evaluateCombo(diceArray, options = {}) {
     if (typeof resolver === 'function') {
         const resolved = resolver([...values], evaluateComboInternal);
         if (resolved && typeof resolved.type === 'string') {
+            if (!Array.isArray(resolved.assignments)) {
+                return { ...resolved, assignments: [...values] };
+            }
             return resolved;
         }
     }
 
-    return evaluateComboInternal(values);
+    const evaluation = evaluateComboInternal(values);
+    return { ...evaluation, assignments: [...values] };
 }
 
 export function scoreCombo(comboType) {

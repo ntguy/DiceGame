@@ -25,10 +25,19 @@ export function createDie(scene, slotIndex) {
     container.slotIndex = slotIndex;
     container.pips = [];
     container.isLocked = false;
+    container.displayValue = container.value;
+    container.displayPipColor = 0xffffff;
+
+    container.renderFace = function(faceValue, { pipColor, updateValue = true } = {}) {
+        const color = typeof pipColor === 'number' ? pipColor : (faceValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff);
+        drawDiePips(scene, container, faceValue, { pipColor: color, updateValue });
+    };
 
     // Add die methods
     container.roll = function() {
-        drawDiePips(scene, this, Phaser.Math.Between(1, 6));
+        const rolledValue = Phaser.Math.Between(1, 6);
+        const pipColor = rolledValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
+        this.renderFace(rolledValue, { pipColor, updateValue: true });
     };
 
     container.setLocked = function(isLocked) {
@@ -49,7 +58,8 @@ export function createDie(scene, slotIndex) {
         }
     };
 
-    drawDiePips(scene, container, container.value);
+    const initialPipColor = container.value === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
+    container.renderFace(container.value, { pipColor: initialPipColor, updateValue: true });
     container.updateVisualState();
 
     container.setSize(CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE);
@@ -105,8 +115,12 @@ export function createDie(scene, slotIndex) {
     return container;
 }
 
-function drawDiePips(scene, container, value) {
-    container.value = value;
+function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue = true } = {}) {
+    if (updateValue) {
+        container.value = value;
+    }
+    container.displayValue = value;
+    container.displayPipColor = pipColor;
     container.pips.forEach(p => p.destroy());
     container.pips = [];
 
@@ -119,8 +133,9 @@ function drawDiePips(scene, container, value) {
         6: [[-15,-15],[15,-15],[-15,0],[15,0],[-15,15],[15,15]]
     };
 
-    positions[value].forEach(([dx, dy]) => {
-        const pip = scene.add.circle(dx, dy, 6, 0xffffff);
+    const pipPositions = positions[value] || [];
+    pipPositions.forEach(([dx, dy]) => {
+        const pip = scene.add.circle(dx, dy, 6, pipColor);
         container.add(pip);
         container.pips.push(pip);
     });

@@ -75,8 +75,6 @@ export class EnemyManager {
             this.currentEnemy.takeDamage(damageDealt);
         }
 
-        console.log(damageDealt, blockedAmount, this.enemyBlockValue, this.currentEnemy.health);
-
         return { damageDealt, blockedAmount };
     }
 

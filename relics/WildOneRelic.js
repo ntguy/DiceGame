@@ -17,5 +17,8 @@ export class WildOneRelic extends Relic {
         }
 
         scene.hasWildOneRelic = true;
+        if (typeof scene.updateZonePreviewText === 'function') {
+            scene.updateZonePreviewText();
+        }
     }
 }

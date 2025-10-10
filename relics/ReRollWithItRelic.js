@@ -17,5 +17,8 @@ export class ReRollWithItRelic extends Relic {
         }
 
         scene.rerollDefensePerDie = (scene.rerollDefensePerDie || 0) + 1;
+        if (typeof scene.updateZonePreviewText === 'function') {
+            scene.updateZonePreviewText();
+        }
     }
 }

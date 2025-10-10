@@ -74,7 +74,7 @@ export class GameScene extends Phaser.Scene {
         this.relicCatalog = [];
         this.relics = [];
         this.ownedRelicIds = new Set();
-        this.currentShopRelics = [];
+        this.currentShopRelics = null;
         this.hasBlockbusterRelic = false;
         this.blockDamageMultiplier = 1;
         this.hasFamilyRelic = false;
@@ -313,24 +313,25 @@ export class GameScene extends Phaser.Scene {
     }
 
     computeZoneScore(diceList, { zone } = {}) {
-        const baseSum = diceList.reduce((sum, die) => sum + die.value, 0);
+        const diceValues = Array.isArray(diceList)
+            ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
+            : [];
+        const baseDiceSum = diceValues.reduce((sum, value) => sum + value, 0);
+        const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0;
         const comboInfo = this.hasWildOneRelic
             ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) })
             : evaluateCombo(diceList);
         const comboType = comboInfo.type;
         const comboBonus = scoreCombo(comboType);
-        let extraBonus = 0;
-
-        if (zone === 'defend' && this.rerollDefenseBonus > 0) {
-            extraBonus += this.rerollDefenseBonus;
-        }
+        const assignments = Array.isArray(comboInfo.assignments) ? [...comboInfo.assignments] : [...diceValues];
+        const baseSum = baseDiceSum + rerollBonus;
 
         return {
             baseSum,
             comboBonus,
-            extraBonus,
             comboType,
-            total: baseSum + comboBonus + extraBonus
+            total: baseSum + comboBonus,
+            assignments
         };
     }
 
@@ -343,19 +344,67 @@ export class GameScene extends Phaser.Scene {
         this.rerollDefenseBonus += gained;
     }
 
+    updateWildcardDisplays({ defendAssignments, attackAssignments } = {}) {
+        const diceSet = new Set([
+            ...(Array.isArray(this.dice) ? this.dice : []),
+            ...(Array.isArray(this.defendDice) ? this.defendDice : []),
+            ...(Array.isArray(this.attackDice) ? this.attackDice : [])
+        ]);
+
+        diceSet.forEach(die => {
+            if (!die || typeof die.renderFace !== 'function') {
+                return;
+            }
+
+            const pipColor = this.hasWildOneRelic && die.value === 1 ? 0x000000 : 0xffffff;
+            die.renderFace(die.value, { pipColor, updateValue: false });
+            die.wildAssignedValue = null;
+        });
+
+        if (!this.hasWildOneRelic) {
+            return;
+        }
+
+        const applyAssignments = (diceList, assignments) => {
+            if (!Array.isArray(diceList) || !Array.isArray(assignments)) {
+                return;
+            }
+
+            diceList.forEach((die, index) => {
+                if (!die || die.value !== 1 || typeof die.renderFace !== 'function') {
+                    return;
+                }
+
+                const assignedValue = assignments[index];
+                if (typeof assignedValue !== 'number') {
+                    return;
+                }
+
+                const boundedValue = Math.max(1, Math.min(6, assignedValue));
+                die.renderFace(boundedValue, { pipColor: 0x000000, updateValue: false });
+                die.wildAssignedValue = boundedValue;
+            });
+        };
+
+        applyAssignments(this.defendDice, defendAssignments);
+        applyAssignments(this.attackDice, attackAssignments);
+    }
+
     updateZonePreviewText() {
+        const defendScore = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
+        const attackScore = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
+
+        this.updateWildcardDisplays({
+            defendAssignments: defendScore.assignments,
+            attackAssignments: attackScore.assignments
+        });
+
         if (!this.defendPreviewText || !this.attackPreviewText) {
             return;
         }
 
-        const defendScore = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
-        const attackScore = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
-
         const formatScoreLine = score => {
             const breakdown = [`${score.baseSum}`, `${score.comboBonus}`];
-            if (score.extraBonus) {
-                breakdown.push(`${score.extraBonus}`);
-            }
             return `${score.total}: ${breakdown.join('+')}`;
         };
         const formatComboLine = score => `${score.comboType}`;
@@ -1174,8 +1223,12 @@ export class GameScene extends Phaser.Scene {
     }
 
     getRelicShopState() {
-        if (!Array.isArray(this.currentShopRelics) || this.currentShopRelics.length === 0) {
+        if (!Array.isArray(this.currentShopRelics)) {
             this.currentShopRelics = this.rollShopRelics(SHOP_RELIC_COUNT);
+        }
+
+        if (!Array.isArray(this.currentShopRelics) || this.currentShopRelics.length === 0) {
+            return [];
         }
 
         return this.currentShopRelics.map(relic => ({
@@ -1206,23 +1259,16 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateShopSelectionAfterPurchase(purchasedId) {
-        if (!Array.isArray(this.currentShopRelics) || this.currentShopRelics.length === 0) {
+        if (!Array.isArray(this.currentShopRelics)) {
             return;
         }
 
-        const desiredCount = this.currentShopRelics.length;
         this.currentShopRelics = this.currentShopRelics.filter(relic => relic.id !== purchasedId);
-
-        const available = this.getUnownedRelics().filter(relic => !this.currentShopRelics.some(current => current.id === relic.id));
-        while (this.currentShopRelics.length < desiredCount && available.length > 0) {
-            const index = Phaser.Math.Between(0, available.length - 1);
-            this.currentShopRelics.push(available.splice(index, 1)[0]);
-        }
     }
 
     closeShop() {
         this.destroyFacilityUI();
-        this.currentShopRelics = [];
+        this.currentShopRelics = null;
 
         if (this.pathManager) {
             this.pathManager.completeCurrentNode();
