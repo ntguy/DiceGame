@@ -65,8 +65,8 @@ export class ShopUI {
                 height: CARD_HEIGHT,
                 backgroundColor: 0x120a1a,
                 backgroundAlpha: 0.95,
-                strokeColor: relic.owned ? 0x7f8c8d : 0xf1c40f,
-                strokeAlpha: relic.owned ? 0.6 : 0.9
+                strokeColor: 0xf1c40f,
+                strokeAlpha: 0.9
             });
 
             cardContainer.setPosition(cardX, cardY);
@@ -89,24 +89,22 @@ export class ShopUI {
 
             const buttonY = CARD_HEIGHT / 2 - 50;
             const buttonBg = this.scene.add.rectangle(0, buttonY, CARD_WIDTH - 48, 48, 0x271438, 0.92)
-                .setStrokeStyle(2, relic.owned ? 0x7f8c8d : 0xf1c40f, relic.owned ? 0.5 : 0.85)
-                .setInteractive({ useHandCursor: !relic.owned && relic.canAfford });
+                .setStrokeStyle(2, 0xf1c40f, 0.85)
+                .setInteractive({ useHandCursor: relic.canAfford });
 
-            const label = relic.owned
-                ? 'Owned'
-                : relic.canAfford
-                    ? `Buy (${relic.cost}g)`
-                    : 'Not enough gold';
+            const label = relic.canAfford
+                ? `Buy (${relic.cost}g)`
+                : 'Not enough gold';
 
             const buttonText = this.scene.add.text(0, buttonY, label, {
                 fontSize: '18px',
                 color: '#f9e79f'
             }).setOrigin(0.5);
 
-            if (relic.owned || !relic.canAfford) {
+            if (!relic.canAfford) {
                 buttonBg.setFillStyle(0x2c173a, 0.6);
                 buttonText.setAlpha(0.6);
-                cardBg.setAlpha(relic.owned ? 0.75 : 0.85);
+                cardBg.setAlpha(0.85);
                 icon.setAlpha(0.85);
                 nameText.setAlpha(0.85);
                 descText.setAlpha(0.85);
@@ -124,7 +122,7 @@ export class ShopUI {
                 buttonBg.on('pointerup', () => {
                     const purchased = this.onPurchase(relic.id);
                     if (purchased) {
-                        this.updateRelicState(relic.id, { owned: true });
+                        this.scene.sound.play('chimeShort', { volume: 0.6 });
                     }
                 });
             }
@@ -133,11 +131,6 @@ export class ShopUI {
             this.container.add(cardContainer);
             this.cardContainers.push(cardContainer);
         });
-    }
-
-    updateRelicState(id, changes) {
-        this.relics = this.relics.map(relic => relic.id === id ? { ...relic, ...changes } : relic);
-        this.renderRelicCards();
     }
 
     updateRelics(relics) {

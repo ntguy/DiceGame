@@ -6,7 +6,8 @@ export class FamilyRelic extends Relic {
             id: 'family',
             name: 'Family',
             description: 'Full Houses heal 10 HP.',
-            icon: '👪'
+            icon: '👪',
+            cost: 110
         });
     }
 
