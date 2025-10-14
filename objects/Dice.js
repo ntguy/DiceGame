@@ -1,10 +1,15 @@
 import { CONSTANTS } from '../config.js';
+import { createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
+import { rollCustomDieValue, getDieEmoji, isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
 
-export function createDie(scene, slotIndex) {
+export function createDie(scene, slotIndex, blueprint) {
     const x = CONSTANTS.SLOT_START_X + slotIndex * CONSTANTS.SLOT_SPACING;
     const y = CONSTANTS.GRID_Y;
     const container = scene.add.container(x, y);
+
+    const dieBlueprint = blueprint ? { ...blueprint } : createDieBlueprint('standard');
+    container.dieBlueprint = dieBlueprint;
 
     const bg = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE, 0x444444)
         .setOrigin(0.5)
@@ -20,7 +25,7 @@ export function createDie(scene, slotIndex) {
     container.add(lockOverlay);
     container.lockOverlay = lockOverlay;
 
-    container.value = Phaser.Math.Between(1, 6);
+    container.value = 1;
     container.selected = false;
     container.slotIndex = slotIndex;
     container.pips = [];
@@ -34,9 +39,23 @@ export function createDie(scene, slotIndex) {
         drawDiePips(scene, container, faceValue, { pipColor: color, updateValue });
     };
 
+    const emojiY = CONSTANTS.DIE_SIZE / 2 + 20;
+    const emojiText = scene.add.text(0, emojiY, getDieEmoji(container), {
+        fontSize: '28px',
+        padding: CONSTANTS.EMOJI_TEXT_PADDING
+    }).setOrigin(0.5, 0);
+    container.add(emojiText);
+    container.emojiText = emojiText;
+
+    container.updateEmoji = function() {
+        if (this.emojiText) {
+            this.emojiText.setText(getDieEmoji(this));
+        }
+    };
+
     // Add die methods
     container.roll = function() {
-        const rolledValue = Phaser.Math.Between(1, 6);
+        const rolledValue = rollCustomDieValue(scene, container);
         const pipColor = rolledValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
         this.renderFace(rolledValue, { pipColor, updateValue: true });
     };
@@ -65,9 +84,11 @@ export function createDie(scene, slotIndex) {
         this.setAlpha(this.isWeakened ? 0.5 : 1);
     };
 
-    const initialPipColor = container.value === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
-    container.renderFace(container.value, { pipColor: initialPipColor, updateValue: true });
+    const initialValue = rollCustomDieValue(scene, container);
+    const initialPipColor = initialValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
+    container.renderFace(initialValue, { pipColor: initialPipColor, updateValue: true });
     container.updateVisualState();
+    container.updateEmoji();
 
     container.setSize(CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE);
     container.setInteractive();
@@ -92,8 +113,10 @@ export function createDie(scene, slotIndex) {
         container.y = dragY;
 
         // --- Zone highlights ---
-        scene.defendHighlight.setVisible(dragY < CONSTANTS.GRID_Y - 50 && dragX < 400 && scene.defendSlots.includes(null));
-        scene.attackHighlight.setVisible(dragY < CONSTANTS.GRID_Y - 50 && dragX > 400 && scene.attackSlots.includes(null));
+        const canDefend = isZoneAllowedForDie(container, 'defend') && scene.defendSlots.includes(null);
+        const canAttack = isZoneAllowedForDie(container, 'attack') && scene.attackSlots.includes(null);
+        scene.defendHighlight.setVisible(dragY < CONSTANTS.GRID_Y - 50 && dragX < 400 && canDefend);
+        scene.attackHighlight.setVisible(dragY < CONSTANTS.GRID_Y - 50 && dragX > 400 && canAttack);
     });
 
     // --- Drag end ---
@@ -108,10 +131,12 @@ export function createDie(scene, slotIndex) {
 
         if (container.y < CONSTANTS.GRID_Y - 50) {
             // Dropped in a zone
-            if (container.x < 400) {
+            if (container.x < 400 && isZoneAllowedForDie(container, 'defend')) {
                 snapIntoZone(container, scene.defendSlots, scene.defendDice, 200, zoneY, scene);
-            } else {
+            } else if (container.x >= 400 && isZoneAllowedForDie(container, 'attack')) {
                 snapIntoZone(container, scene.attackSlots, scene.attackDice, 600, zoneY, scene);
+            } else {
+                snapToGrid(container, scene.dice, scene);
             }
         } else {
             // Dropped back into main row

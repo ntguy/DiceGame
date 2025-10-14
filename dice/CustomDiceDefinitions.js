@@ -1,0 +1,114 @@
+export const MAX_CUSTOM_DICE = 6;
+
+const DEFINITIONS = [
+    {
+        id: 'standard',
+        name: 'Standard',
+        emoji: '',
+        description: 'A reliable die with no special properties.',
+        upgradeDescription: 'You wasted an upgrade!',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'shield',
+        name: 'Shield',
+        emoji: '🛡️',
+        description: 'Can only 🛡️. 2× FV.',
+        upgradeDescription: 'In 🛡️: 2× FV.',
+        allowedZones: ['defend']
+    },
+    {
+        id: 'sword',
+        name: 'Sword',
+        emoji: '⚔️',
+        description: 'Can only ⚔️. 2× FV.',
+        upgradeDescription: 'In ⚔️: 2× FV.',
+        allowedZones: ['attack']
+    },
+    {
+        id: 'bomb',
+        name: 'Bombard',
+        emoji: '💣',
+        description: 'Damage all enemies by FV.',
+        upgradeDescription: 'Damage all enemies by FV + 2.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'bonk',
+        name: 'Bonk',
+        emoji: '🦴',
+        description: 'In No Combo: FV of 6.',
+        upgradeDescription: 'In No Combo: FV of 8.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'pear',
+        name: 'PearPair',
+        emoji: '🍐',
+        description: '+5 combo bonus in a Pair.',
+        upgradeDescription: '+6 combo bonus in a Pair or Two Pair.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'flameout',
+        name: 'Flame-Out',
+        emoji: '🧯',
+        description: 'FV=1-4: cleanse burn by FV.',
+        upgradeDescription: 'Cleanse burn by FV.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'demolition',
+        name: 'Demolition',
+        emoji: '⚒️',
+        description: 'FV=1 in ⚔️: destroy enemy block before attacking.',
+        upgradeDescription: 'FV=1: destroy enemy block before attacking.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'lucky',
+        name: 'Call me Biased',
+        emoji: '⚖️',
+        description: 'Double chance to roll a 1 or a 6.',
+        upgradeDescription: 'Double chance to roll a 3 or 6.',
+        allowedZones: ['attack', 'defend']
+    }
+];
+
+export const CUSTOM_DICE_DEFINITIONS = DEFINITIONS.reduce((acc, def) => {
+    acc[def.id] = def;
+    return acc;
+}, {});
+
+export const SELECTABLE_CUSTOM_DICE_IDS = DEFINITIONS
+    .filter(def => def.id !== 'standard')
+    .map(def => def.id);
+
+export function getCustomDieDefinitionById(id) {
+    if (!id || !CUSTOM_DICE_DEFINITIONS[id]) {
+        return CUSTOM_DICE_DEFINITIONS.standard;
+    }
+    return CUSTOM_DICE_DEFINITIONS[id];
+}
+
+export function getRandomCustomDieOptions(scene, count = 3, { excludeIds = [] } = {}) {
+    const pool = SELECTABLE_CUSTOM_DICE_IDS.filter(id => !excludeIds.includes(id));
+    if (pool.length === 0) {
+        return [];
+    }
+
+    const shuffled = scene && Phaser && Phaser.Utils && Phaser.Utils.Array && typeof Phaser.Utils.Array.Shuffle === 'function'
+        ? Phaser.Utils.Array.Shuffle([...pool])
+        : [...pool];
+
+    const slice = shuffled.slice(0, Math.min(count, shuffled.length));
+    return slice.map(id => getCustomDieDefinitionById(id));
+}
+
+export function createDieBlueprint(id, { isUpgraded = false } = {}) {
+    const definition = getCustomDieDefinitionById(id);
+    return {
+        id: definition.id,
+        isUpgraded: !!isUpgraded
+    };
+}

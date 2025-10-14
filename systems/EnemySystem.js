@@ -77,6 +77,23 @@ export class EnemyManager {
         return { damageDealt, blockedAmount };
     }
 
+    damageAllEnemies(amount) {
+        if (!amount || amount <= 0 || !Array.isArray(this.enemies)) {
+            return;
+        }
+
+        const damage = Math.max(0, Math.floor(amount));
+        if (damage <= 0) {
+            return;
+        }
+
+        this.enemies.forEach(enemy => {
+            if (enemy && typeof enemy.takeDamage === 'function') {
+                enemy.takeDamage(damage);
+            }
+        });
+    }
+
     primeUpcomingDefenses() {
         if (!this.upcomingMove || !Array.isArray(this.upcomingMove.actions)) {
             return;
@@ -93,6 +110,12 @@ export class EnemyManager {
     addEnemyBlock(amount) {
         if (amount > 0) {
             this.enemyBlockValue += amount;
+        }
+    }
+
+    destroyEnemyBlock() {
+        if (this.enemyBlockValue > 0) {
+            this.enemyBlockValue = 0;
         }
     }
 
