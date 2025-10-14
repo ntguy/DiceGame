@@ -53,8 +53,8 @@ const DEFINITIONS = [
         id: 'demolition',
         name: 'Demolition',
         emoji: '⚒️',
-        description: 'FV=1 in ⚔️: destroy enemy block before attacking.',
-        upgradeDescription: 'FV=1: destroy enemy block before attacking.',
+        description: 'FV=1-2: before attacking, reduce enemy block by 10.',
+        upgradeDescription: 'FV=1-3: before attacking, reduce enemy block by 10.',
         allowedZones: ['attack', 'defend']
     },
     {

@@ -959,6 +959,11 @@ export class GameScene extends Phaser.Scene {
             });
         };
 
+        if (this.enemyManager) {
+            this.enemyManager.primeUpcomingDefenses();
+            this.updateEnemyStatusText();
+        }
+
         runEffects(defendResult.preResolutionEffects, 'defend');
         runEffects(attackResult.preResolutionEffects, 'attack');
 
@@ -1425,9 +1430,9 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
-        this.enemyManager.primeUpcomingDefenses();
         this.enemyManager.applyPlayerAttack(effectiveAttackScore);
         this.updateEnemyHealthUI();
+        this.updateEnemyStatusText();
 
         if (this.enemyManager.isCurrentEnemyDefeated()) {
             this.handleEnemyDefeat();

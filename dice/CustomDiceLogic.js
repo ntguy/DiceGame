@@ -122,12 +122,19 @@ function getPreResolutionEffects({ die, zone }) {
     const faceValue = typeof die.value === 'number' ? die.value : 0;
 
     if (definition.id === 'demolition') {
-        // Demolition die: removes enemy block when rolling a 1.
-        if (faceValue === 1 && (zone === 'attack' || isUpgraded)) {
+        // Demolition die: chips away at enemy block before the attack resolves.
+        const maxTriggerValue = isUpgraded ? 3 : 2;
+        const shouldTrigger = zone === 'attack'
+            && faceValue >= 1
+            && faceValue <= maxTriggerValue;
+
+        if (shouldTrigger) {
             return [context => {
                 const { scene } = context || {};
-                callSceneManagerMethod(scene, 'enemyManager', 'destroyEnemyBlock');
-                callSceneMethod(scene, 'updateEnemyHealthUI');
+                const reduced = callSceneManagerMethod(scene, 'enemyManager', 'reduceEnemyBlock', 10);
+                if (reduced > 0) {
+                    callSceneMethod(scene, 'updateEnemyStatusText');
+                }
             }];
         }
     }

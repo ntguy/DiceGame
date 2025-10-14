@@ -113,10 +113,18 @@ export class EnemyManager {
         }
     }
 
-    destroyEnemyBlock() {
-        if (this.enemyBlockValue > 0) {
-            this.enemyBlockValue = 0;
+    reduceEnemyBlock(amount) {
+        if (!amount || amount <= 0 || this.enemyBlockValue <= 0) {
+            return 0;
         }
+
+        const reduction = Math.min(this.enemyBlockValue, Math.floor(amount));
+        this.enemyBlockValue -= reduction;
+        return reduction;
+    }
+
+    destroyEnemyBlock() {
+        return this.reduceEnemyBlock(this.enemyBlockValue);
     }
 
     setBlockDamageMultiplier(multiplier = 1) {
