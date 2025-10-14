@@ -6,71 +6,71 @@ const DEFINITIONS = [
         name: 'Standard',
         emoji: '',
         description: 'A reliable die with no special properties.',
-        upgradeDescription: 'Upgrade TBD.',
+        upgradeDescription: 'You wasted an upgrade!',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'shield',
-        name: 'Bulwark',
+        name: 'Shield',
         emoji: '🛡️',
-        description: 'Can only defend. 2× face value while resolving Defend.',
-        upgradeDescription: 'Upgrade: 2× face value while in Defend.',
+        description: 'Can only 🛡️. 2× FV.',
+        upgradeDescription: 'In 🛡️: 2× FV.',
         allowedZones: ['defend']
     },
     {
         id: 'sword',
-        name: 'Warrior',
+        name: 'Sword',
         emoji: '⚔️',
-        description: 'Can only attack. 2× face value while resolving Attack.',
-        upgradeDescription: 'Upgrade: 2× face value while in Attack.',
+        description: 'Can only ⚔️. 2× FV.',
+        upgradeDescription: 'In ⚔️: 2× FV.',
         allowedZones: ['attack']
     },
     {
         id: 'bomb',
         name: 'Bombard',
         emoji: '💣',
-        description: 'Deal damage to all enemies equal to face value.',
-        upgradeDescription: 'Upgrade: Damage equals face value + 2.',
+        description: 'Damage all enemies by FV.',
+        upgradeDescription: 'Damage all enemies by FV + 2.',
         allowedZones: ['attack', 'defend']
     },
     {
-        id: 'bone',
-        name: 'Wishbone',
+        id: 'bonk',
+        name: 'Bonk',
         emoji: '🦴',
-        description: 'Counts as 6 face value if the zone has no combo.',
-        upgradeDescription: 'Upgrade: Counts as 8 face value in No combo.',
+        description: 'In No Combo: FV of 6.',
+        upgradeDescription: 'In No Combo: FV of 8.',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'pear',
-        name: 'Pear Pair',
+        name: 'PearPair',
         emoji: '🍐',
-        description: '+5 combo bonus when part of a Pair.',
-        upgradeDescription: 'Upgrade: +6 combo bonus in Pair or Two Pair.',
+        description: '+5 combo bonus in a Pair.',
+        upgradeDescription: '+6 combo bonus in a Pair or Two Pair.',
         allowedZones: ['attack', 'defend']
     },
     {
-        id: 'extinguisher',
-        name: 'Extinguisher',
+        id: 'flameout',
+        name: 'Flame-Out',
         emoji: '🧯',
-        description: 'If rolling 1-4, cleanse burn equal to face value.',
-        upgradeDescription: 'Upgrade: Cleanse burn equal to face value.',
+        description: 'FV=1-4: cleanse burn by FV.',
+        upgradeDescription: 'Cleanse burn by FV.',
         allowedZones: ['attack', 'defend']
     },
     {
-        id: 'unlock',
-        name: 'Unlocked',
-        emoji: '🔓',
-        description: 'If attacking with a 1, destroy all enemy block.',
-        upgradeDescription: 'Upgrade: Any 1 destroys all enemy block.',
+        id: 'demolition',
+        name: 'Demolition',
+        emoji: '⚒️',
+        description: 'FV=1 in ⚔️: destroy enemy block before attacking.',
+        upgradeDescription: 'FV=1: destroy enemy block before attacking.',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'lucky',
-        name: 'Lucky',
-        emoji: '🤞',
+        name: 'Call me Biased',
+        emoji: '⚖️',
         description: 'Double chance to roll a 1 or a 6.',
-        upgradeDescription: 'Upgrade: Double chance to roll a 3 or 6.',
+        upgradeDescription: 'Double chance to roll a 3 or 6.',
         allowedZones: ['attack', 'defend']
     }
 ];

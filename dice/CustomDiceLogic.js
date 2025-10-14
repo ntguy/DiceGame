@@ -79,7 +79,7 @@ function getBaseFaceContribution({ die, zone, comboType }) {
             return zone === 'defend' ? baseFace * 2 : baseFace;
         case 'sword':
             return zone === 'attack' ? baseFace * 2 : baseFace;
-        case 'bone':
+        case 'bonk':
             if (comboType === 'No combo') {
                 return isUpgraded ? 8 : 6;
             }
@@ -115,7 +115,7 @@ function getPreResolutionEffects({ die, zone }) {
     const isUpgraded = !!blueprint.isUpgraded;
     const faceValue = typeof die.value === 'number' ? die.value : 0;
 
-    if (definition.id === 'unlock') {
+    if (definition.id === 'demolition') {
         if (faceValue === 1 && (zone === 'attack' || isUpgraded)) {
             return [context => {
                 const { scene } = context || {};
@@ -149,15 +149,19 @@ function getPostResolutionEffects({ die, zone }) {
                 if (!scene || !scene.enemyManager || typeof scene.enemyManager.damageAllEnemies !== 'function') {
                     return;
                 }
-                scene.enemyManager.damageAllEnemies(damage);
+                const manager = scene.enemyManager;
+                const defeatedCurrent = manager.damageAllEnemies(damage) === true;
                 if (typeof scene.updateEnemyHealthUI === 'function') {
                     scene.updateEnemyHealthUI();
+                }
+                if (defeatedCurrent && typeof scene.handleEnemyDefeat === 'function') {
+                    scene.handleEnemyDefeat();
                 }
             });
         }
     }
 
-    if (definition.id === 'extinguisher') {
+    if (definition.id === 'flameout') {
         const shouldCleanse = isUpgraded || (faceValue >= 1 && faceValue <= 4);
         if (shouldCleanse && faceValue > 0) {
             effects.push(context => {
