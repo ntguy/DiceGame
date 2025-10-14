@@ -96,6 +96,10 @@ export class EnemyManager {
         }
     }
 
+    clearEnemyBlock() {
+        this.enemyBlockValue = 0;
+    }
+
     setBlockDamageMultiplier(multiplier = 1) {
         const value = typeof multiplier === 'number' && multiplier > 0 ? multiplier : 1;
         this.blockDamageMultiplier = value;

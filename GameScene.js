@@ -12,6 +12,7 @@ import { PathUI } from './objects/PathUI.js';
 import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
 import { TowerOfTenUI } from './objects/TowerOfTenUI.js';
+import { DiceChoiceUI } from './objects/DiceChoiceUI.js';
 import { RelicUIManager } from './objects/RelicUI.js';
 import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
 import { BeefyRelic } from './relics/BeefyRelic.js';
@@ -21,6 +22,14 @@ import { WildOneRelic } from './relics/WildOneRelic.js';
 import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
+import {
+    calculateDieZoneContribution,
+    cloneDieState,
+    createDieState,
+    getDieName,
+    getMaxCustomDiceSlots,
+    getRandomDieOptions
+} from './systems/CustomDiceLogic.js';
 
 const SHOP_RELIC_COUNT = 3;
 
@@ -70,6 +79,10 @@ export class GameScene extends Phaser.Scene {
         this.comboListTexts = [];
         this.pendingPostCombatTransition = false;
 
+        this.customDiceInventory = [];
+        this.pendingCustomDieReward = false;
+        this.customDieChoiceUI = null;
+
         this.relicUI = new RelicUIManager(this);
 
         this.resetRelicState();
@@ -115,6 +128,95 @@ export class GameScene extends Phaser.Scene {
         this.isMenuOpen = false;
     }
 
+    resetCustomDiceState() {
+        this.customDiceInventory = [];
+        this.pendingCustomDieReward = false;
+        if (this.customDieChoiceUI && typeof this.customDieChoiceUI.destroy === 'function') {
+            this.customDieChoiceUI.destroy();
+        }
+        this.customDieChoiceUI = null;
+    }
+
+    getPlayerDiceLoadout() {
+        const loadout = [];
+        const maxSlots = Math.min(getMaxCustomDiceSlots(), CONSTANTS.DICE_PER_SET);
+        const customCount = Math.min(this.customDiceInventory.length, maxSlots);
+
+        for (let i = 0; i < customCount; i += 1) {
+            loadout.push(cloneDieState(this.customDiceInventory[i]));
+        }
+
+        while (loadout.length < CONSTANTS.DICE_PER_SET) {
+            loadout.push(createDieState('standard'));
+        }
+
+        return loadout.slice(0, CONSTANTS.DICE_PER_SET);
+    }
+
+    addCustomDieToInventory(dieState) {
+        if (!dieState || this.customDiceInventory.length >= getMaxCustomDiceSlots()) {
+            return false;
+        }
+        this.customDiceInventory.push(cloneDieState(dieState));
+        return true;
+    }
+
+    destroyCustomDieChoiceUI() {
+        if (this.customDieChoiceUI && typeof this.customDieChoiceUI.destroy === 'function') {
+            this.customDieChoiceUI.destroy();
+        }
+        this.customDieChoiceUI = null;
+    }
+
+    offerCustomDieSelection() {
+        this.pendingCustomDieReward = false;
+        if (this.customDiceInventory.length >= getMaxCustomDiceSlots()) {
+            this.enterMapState();
+            return;
+        }
+
+        const options = getRandomDieOptions(3);
+        if (!options || options.length === 0) {
+            this.enterMapState();
+            return;
+        }
+        this.destroyCustomDieChoiceUI();
+        this.customDieChoiceUI = new DiceChoiceUI(this, {
+            options,
+            onSelect: state => this.handleCustomDieSelection(state),
+            onSkip: () => this.handleCustomDieSkip()
+        });
+    }
+
+    handleCustomDieSelection(state) {
+        const added = this.addCustomDieToInventory(state);
+        this.pendingCustomDieReward = false;
+        this.destroyCustomDieChoiceUI();
+        if (added) {
+            const name = getDieName(state);
+            const message = name ? `${name} added to your dice pool!` : 'New die acquired!';
+            this.showNodeMessage(message, '#f7c873');
+        }
+        this.enterMapState();
+    }
+
+    handleCustomDieSkip() {
+        this.pendingCustomDieReward = false;
+        this.destroyCustomDieChoiceUI();
+        this.enterMapState();
+    }
+
+    reducePlayerBurn(amount) {
+        const value = Math.floor(Math.max(0, amount));
+        if (value <= 0 || this.playerBurn <= 0) {
+            return 0;
+        }
+        const reduced = Math.min(this.playerBurn, value);
+        this.playerBurn = Math.max(0, this.playerBurn - reduced);
+        this.updateBurnUI();
+        return reduced;
+    }
+
     init(data) {
         this.destroyFacilityUI();
         this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
@@ -135,6 +237,7 @@ export class GameScene extends Phaser.Scene {
         this.activeFacilityUI = null;
         this.resetRelicState();
         this.resetMenuState();
+        this.resetCustomDiceState();
         this.defendPreviewText = null;
         this.attackPreviewText = null;
         this.defendComboText = null;
@@ -180,6 +283,7 @@ export class GameScene extends Phaser.Scene {
             new UnlockedAndLoadedRelic()
         ];
         this.resetMenuState();
+        this.resetCustomDiceState();
 
         // --- Dice arrays for zones ---
         this.defendDice = [];
@@ -349,29 +453,59 @@ export class GameScene extends Phaser.Scene {
         const diceValues = Array.isArray(diceList)
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
             : [];
-        const baseDiceSum = Array.isArray(diceList)
-            ? diceList.reduce((sum, die) => {
-                if (!die || typeof die.value !== 'number') {
-                    return sum;
-                }
-                return sum + (die.isWeakened ? 0 : die.value);
-            }, 0)
-            : 0;
         const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0;
         const comboInfo = this.hasWildOneRelic
             ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) })
             : evaluateCombo(diceList);
         const comboType = comboInfo.type;
-        const comboBonus = scoreCombo(comboType);
+        const comboBonusBase = scoreCombo(comboType);
         const assignments = Array.isArray(comboInfo.assignments) ? [...comboInfo.assignments] : [...diceValues];
-        const baseSum = baseDiceSum + rerollBonus;
+        let baseSum = rerollBonus;
+        let comboBonusAdjustment = 0;
+        const effects = {
+            bonusAttack: 0,
+            bonusBlock: 0,
+            burnCleansed: 0,
+            removesEnemyBlock: false
+        };
+
+        if (Array.isArray(diceList)) {
+            diceList.forEach(die => {
+                if (!die) {
+                    return;
+                }
+                const contribution = calculateDieZoneContribution({ die, zone, comboType });
+                if (contribution && typeof contribution.baseContribution === 'number') {
+                    baseSum += contribution.baseContribution;
+                }
+                if (contribution && typeof contribution.comboBonusAdjustment === 'number') {
+                    comboBonusAdjustment += contribution.comboBonusAdjustment;
+                }
+                if (contribution && typeof contribution.bonusAttack === 'number') {
+                    effects.bonusAttack += contribution.bonusAttack;
+                }
+                if (contribution && typeof contribution.bonusBlock === 'number') {
+                    effects.bonusBlock += contribution.bonusBlock;
+                }
+                if (contribution && typeof contribution.burnCleansed === 'number') {
+                    effects.burnCleansed += contribution.burnCleansed;
+                }
+                if (contribution && contribution.removesEnemyBlock) {
+                    effects.removesEnemyBlock = true;
+                }
+            });
+        }
+
+        const comboBonus = comboBonusBase + comboBonusAdjustment;
+        const total = baseSum + comboBonus;
 
         return {
             baseSum,
             comboBonus,
             comboType,
-            total: baseSum + comboBonus,
-            assignments
+            total,
+            assignments,
+            effects
         };
     }
 
@@ -456,8 +590,16 @@ export class GameScene extends Phaser.Scene {
         }
 
         const formatScoreLine = score => {
+            const bonus = score && score.effects
+                ? (score.effects.bonusAttack || 0) + (score.effects.bonusBlock || 0)
+                : 0;
+            const total = score.total + bonus;
             const breakdown = [`${score.baseSum}`, `${score.comboBonus}`];
-            return `${score.total}: ${breakdown.join('+')}`;
+            if (bonus !== 0) {
+                const prefix = bonus > 0 ? '+' : '';
+                breakdown.push(`${prefix}${bonus}`);
+            }
+            return `${total}: ${breakdown.join('+')}`;
         };
         const formatComboLine = score => `${score.comboType}`;
 
@@ -501,8 +643,10 @@ export class GameScene extends Phaser.Scene {
         // First roll → create dice
         if (isFirstRoll) {
             this.dice = [];
+            const loadout = this.getPlayerDiceLoadout();
             for (let i = 0; i < CONSTANTS.DICE_PER_SET; i++) {
-                const die = createDie(this, i);
+                const state = loadout[i] || createDieState('standard');
+                const die = createDie(this, i, state);
                 this.dice.push(die);
             }
             diceInPlay = this.getDiceInPlay();
@@ -720,8 +864,32 @@ export class GameScene extends Phaser.Scene {
         // Calculate scores
         const defendResult = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
         const attackResult = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
-        const defendScore = defendResult.total;
-        const attackScore = attackResult.total;
+        const totalBonusAttack = (defendResult.effects?.bonusAttack || 0) + (attackResult.effects?.bonusAttack || 0);
+        const totalBonusBlock = (defendResult.effects?.bonusBlock || 0) + (attackResult.effects?.bonusBlock || 0);
+        const totalBurnCleansed = (defendResult.effects?.burnCleansed || 0) + (attackResult.effects?.burnCleansed || 0);
+        const removesEnemyBlock = Boolean(
+            (defendResult.effects && defendResult.effects.removesEnemyBlock)
+            || (attackResult.effects && attackResult.effects.removesEnemyBlock)
+        );
+
+        let defendScore = defendResult.total;
+        let attackScore = attackResult.total;
+
+        if (totalBonusAttack) {
+            attackScore += totalBonusAttack;
+        }
+        if (totalBonusBlock) {
+            defendScore += totalBonusBlock;
+        }
+        if (totalBurnCleansed > 0) {
+            this.reducePlayerBurn(totalBurnCleansed);
+        }
+        if (removesEnemyBlock && this.enemyManager && typeof this.enemyManager.clearEnemyBlock === 'function') {
+            this.enemyManager.clearEnemyBlock();
+        }
+
+        defendResult.total = defendScore;
+        attackResult.total = attackScore;
 
         if (this.familyHealPerFullHouse > 0) {
             let healAmount = 0;
@@ -1050,6 +1218,12 @@ export class GameScene extends Phaser.Scene {
             || this.isHealthBarAnimating(this.healthBar);
 
         if (animationsActive) {
+            return;
+        }
+
+        if (this.pendingCustomDieReward && this.customDiceInventory.length < getMaxCustomDiceSlots()) {
+            this.pendingPostCombatTransition = false;
+            this.offerCustomDieSelection();
             return;
         }
 
@@ -1897,6 +2071,11 @@ export class GameScene extends Phaser.Scene {
 
         this.enemyManager.clearCurrentEnemy();
         this.prepareNextEnemyMove();
+        if (this.customDiceInventory.length < getMaxCustomDiceSlots()) {
+            this.pendingCustomDieReward = true;
+        } else {
+            this.pendingCustomDieReward = false;
+        }
         this.requestEnterMapStateAfterCombat();
     }
 

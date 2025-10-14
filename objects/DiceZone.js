@@ -52,9 +52,14 @@ export function removeFromZones(scene, die) {
 }
 
 
-export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
+export function snapIntoZone(die, slots, diceList, baseX, y, scene, zone = null) {
     const idx = slots.findIndex(s => s === null);
     if (idx === -1) {
+        snapToGrid(die, scene.dice, scene);
+        return;
+    }
+
+    if (die && typeof die.isZoneAllowed === 'function' && zone && !die.isZoneAllowed(zone)) {
         snapToGrid(die, scene.dice, scene);
         return;
     }

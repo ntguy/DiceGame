@@ -1,10 +1,21 @@
 import { CONSTANTS } from '../config.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
+import {
+    cloneDieState,
+    createDieState,
+    getAllowedZones,
+    getDieEmoji,
+    rollValueForDie
+} from '../systems/CustomDiceLogic.js';
 
-export function createDie(scene, slotIndex) {
+export function createDie(scene, slotIndex, dieStateInput = null) {
     const x = CONSTANTS.SLOT_START_X + slotIndex * CONSTANTS.SLOT_SPACING;
     const y = CONSTANTS.GRID_Y;
     const container = scene.add.container(x, y);
+
+    const dieState = cloneDieState(dieStateInput || createDieState('standard'));
+    container.dieState = dieState;
+    container.allowedZones = getAllowedZones(dieState);
 
     const bg = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE, 0x444444)
         .setOrigin(0.5)
@@ -20,7 +31,7 @@ export function createDie(scene, slotIndex) {
     container.add(lockOverlay);
     container.lockOverlay = lockOverlay;
 
-    container.value = Phaser.Math.Between(1, 6);
+    container.value = rollValueForDie(dieState);
     container.selected = false;
     container.slotIndex = slotIndex;
     container.pips = [];
@@ -29,14 +40,28 @@ export function createDie(scene, slotIndex) {
     container.displayValue = container.value;
     container.displayPipColor = 0xffffff;
 
+    const emojiText = scene.add.text(0, CONSTANTS.DIE_SIZE / 2 + 6, '', {
+        fontSize: '24px',
+        color: '#ffffff'
+    }).setOrigin(0.5, 0);
+    container.emojiText = emojiText;
+    container.add(emojiText);
+
+    container.updateEmoji = function() {
+        const emoji = getDieEmoji(this.dieState);
+        this.emojiText.setText(emoji || '');
+        this.emojiText.setVisible(Boolean(emoji));
+    };
+
     container.renderFace = function(faceValue, { pipColor, updateValue = true } = {}) {
         const color = typeof pipColor === 'number' ? pipColor : (faceValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff);
         drawDiePips(scene, container, faceValue, { pipColor: color, updateValue });
+        container.updateEmoji();
     };
 
     // Add die methods
     container.roll = function() {
-        const rolledValue = Phaser.Math.Between(1, 6);
+        const rolledValue = rollValueForDie(this.dieState);
         const pipColor = rolledValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
         this.renderFace(rolledValue, { pipColor, updateValue: true });
     };
@@ -68,10 +93,21 @@ export function createDie(scene, slotIndex) {
     const initialPipColor = container.value === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
     container.renderFace(container.value, { pipColor: initialPipColor, updateValue: true });
     container.updateVisualState();
+    container.updateEmoji();
 
     container.setSize(CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE);
     container.setInteractive();
     scene.input.setDraggable(container);
+
+    container.isZoneAllowed = function(zone) {
+        if (!zone) {
+            return true;
+        }
+        if (!Array.isArray(this.allowedZones) || this.allowedZones.length === 0) {
+            return true;
+        }
+        return this.allowedZones.includes(zone);
+    };
 
     // --- Click to toggle selection ---
     container.on("pointerup", pointer => {
@@ -92,8 +128,20 @@ export function createDie(scene, slotIndex) {
         container.y = dragY;
 
         // --- Zone highlights ---
-        scene.defendHighlight.setVisible(dragY < CONSTANTS.GRID_Y - 50 && dragX < 400 && scene.defendSlots.includes(null));
-        scene.attackHighlight.setVisible(dragY < CONSTANTS.GRID_Y - 50 && dragX > 400 && scene.attackSlots.includes(null));
+        const canDefend = container.isZoneAllowed('defend');
+        const canAttack = container.isZoneAllowed('attack');
+        scene.defendHighlight.setVisible(
+            dragY < CONSTANTS.GRID_Y - 50
+            && dragX < 400
+            && canDefend
+            && scene.defendSlots.includes(null)
+        );
+        scene.attackHighlight.setVisible(
+            dragY < CONSTANTS.GRID_Y - 50
+            && dragX > 400
+            && canAttack
+            && scene.attackSlots.includes(null)
+        );
     });
 
     // --- Drag end ---
@@ -109,9 +157,17 @@ export function createDie(scene, slotIndex) {
         if (container.y < CONSTANTS.GRID_Y - 50) {
             // Dropped in a zone
             if (container.x < 400) {
-                snapIntoZone(container, scene.defendSlots, scene.defendDice, 200, zoneY, scene);
+                if (container.isZoneAllowed('defend')) {
+                    snapIntoZone(container, scene.defendSlots, scene.defendDice, 200, zoneY, scene, 'defend');
+                } else {
+                    snapToGrid(container, scene.dice, scene);
+                }
             } else {
-                snapIntoZone(container, scene.attackSlots, scene.attackDice, 600, zoneY, scene);
+                if (container.isZoneAllowed('attack')) {
+                    snapIntoZone(container, scene.attackSlots, scene.attackDice, 600, zoneY, scene, 'attack');
+                } else {
+                    snapToGrid(container, scene.dice, scene);
+                }
             }
         } else {
             // Dropped back into main row
