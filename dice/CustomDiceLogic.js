@@ -1,6 +1,20 @@
 import { createDieBlueprint, getCustomDieDefinitionById } from './CustomDiceDefinitions.js';
 import { callSceneMethod, callSceneManagerMethod } from '../utils/SceneHelpers.js';
 
+export function doesDieActAsWildcardForCombo(die) {
+    const blueprint = getBlueprint(die);
+    const definition = getCustomDieDefinitionById(blueprint.id);
+    const faceValue = die && typeof die.value === 'number' ? die.value : 0;
+
+    switch (definition.id) {
+        case 'wild':
+            // Wild die: always acts as a combo wildcard regardless of current face value.
+            return faceValue >= 1;
+        default:
+            return false;
+    }
+}
+
 function getBlueprint(die) {
     if (die && die.dieBlueprint) {
         return die.dieBlueprint;
@@ -121,23 +135,37 @@ function getPreResolutionEffects({ die, zone }) {
     const isUpgraded = !!blueprint.isUpgraded;
     const faceValue = typeof die.value === 'number' ? die.value : 0;
 
+    const effects = [];
+
     if (definition.id === 'demolition') {
         // Demolition die: chips away at enemy block before the attack lands.
         if (zone === 'attack') {
             const threshold = isUpgraded ? 3 : 2;
             if (faceValue >= 1 && faceValue <= threshold) {
-                return [context => {
+                effects.push(context => {
                     const { scene } = context || {};
                     callSceneManagerMethod(scene, 'enemyManager', 'reduceEnemyBlock', 10);
                     callSceneMethod(scene, 'updateEnemyHealthUI');
                     callSceneMethod(scene, 'refreshEnemyIntentText');
                     callSceneMethod(scene, 'updateEnemyStatusText');
-                }];
+                });
             }
         }
     }
 
-    return [];
+    if (definition.id === 'firecracker') {
+        // Firecracker die: applies burn to the enemy before resolution when rolled low.
+        const shouldIgnite = faceValue >= 1 && faceValue <= 2;
+        if (shouldIgnite) {
+            const burnAmount = isUpgraded ? 3 : 2;
+            effects.push(context => {
+                const { scene } = context || {};
+                callSceneMethod(scene, 'applyEnemyBurn', burnAmount);
+            });
+        }
+    }
+
+    return effects;
 }
 
 function getPostResolutionEffects({ die, zone }) {
@@ -170,6 +198,18 @@ function getPostResolutionEffects({ die, zone }) {
             effects.push(context => {
                 const { scene } = context || {};
                 callSceneMethod(scene, 'reducePlayerBurn', faceValue);
+            });
+        }
+    }
+
+    if (definition.id === 'medicine') {
+        // MeDICEne die: heals the player when rolled low.
+        const shouldHeal = faceValue >= 1 && faceValue <= 3;
+        if (shouldHeal) {
+            const healAmount = isUpgraded ? 8 : 5;
+            effects.push(context => {
+                const { scene } = context || {};
+                callSceneMethod(scene, 'healPlayer', healAmount);
             });
         }
     }

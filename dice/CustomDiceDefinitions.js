@@ -50,6 +50,30 @@ const DEFINITIONS = [
         allowedZones: ['attack', 'defend']
     },
     {
+        id: 'firecracker',
+        name: 'Firecracker',
+        emoji: '🧨',
+        description: 'FV=1-2: Burn enemy 2.',
+        upgradeDescription: 'FV=1-2: Burn enemy 3.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'medicine',
+        name: 'MeDICEne',
+        emoji: '💊',
+        description: 'FV=1-3: Heal 5.',
+        upgradeDescription: 'FV=1-3: Heal 8.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'wild',
+        name: 'Wild',
+        emoji: '🤪',
+        description: 'FV=1-4: Acts as wild for combo.',
+        upgradeDescription: 'Acts as wild for combo.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
         id: 'demolition',
         name: 'Demolition',
         emoji: '⚒️',

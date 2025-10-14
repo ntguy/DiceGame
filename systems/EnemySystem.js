@@ -5,7 +5,7 @@ export class EnemyManager {
         this.currentEnemy = null;
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
-        this.blockDamageMultiplier = 1;
+        this.enemyBurnValue = 0;
     }
 
     setEnemies(enemies = []) {
@@ -27,6 +27,7 @@ export class EnemyManager {
         this.currentEnemy = this.enemies[index];
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
+        this.enemyBurnValue = 0;
         return this.currentEnemy;
     }
 
@@ -35,6 +36,7 @@ export class EnemyManager {
         this.currentEnemy = null;
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
+        this.enemyBurnValue = 0;
     }
 
     getEnemyBlock() {
@@ -56,25 +58,35 @@ export class EnemyManager {
         return move;
     }
 
-    applyPlayerAttack(amount) {
+    applyPlayerAttack(amount, { applyBlockbuster = false } = {}) {
         if (!this.currentEnemy || amount <= 0) {
-            return { damageDealt: 0, blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)) };
+            return {
+                damageDealt: 0,
+                blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)),
+                halvedBlock: 0
+            };
         }
 
-        const blockMultiplier = Math.max(1, this.blockDamageMultiplier || 1);
-        const maxBlockConsumed = amount * blockMultiplier;
-        const blockConsumed = Math.min(this.enemyBlockValue, maxBlockConsumed);
-        const blockedAmount = Math.min(amount, blockMultiplier === 1
-            ? blockConsumed
-            : Math.ceil(blockConsumed / blockMultiplier));
-        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - blockConsumed);
-        const damageDealt = Math.max(0, amount - blockedAmount);
+        let workingBlock = this.enemyBlockValue;
+        let halvedBlock = 0;
+
+        if (applyBlockbuster && workingBlock > 0) {
+            const halved = Math.floor(workingBlock / 2);
+            halvedBlock = workingBlock - halved;
+            workingBlock = halved;
+        }
+
+        const blockedAmount = Math.min(workingBlock, amount);
+        const remainingBlock = Math.max(0, workingBlock - amount);
+        const damageDealt = Math.max(0, amount - workingBlock);
+
+        this.enemyBlockValue = remainingBlock;
 
         if (damageDealt > 0) {
             this.currentEnemy.takeDamage(damageDealt);
         }
 
-        return { damageDealt, blockedAmount };
+        return { damageDealt, blockedAmount, halvedBlock };
     }
 
     damageAllEnemies(amount) {
@@ -125,15 +137,59 @@ export class EnemyManager {
         }
     }
 
-    setBlockDamageMultiplier(multiplier = 1) {
-        const value = typeof multiplier === 'number' && multiplier > 0 ? multiplier : 1;
-        this.blockDamageMultiplier = value;
-    }
-
     healCurrentEnemy(amount) {
         if (this.currentEnemy && amount > 0) {
             this.currentEnemy.heal(amount);
         }
+    }
+
+    getEnemyBurn() {
+        return this.enemyBurnValue;
+    }
+
+    resetEnemyBurn() {
+        if (this.enemyBurnValue !== 0) {
+            this.enemyBurnValue = 0;
+        }
+    }
+
+    applyEnemyBurn(amount) {
+        if (!this.currentEnemy || amount <= 0) {
+            return 0;
+        }
+
+        const burn = Math.max(0, Math.floor(amount));
+        if (burn <= 0) {
+            return 0;
+        }
+
+        this.enemyBurnValue += burn;
+        return burn;
+    }
+
+    applyEnemyBurnTick() {
+        // Firecracker die & other burn sources: burn chips block first, then spills into health.
+        if (!this.currentEnemy || this.enemyBurnValue <= 0) {
+            return { damageDealt: 0, blockedAmount: 0 };
+        }
+
+        const burnAmount = this.enemyBurnValue;
+        const blockBefore = this.enemyBlockValue;
+        const blockedAmount = Math.min(blockBefore, burnAmount);
+
+        if (blockedAmount > 0) {
+            this.enemyBlockValue = Math.max(0, blockBefore - burnAmount);
+        }
+
+        const damageDealt = Math.max(0, burnAmount - blockBefore);
+        if (damageDealt > 0) {
+            this.currentEnemy.takeDamage(damageDealt);
+        }
+
+        return {
+            damageDealt,
+            blockedAmount
+        };
     }
 
     isCurrentEnemyDefeated() {

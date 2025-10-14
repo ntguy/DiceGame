@@ -22,7 +22,7 @@ import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
 import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRandomCustomDieOptions } from './dice/CustomDiceDefinitions.js';
-import { computeDieContribution } from './dice/CustomDiceLogic.js';
+import { computeDieContribution, doesDieActAsWildcardForCombo } from './dice/CustomDiceLogic.js';
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
 
 const SHOP_RELIC_COUNT = 3;
@@ -53,6 +53,8 @@ export class GameScene extends Phaser.Scene {
         this.enemyHealthBar = null;
         this.enemyIntentText = null;
         this.enemyStatusText = null;
+        this.enemyBurnText = null;
+        this.enemyBurnGlowTween = null;
         this.upcomingEnemyMove = null;
         this.isResolving = false;
         this.playerBlockValue = 0;
@@ -111,7 +113,6 @@ export class GameScene extends Phaser.Scene {
         this.ownedRelicIds = new Set();
         this.currentShopRelics = null;
         this.hasBlockbusterRelic = false;
-        this.blockDamageMultiplier = 1; // Blockbuster relic multiplier baseline.
         this.hasFamilyRelic = false;
         this.familyHealPerFullHouse = 0;
         this.rerollDefensePerDie = 0;
@@ -120,10 +121,6 @@ export class GameScene extends Phaser.Scene {
         this.unlocksOnLongStraights = false;
         if (this.relicUI) {
             this.relicUI.reset();
-        }
-        if (this.enemyManager && typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
-            // Blockbuster relic: ensure enemy manager reflects the current multiplier.
-            this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
         }
     }
 
@@ -191,6 +188,8 @@ export class GameScene extends Phaser.Scene {
         this.playerHealth = this.playerMaxHealth;
         this.playerBurnText = null;
         this.playerBurnGlowTween = null;
+        this.enemyBurnText = null;
+        this.enemyBurnGlowTween = null;
         this.playerGold = 0;
         this.currentPathNodeId = null;
         this.inCombat = false;
@@ -256,17 +255,16 @@ export class GameScene extends Phaser.Scene {
 
         // --- Enemy ---
         this.enemyManager = new EnemyManager();
-        if (typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
-            this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
-        }
         const initialEnemy = this.enemyManager.getCurrentEnemy();
         this.enemyHealthBar = setupEnemyUI(this, initialEnemy ? initialEnemy.name : '???');
         this.enemyIntentText = this.enemyHealthBar.intentText;
         this.enemyStatusText = this.enemyHealthBar.statusText;
+        this.enemyBurnText = this.enemyHealthBar.burnText;
         if (this.enemyStatusText) {
             this.enemyStatusText.setText('');
             this.enemyStatusText.setVisible(false);
         }
+        this.updateEnemyBurnUI();
         const mapLoaded = this.loadMap(0);
         if (!mapLoaded) {
             this.pathManager = new PathManager();
@@ -403,9 +401,27 @@ export class GameScene extends Phaser.Scene {
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
             : [];
         const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0; // Re-Roll with it relic bonus.
-        const comboInfo = this.hasWildOneRelic
-            ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) }) // Wild One relic support.
-            : evaluateCombo(diceList);
+
+        const wildcardFlags = Array.isArray(diceList)
+            ? diceList.map(die => {
+                const dieWildcard = doesDieActAsWildcardForCombo(die);
+                const relicWildcard = this.hasWildOneRelic && die && die.value === 1;
+                return dieWildcard || relicWildcard;
+            })
+            : [];
+        const wildcardIndices = wildcardFlags.reduce((indices, isWildcard, index) => {
+            if (isWildcard) {
+                indices.push(index);
+            }
+            return indices;
+        }, []);
+        const evaluateOptions = {
+            overrideValues: [...diceValues]
+        };
+        if (wildcardIndices.length > 0) {
+            evaluateOptions.resolveWildcards = (values, evaluator) => resolveWildcardCombo(values, evaluator, { wildcardIndices });
+        }
+        const comboInfo = evaluateCombo(diceList, evaluateOptions);
         const comboType = comboInfo.type;
         const assignments = Array.isArray(comboInfo.assignments) ? [...comboInfo.assignments] : [...diceValues];
         const contributions = Array.isArray(diceList)
@@ -426,6 +442,7 @@ export class GameScene extends Phaser.Scene {
             comboType,
             total: baseSum + comboBonus,
             assignments,
+            wildcardFlags,
             preResolutionEffects,
             postResolutionEffects
         };
@@ -454,36 +471,74 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    updateWildcardDisplays({ defendAssignments, attackAssignments } = {}) {
-        // Wild One relic: keep dice visuals aligned with wildcard assignments.
+    updateWildcardDisplays({ defendAssignments, attackAssignments, defendWildcardFlags, attackWildcardFlags } = {}) {
+        // Wild effects: keep dice visuals aligned with wildcard assignments.
         const diceSet = new Set([
             ...(Array.isArray(this.dice) ? this.dice : []),
             ...(Array.isArray(this.defendDice) ? this.defendDice : []),
             ...(Array.isArray(this.attackDice) ? this.attackDice : [])
         ]);
 
+        const getWildcardStatus = (die, index, wildcardFlags) => {
+            if (!die) {
+                return false;
+            }
+            if (Array.isArray(wildcardFlags) && typeof wildcardFlags[index] === 'boolean') {
+                if (wildcardFlags[index]) {
+                    return true;
+                }
+            }
+            const relicWildcard = this.hasWildOneRelic && die.value === 1;
+            return relicWildcard || doesDieActAsWildcardForCombo(die);
+        };
+
+        const wildcardMap = new Map();
+
+        const registerWildcardFlags = (diceList, wildcardFlags) => {
+            if (!Array.isArray(diceList)) {
+                return;
+            }
+            diceList.forEach((die, index) => {
+                if (!die) {
+                    return;
+                }
+                const isWildcard = getWildcardStatus(die, index, wildcardFlags);
+                if (!wildcardMap.has(die)) {
+                    wildcardMap.set(die, isWildcard);
+                } else if (isWildcard) {
+                    wildcardMap.set(die, true);
+                }
+            });
+        };
+
+        registerWildcardFlags(this.defendDice, defendWildcardFlags);
+        registerWildcardFlags(this.attackDice, attackWildcardFlags);
+
         diceSet.forEach(die => {
             if (!die || typeof die.renderFace !== 'function') {
                 return;
             }
 
-            const pipColor = this.hasWildOneRelic && die.value === 1 ? 0x000000 : 0xffffff;
+            const isWildcard = wildcardMap.has(die)
+                ? wildcardMap.get(die)
+                : (this.hasWildOneRelic && die.value === 1) || doesDieActAsWildcardForCombo(die);
+            const pipColor = isWildcard ? 0x000000 : 0xffffff;
             die.renderFace(die.value, { pipColor, updateValue: false });
             die.wildAssignedValue = null;
         });
 
-        if (!this.hasWildOneRelic) {
-            // Without Wild One there are no wildcard faces to maintain.
-            return;
-        }
-
-        const applyAssignments = (diceList, assignments) => {
+        const applyAssignments = (diceList, assignments, wildcardFlags) => {
             if (!Array.isArray(diceList) || !Array.isArray(assignments)) {
                 return;
             }
 
             diceList.forEach((die, index) => {
-                if (!die || die.value !== 1 || typeof die.renderFace !== 'function') {
+                if (!die || typeof die.renderFace !== 'function') {
+                    return;
+                }
+
+                const isWildcard = getWildcardStatus(die, index, wildcardFlags);
+                if (!isWildcard) {
                     return;
                 }
 
@@ -493,14 +548,14 @@ export class GameScene extends Phaser.Scene {
                 }
 
                 const boundedValue = Math.max(1, Math.min(6, assignedValue));
-                // Wild One relic: show chosen wildcard value with black pips.
+                // Wild visuals: show chosen wildcard value with black pips.
                 die.renderFace(boundedValue, { pipColor: 0x000000, updateValue: false });
                 die.wildAssignedValue = boundedValue;
             });
         };
 
-        applyAssignments(this.defendDice, defendAssignments);
-        applyAssignments(this.attackDice, attackAssignments);
+        applyAssignments(this.defendDice, defendAssignments, defendWildcardFlags);
+        applyAssignments(this.attackDice, attackAssignments, attackWildcardFlags);
     }
 
     updateZonePreviewText() {
@@ -509,7 +564,9 @@ export class GameScene extends Phaser.Scene {
 
         this.updateWildcardDisplays({
             defendAssignments: defendScore.assignments,
-            attackAssignments: attackScore.assignments
+            attackAssignments: attackScore.assignments,
+            defendWildcardFlags: defendScore.wildcardFlags,
+            attackWildcardFlags: attackScore.wildcardFlags
         });
 
         if (!this.defendPreviewText || !this.attackPreviewText) {
@@ -1404,11 +1461,20 @@ export class GameScene extends Phaser.Scene {
         this.playerBlockValue = defendScore;
 
         this.applyBurnTickDamage();
+        if (this.isGameOver) {
+            return;
+        }
 
         const enemy = this.enemyManager.getCurrentEnemy();
         if (!enemy) {
             this.handleAllEnemiesDefeated();
             this.playerBlockValue = 0;
+            return;
+        }
+
+        if (this.enemyManager.isCurrentEnemyDefeated()) {
+            this.playerBlockValue = 0;
+            this.handleEnemyDefeat();
             return;
         }
 
@@ -1427,12 +1493,30 @@ export class GameScene extends Phaser.Scene {
 
         this.enemyManager.primeUpcomingDefenses();
         this.executeZoneEffects(attackResult ? attackResult.preResolutionEffects : null, 'attack', { attackResult, defendResult });
-        this.enemyManager.applyPlayerAttack(effectiveAttackScore);
+
+        const burnResolution = this.applyEnemyBurnTickDamage();
+        if (burnResolution && (burnResolution.damageDealt > 0 || burnResolution.blockedAmount > 0)) {
+            if (this.enemyManager.isCurrentEnemyDefeated()) {
+                this.playerBlockValue = 0;
+                this.handleEnemyDefeat();
+                return;
+            }
+        }
+
+        const attackResolution = this.enemyManager.applyPlayerAttack(effectiveAttackScore, {
+            applyBlockbuster: this.hasBlockbusterRelic
+        });
+
+        if (attackResolution && attackResolution.halvedBlock > 0) {
+            this.refreshEnemyIntentText();
+            this.updateEnemyStatusText();
+        }
         this.updateEnemyHealthUI();
+        this.updateEnemyBurnUI();
 
         if (this.enemyManager.isCurrentEnemyDefeated()) {
-            this.handleEnemyDefeat();
             this.playerBlockValue = 0;
+            this.handleEnemyDefeat();
             return;
         }
 
@@ -1454,10 +1538,12 @@ export class GameScene extends Phaser.Scene {
                 this.enemyHealthBar.damageFill.displayWidth = 0;
             }
             this.enemyHealthBar.displayedHealth = 0;
+            this.updateEnemyBurnUI();
             return;
         }
 
         this.animateHealthBar(this.enemyHealthBar, enemy.health, enemy.maxHealth);
+        this.updateEnemyBurnUI();
     }
 
     prepareNextEnemyMove() {
@@ -1696,6 +1782,99 @@ export class GameScene extends Phaser.Scene {
         this.updateBurnUI();
     }
 
+    applyEnemyBurn(amount) {
+        if (!this.enemyManager || amount <= 0) {
+            return 0;
+        }
+
+        const applied = this.enemyManager.applyEnemyBurn(amount) || 0;
+        this.updateEnemyBurnUI();
+        return applied;
+    }
+
+    applyEnemyBurnTickDamage() {
+        if (!this.enemyManager) {
+            this.updateEnemyBurnUI();
+            return { damageDealt: 0, blockedAmount: 0 };
+        }
+
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (!enemy || this.enemyManager.isCurrentEnemyDefeated()) {
+            this.updateEnemyBurnUI();
+            return { damageDealt: 0, blockedAmount: 0 };
+        }
+
+        const result = this.enemyManager.applyEnemyBurnTick();
+        if (!result) {
+            this.updateEnemyBurnUI();
+            return { damageDealt: 0, blockedAmount: 0 };
+        }
+
+        if (result.blockedAmount > 0) {
+            if (this.enemyManager && !this.enemyManager.isCurrentEnemyDefeated()) {
+                this.refreshEnemyIntentText();
+                this.updateEnemyStatusText();
+            }
+        }
+
+        if (result.damageDealt > 0 || result.blockedAmount > 0) {
+            this.updateEnemyHealthUI();
+        }
+        this.updateEnemyBurnUI();
+        return result;
+    }
+
+    updateEnemyBurnUI() {
+        if (!this.enemyBurnText || !this.enemyHealthBar || !this.enemyHealthBar.text) {
+            return;
+        }
+
+        const burnValue = this.enemyManager ? this.enemyManager.getEnemyBurn() : 0;
+        const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
+        const enemyActive = this.inCombat && enemy && this.enemyManager && !this.enemyManager.isCurrentEnemyDefeated();
+        const shouldShow = enemyActive && burnValue > 0;
+
+        if (shouldShow) {
+            const bounds = this.enemyHealthBar.text.getBounds();
+            const burnX = bounds.x - 20;
+            const burnY = bounds.y + bounds.height / 2;
+            this.enemyBurnText.setPosition(burnX, burnY);
+            this.enemyBurnText.setOrigin(1, 0.5);
+            this.enemyBurnText.setText(`Burn ${burnValue}`);
+            this.enemyBurnText.setVisible(true);
+
+            if (!this.enemyBurnGlowTween) {
+                this.enemyBurnGlowTween = this.tweens.add({
+                    targets: this.enemyBurnText,
+                    alpha: { from: 0.7, to: 1 },
+                    duration: 800,
+                    ease: 'Sine.easeInOut',
+                    yoyo: true,
+                    repeat: -1
+                });
+            }
+        } else {
+            this.enemyBurnText.setVisible(false);
+            this.enemyBurnText.setText('');
+
+            if (this.enemyBurnGlowTween) {
+                this.enemyBurnGlowTween.stop();
+                this.enemyBurnGlowTween.remove();
+                this.enemyBurnGlowTween = null;
+            }
+
+            this.enemyBurnText.setAlpha(1);
+            this.enemyBurnText.setScale(1);
+        }
+    }
+
+    resetEnemyBurn() {
+        if (this.enemyManager && typeof this.enemyManager.resetEnemyBurn === 'function') {
+            this.enemyManager.resetEnemyBurn();
+        }
+        this.updateEnemyBurnUI();
+    }
+
     handleEnemyAttack(amount) {
         if (amount <= 0) {
             return;
@@ -1759,8 +1938,8 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.weakenedDice.clear();
         this.resetGameState({ destroyDice: true });
+        this.resetEnemyBurn();
         this.setMapMode(false);
-
         const enemy = this.enemyManager.startEnemyEncounter(node.enemyIndex);
         if (enemy) {
             if (typeof enemy.onEncounterStart === 'function') {
@@ -2028,6 +2207,7 @@ export class GameScene extends Phaser.Scene {
         this.inCombat = false;
         this.updateRollButtonState();
         this.updateMapTitleText();
+        this.updateEnemyBurnUI();
 
         if (this.sortButton) {
             setTextButtonEnabled(this.sortButton, false, { disabledAlpha: 0.3 });
@@ -2235,6 +2415,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.resetPlayerBurn();
+        this.resetEnemyBurn();
 
         if (this.pathManager) {
             this.pathManager.completeCurrentNode();
@@ -2259,6 +2440,7 @@ export class GameScene extends Phaser.Scene {
         this.upcomingEnemyMove = null;
 
         this.resetPlayerBurn();
+        this.resetEnemyBurn();
 
         if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
             this.enemyHealthBar.nameText.setText('All Enemies Defeated');
@@ -2350,6 +2532,10 @@ export class GameScene extends Phaser.Scene {
         }
 
         setVisibility(this.playerBurnText, showCombatUI && this.playerBurn > 0 && this.inCombat);
+        const enemyBurnActive = this.enemyManager && typeof this.enemyManager.getEnemyBurn === 'function'
+            ? this.enemyManager.getEnemyBurn() > 0
+            : false;
+        setVisibility(this.enemyBurnText, showCombatUI && this.inCombat && enemyBurnActive);
 
         applyToArray(this.zoneVisuals, showCombatUI);
 
@@ -2374,7 +2560,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (this.enemyHealthBar) {
-            const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText', 'statusText'];
+            const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText', 'statusText', 'burnText'];
             elements.forEach(key => {
                 const element = this.enemyHealthBar[key];
                 if (element) {

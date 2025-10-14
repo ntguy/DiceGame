@@ -143,6 +143,13 @@ export function setupEnemyUI(scene, enemyName) {
         align: "right"
     }).setOrigin(1, 0);
 
+    const burnText = scene.add.text(x - 12, y + barHeight + 10, "", {
+        fontSize: "16px",
+        color: "#ff7675",
+        fontStyle: "bold"
+    }).setOrigin(1, 0.5);
+    burnText.setVisible(false);
+
     return {
         barWidth,
         barHeight,
@@ -154,6 +161,7 @@ export function setupEnemyUI(scene, enemyName) {
         text,
         nameText,
         intentText,
-        statusText
+        statusText,
+        burnText
     };
 }
