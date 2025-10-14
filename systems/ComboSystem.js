@@ -1,8 +1,8 @@
 // Scoring values for different combinations
 export const COMBO_POINTS = {
     "YAHTZEE": 25,
-    "Fuller House": 18,
-    "Triples Pair": 16,
+    "Triples Pair": 20,
+    "Fuller House": 20,
     "Full House": 15,
     "Five of a Kind": 15,
     "Four of a Kind": 10,
