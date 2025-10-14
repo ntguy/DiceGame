@@ -21,11 +21,23 @@ import { WildOneRelic } from './relics/WildOneRelic.js';
 import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
-import { MAX_CUSTOM_DICE, createDieBlueprint, getRandomCustomDieOptions } from './dice/CustomDiceDefinitions.js';
+import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRandomCustomDieOptions } from './dice/CustomDiceDefinitions.js';
 import { computeDieContribution } from './dice/CustomDiceLogic.js';
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
 
 const SHOP_RELIC_COUNT = 3;
+
+function getRandomIndexExclusive(maxExclusive) {
+    if (!Number.isFinite(maxExclusive) || maxExclusive <= 0) {
+        return 0;
+    }
+
+    if (typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function') {
+        return Phaser.Math.Between(0, maxExclusive - 1);
+    }
+
+    return Math.floor(Math.random() * maxExclusive);
+}
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -99,7 +111,7 @@ export class GameScene extends Phaser.Scene {
         this.ownedRelicIds = new Set();
         this.currentShopRelics = null;
         this.hasBlockbusterRelic = false;
-        this.blockDamageMultiplier = 1;
+        this.blockDamageMultiplier = 1; // Blockbuster relic multiplier baseline.
         this.hasFamilyRelic = false;
         this.familyHealPerFullHouse = 0;
         this.rerollDefensePerDie = 0;
@@ -110,6 +122,7 @@ export class GameScene extends Phaser.Scene {
             this.relicUI.reset();
         }
         if (this.enemyManager && typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
+            // Blockbuster relic: ensure enemy manager reflects the current multiplier.
             this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
         }
     }
@@ -214,6 +227,8 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
         createMenuUI(this);
         this.relicUI.createShelf();
+
+        this.applyTestingModeStartingResources();
 
         // --- Health bar ---
         this.healthBar = setupHealthBar(this);
@@ -370,9 +385,9 @@ export class GameScene extends Phaser.Scene {
         const diceValues = Array.isArray(diceList)
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
             : [];
-        const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0;
+        const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0; // Re-Roll with it relic bonus.
         const comboInfo = this.hasWildOneRelic
-            ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) })
+            ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) }) // Wild One relic support.
             : evaluateCombo(diceList);
         const comboType = comboInfo.type;
         const assignments = Array.isArray(comboInfo.assignments) ? [...comboInfo.assignments] : [...diceValues];
@@ -400,6 +415,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     applyRerollDefenseBonus(count) {
+        // Re-Roll with it relic: accumulate bonus defense for each reroll.
         if (!this.rerollDefensePerDie || count <= 0) {
             return;
         }
@@ -422,6 +438,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateWildcardDisplays({ defendAssignments, attackAssignments } = {}) {
+        // Wild One relic: keep dice visuals aligned with wildcard assignments.
         const diceSet = new Set([
             ...(Array.isArray(this.dice) ? this.dice : []),
             ...(Array.isArray(this.defendDice) ? this.defendDice : []),
@@ -439,6 +456,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         if (!this.hasWildOneRelic) {
+            // Without Wild One there are no wildcard faces to maintain.
             return;
         }
 
@@ -458,6 +476,7 @@ export class GameScene extends Phaser.Scene {
                 }
 
                 const boundedValue = Math.max(1, Math.min(6, assignedValue));
+                // Wild One relic: show chosen wildcard value with black pips.
                 die.renderFace(boundedValue, { pipColor: 0x000000, updateValue: false });
                 die.wildAssignedValue = boundedValue;
             });
@@ -569,6 +588,94 @@ export class GameScene extends Phaser.Scene {
 
         // Enable sort button after the first roll
         setTextButtonEnabled(this.sortButton, true);
+    }
+
+    applyTestingModeStartingResources() {
+        if (!this.testingModeEnabled) {
+            return;
+        }
+
+        this.populateTestingModeDiceLoadout();
+        this.grantTestingModeRelics(6);
+    }
+
+    populateTestingModeDiceLoadout() {
+        if (!this.testingModeEnabled) {
+            return;
+        }
+
+        const pool = Array.isArray(SELECTABLE_CUSTOM_DICE_IDS) ? [...SELECTABLE_CUSTOM_DICE_IDS] : [];
+        if (pool.length === 0) {
+            return;
+        }
+
+        const basePool = [...pool];
+        const selections = [];
+        let workingPool = [...basePool];
+
+        while (selections.length < MAX_CUSTOM_DICE && workingPool.length > 0) {
+            const index = getRandomIndexExclusive(workingPool.length);
+            selections.push(workingPool.splice(index, 1)[0]);
+
+            if (workingPool.length === 0 && selections.length < MAX_CUSTOM_DICE && basePool.length > 0) {
+                workingPool = [...basePool];
+            }
+        }
+
+        this.customDiceLoadout = [];
+        selections.forEach(id => {
+            this.addCustomDieToLoadout(id);
+        });
+    }
+
+    grantTestingModeRelics(targetCount = 6) {
+        if (!this.testingModeEnabled || typeof targetCount !== 'number' || targetCount <= 0) {
+            return;
+        }
+
+        const unowned = typeof this.getUnownedRelics === 'function' ? this.getUnownedRelics() : [];
+        const available = Array.isArray(unowned) ? [...unowned] : [];
+        if (available.length === 0) {
+            return;
+        }
+
+        const pool = [...available];
+        const selections = [];
+
+        while (selections.length < targetCount && pool.length > 0) {
+            const index = getRandomIndexExclusive(pool.length);
+            selections.push(pool.splice(index, 1)[0]);
+        }
+
+        let grantedAny = false;
+        selections.forEach(relic => {
+            if (this.grantRelicDirectly(relic, { skipUiUpdate: true })) {
+                grantedAny = true;
+            }
+        });
+
+        if (grantedAny && this.relicUI) {
+            this.relicUI.updateDisplay();
+        }
+    }
+
+    grantRelicDirectly(relic, { skipUiUpdate = false } = {}) {
+        if (!relic || !relic.id || this.ownedRelicIds.has(relic.id)) {
+            return false;
+        }
+
+        this.ownedRelicIds.add(relic.id);
+        this.relics.push(relic);
+
+        if (typeof relic.apply === 'function') {
+            relic.apply(this);
+        }
+
+        if (!skipUiUpdate && this.relicUI) {
+            this.relicUI.updateDisplay();
+        }
+
+        return true;
     }
 
     addCustomDieToLoadout(id, options = {}) {
@@ -856,6 +963,7 @@ export class GameScene extends Phaser.Scene {
         runEffects(attackResult.preResolutionEffects, 'attack');
 
         if (this.familyHealPerFullHouse > 0) {
+            // Family relic: award healing for Full House combos.
             let healAmount = 0;
             if (defendResult.comboType === 'Full House') {
                 healAmount += this.familyHealPerFullHouse;
@@ -869,6 +977,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (this.unlocksOnLongStraights) {
+            // Unlocked and Loaded relic: trigger unlocks on long straights.
             const unlockCombos = ['Straight Penta', 'Straight Sex'];
             if (unlockCombos.includes(defendResult.comboType) || unlockCombos.includes(attackResult.comboType)) {
                 this.unlockAllDice();
@@ -2319,6 +2428,10 @@ export class GameScene extends Phaser.Scene {
     toggleTestingMode() {
         this.testingModeEnabled = !this.testingModeEnabled;
         this.updateTestingModeButtonState();
+
+        if (this.testingModeEnabled) {
+            this.applyTestingModeStartingResources();
+        }
 
         const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
         if (enemy) {
