@@ -55,14 +55,14 @@ export function createDie(scene, slotIndex, blueprint) {
     };
 
     const wildBaseValueText = scene.add.text(0, 0, '', {
-        fontSize: '32px',
+        fontSize: '36px',
         color: '#cccccc',
         fontStyle: 'bold',
         stroke: '#000000',
         strokeThickness: 4,
         align: 'center',
     }).setOrigin(0.5).setVisible(false);
-    wildBaseValueText.setAlpha(0.3);
+    wildBaseValueText.setAlpha(0.25);
     container.add(wildBaseValueText);
     container.wildBaseValueText = wildBaseValueText;
 
