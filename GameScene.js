@@ -471,7 +471,14 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    updateWildcardDisplays({ defendAssignments, attackAssignments, defendWildcardFlags, attackWildcardFlags } = {}) {
+    updateWildcardDisplays({
+        defendAssignments,
+        attackAssignments,
+        defendWildcardFlags,
+        attackWildcardFlags,
+        defendComboType,
+        attackComboType
+    } = {}) {
         // Wild effects: keep dice visuals aligned with wildcard assignments.
         const diceSet = new Set([
             ...(Array.isArray(this.dice) ? this.dice : []),
@@ -525,12 +532,17 @@ export class GameScene extends Phaser.Scene {
             const pipColor = isWildcard ? 0x000000 : 0xffffff;
             die.renderFace(die.value, { pipColor, updateValue: false });
             die.wildAssignedValue = null;
+            if (typeof die.hideWildBaseValueOverlay === 'function') {
+                die.hideWildBaseValueOverlay();
+            }
         });
 
-        const applyAssignments = (diceList, assignments, wildcardFlags) => {
+        const applyAssignments = (diceList, assignments, wildcardFlags, comboType) => {
             if (!Array.isArray(diceList) || !Array.isArray(assignments)) {
                 return;
             }
+
+            const hasCombo = typeof comboType === 'string' && comboType !== 'No combo';
 
             diceList.forEach((die, index) => {
                 if (!die || typeof die.renderFace !== 'function') {
@@ -539,6 +551,10 @@ export class GameScene extends Phaser.Scene {
 
                 const isWildcard = getWildcardStatus(die, index, wildcardFlags);
                 if (!isWildcard) {
+                    return;
+                }
+
+                if (!hasCombo) {
                     return;
                 }
 
@@ -551,11 +567,14 @@ export class GameScene extends Phaser.Scene {
                 // Wild visuals: show chosen wildcard value with black pips.
                 die.renderFace(boundedValue, { pipColor: 0x000000, updateValue: false });
                 die.wildAssignedValue = boundedValue;
+                if (boundedValue !== die.value && typeof die.showWildBaseValueOverlay === 'function') {
+                    die.showWildBaseValueOverlay(die.value);
+                }
             });
         };
 
-        applyAssignments(this.defendDice, defendAssignments, defendWildcardFlags);
-        applyAssignments(this.attackDice, attackAssignments, attackWildcardFlags);
+        applyAssignments(this.defendDice, defendAssignments, defendWildcardFlags, defendComboType);
+        applyAssignments(this.attackDice, attackAssignments, attackWildcardFlags, attackComboType);
     }
 
     updateZonePreviewText() {
@@ -566,7 +585,9 @@ export class GameScene extends Phaser.Scene {
             defendAssignments: defendScore.assignments,
             attackAssignments: attackScore.assignments,
             defendWildcardFlags: defendScore.wildcardFlags,
-            attackWildcardFlags: attackScore.wildcardFlags
+            attackWildcardFlags: attackScore.wildcardFlags,
+            defendComboType: defendScore.comboType,
+            attackComboType: attackScore.comboType
         });
 
         if (!this.defendPreviewText || !this.attackPreviewText) {

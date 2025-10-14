@@ -54,6 +54,35 @@ export function createDie(scene, slotIndex, blueprint) {
         drawDiePips(scene, container, faceValue, { pipColor: color, updateValue });
     };
 
+    const wildBaseValueText = scene.add.text(0, 0, '', {
+        fontSize: '28px',
+        color: '#f1c40f',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 6,
+        align: 'center'
+    }).setOrigin(0.5).setVisible(false);
+    container.add(wildBaseValueText);
+    container.wildBaseValueText = wildBaseValueText;
+
+    container.showWildBaseValueOverlay = function(value) {
+        if (!this.wildBaseValueText) {
+            return;
+        }
+        this.wildBaseValueText.setText(`${value}`);
+        this.wildBaseValueText.setVisible(true);
+        this.bringToTop(this.wildBaseValueText);
+        if (this.lockOverlay) {
+            this.bringToTop(this.lockOverlay);
+        }
+    };
+
+    container.hideWildBaseValueOverlay = function() {
+        if (this.wildBaseValueText) {
+            this.wildBaseValueText.setVisible(false);
+        }
+    };
+
     const emojiY = CONSTANTS.DIE_SIZE / 2 + 20;
     const emojiText = scene.add.text(0, emojiY, getDieEmoji(container), {
         fontSize: '28px',
@@ -194,8 +223,11 @@ function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue
 
     if (container.lockOverlay) {
         container.bringToTop(container.lockOverlay);
-        container.sendToBack(container.bg);
     }
+    if (container.wildBaseValueText) {
+        container.bringToTop(container.wildBaseValueText);
+    }
+    container.sendToBack(container.bg);
 }
 
 export function snapToGrid(die, diceArray, scene) {
