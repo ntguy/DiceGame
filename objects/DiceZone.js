@@ -48,6 +48,13 @@ export function removeFromZones(scene, die) {
     scene.defendSlots = scene.defendSlots.map(s => s === die ? null : s);
     scene.attackSlots = scene.attackSlots.map(s => s === die ? null : s);
 
+    if (die) {
+        die.currentZone = null;
+        if (typeof die.updateFaceValueHighlight === 'function') {
+            die.updateFaceValueHighlight();
+        }
+    }
+
     callSceneMethod(scene, 'updateZonePreviewText');
 }
 
@@ -81,6 +88,11 @@ export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     die.x = baseX - zoneWidth/2 + spacing/2 + idx * spacing;
     die.y = y;
     die.setDepth(2);
+
+    die.currentZone = zoneType;
+    if (typeof die.updateFaceValueHighlight === 'function') {
+        die.updateFaceValueHighlight();
+    }
 
     callSceneMethod(scene, 'updateZonePreviewText');
 }

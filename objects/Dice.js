@@ -1,6 +1,6 @@
 import { CONSTANTS } from '../config.js';
 import { createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
-import { rollCustomDieValue, getDieEmoji, isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
+import { rollCustomDieValue, getDieEmoji, isZoneAllowedForDie, doesDieFaceValueTriggerRule } from '../dice/CustomDiceLogic.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
 
@@ -18,6 +18,18 @@ export function createDie(scene, slotIndex, blueprint) {
     container.add(bg);
     container.bg = bg;
 
+    container.baseStrokeStyle = { width: 2, color: 0xffffff, alpha: 0.35 };
+    container.highlightStrokeStyle = { width: 3, color: 0xf1c40f, alpha: 1 };
+    container.currentZone = null;
+
+    container.updateFaceValueHighlight = function() {
+        const zone = typeof this.currentZone === 'string' ? this.currentZone : null;
+        const shouldHighlight = doesDieFaceValueTriggerRule(this, { zone });
+        const style = shouldHighlight ? this.highlightStrokeStyle : this.baseStrokeStyle;
+        this.bg.setStrokeStyle(style.width, style.color, style.alpha);
+        this.isFaceValueHighlighted = shouldHighlight;
+    };
+
     const lockOverlay = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE + 12, CONSTANTS.DIE_SIZE + 12, 0x8e44ad, 0.35)
         .setOrigin(0.5)
         .setStrokeStyle(3, 0xf1c40f, 0.8)
@@ -34,6 +46,7 @@ export function createDie(scene, slotIndex, blueprint) {
     container.isWeakened = false;
     container.displayValue = container.value;
     container.displayPipColor = 0xffffff;
+    container.isFaceValueHighlighted = false;
 
     container.renderFace = function(faceValue, { pipColor, updateValue = true } = {}) {
         // Wild One relic: render rolled 1s with black pips when active.
@@ -175,6 +188,10 @@ function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue
         container.pips.push(pip);
     });
 
+    if (typeof container.updateFaceValueHighlight === 'function') {
+        container.updateFaceValueHighlight();
+    }
+
     if (container.lockOverlay) {
         container.bringToTop(container.lockOverlay);
         container.sendToBack(container.bg);
@@ -185,7 +202,7 @@ export function snapToGrid(die, diceArray, scene) {
     // Check if die is actually in a zone before removing it
     const inDefendZone = scene.defendDice.includes(die);
     const inAttackZone = scene.attackDice.includes(die);
-    
+
     // Only remove from zones if it's actually in a zone
     if (inDefendZone || inAttackZone) {
         removeFromZones(scene, die);
@@ -220,6 +237,11 @@ export function snapToGrid(die, diceArray, scene) {
             ease: 'Power2'
         });
     });
+
+    die.currentZone = null;
+    if (typeof die.updateFaceValueHighlight === 'function') {
+        die.updateFaceValueHighlight();
+    }
 
     callSceneMethod(scene, 'updateZonePreviewText');
 }
