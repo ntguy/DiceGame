@@ -2376,8 +2376,10 @@ export class GameScene extends Phaser.Scene {
                 : enemy.health;
             const clampedHealth = Math.max(0, Math.min(previousHealth, enemy.maxHealth));
             enemy.health = clampedHealth;
-        } else {
+        } else if (this.testingModeEnabled) {
             enemy.health = Math.min(enemy.health, enemy.maxHealth);
+        } else {
+            enemy.health = enemy.maxHealth;
         }
 
         enemy._testingModeApplied = false;
