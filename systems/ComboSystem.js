@@ -1,6 +1,8 @@
 // Scoring values for different combinations
 export const COMBO_POINTS = {
     "YAHTZEE": 25,
+    "Fuller House": 18,
+    "Triples Pair": 16,
     "Full House": 15,
     "Five of a Kind": 15,
     "Four of a Kind": 10,
@@ -45,6 +47,17 @@ function evaluateComboInternal(values) {
             case 4: return { type: "Four of a Kind" };
             case 3: return { type: "Three of a Kind" };
             case 2: return { type: "Pair" };
+        }
+    }
+
+    // --- Fuller House / Triples Pair ---
+    if (numDice === 6 && Object.keys(counts).length === 2) {
+        const sortedCounts = Object.values(counts).sort((a, b) => b - a);
+        if (sortedCounts[0] === 4 && sortedCounts[1] === 2) {
+            return { type: "Fuller House" };
+        }
+        if (sortedCounts[0] === 3 && sortedCounts[1] === 3) {
+            return { type: "Triples Pair" };
         }
     }
 
