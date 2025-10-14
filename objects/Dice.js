@@ -19,7 +19,7 @@ export function createDie(scene, slotIndex, blueprint) {
     container.bg = bg;
 
     container.baseStrokeStyle = { width: 2, color: 0xffffff, alpha: 0.35 };
-    container.highlightStrokeStyle = { width: 3, color: 0xf1c40f, alpha: 1 };
+    container.highlightStrokeStyle = { width: 2, color: 0xf1c40f, alpha: 0.7 };
     container.currentZone = null;
 
     container.updateFaceValueHighlight = function() {
@@ -55,13 +55,14 @@ export function createDie(scene, slotIndex, blueprint) {
     };
 
     const wildBaseValueText = scene.add.text(0, 0, '', {
-        fontSize: '28px',
-        color: '#f1c40f',
+        fontSize: '26px',
+        color: '#cccccc',
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 6,
-        align: 'center'
+        strokeThickness: 4,
+        align: 'center',
     }).setOrigin(0.5).setVisible(false);
+    wildBaseValueText.setAlpha(0.5);
     container.add(wildBaseValueText);
     container.wildBaseValueText = wildBaseValueText;
 
