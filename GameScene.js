@@ -2113,6 +2113,17 @@ export class GameScene extends Phaser.Scene {
             this.showNodeMessage(`+${totalGoldReward} Gold`, '#f1c40f');
         }
 
+        if (defeatedNode && defeatedNode.isBoss) {
+            const missing = this.playerMaxHealth - this.playerHealth;
+            if (missing > 0) {
+                const healAmount = Math.ceil(missing / 2);
+                const healed = this.healPlayer(healAmount);
+                if (healed > 0) {
+                    this.showNodeMessage(`Recovered ${healed} HP`, '#2ecc71');
+                }
+            }
+        }
+
         this.resetPlayerBurn();
 
         if (this.pathManager) {
