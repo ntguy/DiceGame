@@ -381,6 +381,23 @@ export class GameScene extends Phaser.Scene {
         // Update logic here
     }
 
+    executeZoneEffects(effects, zone, { attackResult, defendResult } = {}) {
+        if (!Array.isArray(effects)) {
+            return;
+        }
+
+        effects.forEach(effect => {
+            if (typeof effect === 'function') {
+                effect({
+                    scene: this,
+                    zone,
+                    attackResult,
+                    defendResult
+                });
+            }
+        });
+    }
+
     computeZoneScore(diceList, { zone } = {}) {
         const diceValues = Array.isArray(diceList)
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
@@ -943,24 +960,7 @@ export class GameScene extends Phaser.Scene {
         const defendScore = defendResult.total;
         const attackScore = attackResult.total;
 
-        const runEffects = (effects, zone) => {
-            if (!Array.isArray(effects)) {
-                return;
-            }
-            effects.forEach(effect => {
-                if (typeof effect === 'function') {
-                    effect({
-                        scene: this,
-                        zone,
-                        attackResult,
-                        defendResult
-                    });
-                }
-            });
-        };
-
-        runEffects(defendResult.preResolutionEffects, 'defend');
-        runEffects(attackResult.preResolutionEffects, 'attack');
+        this.executeZoneEffects(defendResult.preResolutionEffects, 'defend', { attackResult, defendResult });
 
         if (this.familyHealPerFullHouse > 0) {
             // Family relic: award healing for Full House combos.
@@ -1018,8 +1018,8 @@ export class GameScene extends Phaser.Scene {
 
         this.processTurnOutcome({ attackScore, defendScore, attackResult, defendResult });
 
-        runEffects(defendResult.postResolutionEffects, 'defend');
-        runEffects(attackResult.postResolutionEffects, 'attack');
+        this.executeZoneEffects(defendResult.postResolutionEffects, 'defend', { attackResult, defendResult });
+        this.executeZoneEffects(attackResult.postResolutionEffects, 'attack', { attackResult, defendResult });
 
         if (diceToResolve.length === 0) {
             this.time.delayedCall(1000, finishResolution);
@@ -1426,6 +1426,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.enemyManager.primeUpcomingDefenses();
+        this.executeZoneEffects(attackResult ? attackResult.preResolutionEffects : null, 'attack', { attackResult, defendResult });
         this.enemyManager.applyPlayerAttack(effectiveAttackScore);
         this.updateEnemyHealthUI();
 

@@ -113,6 +113,12 @@ export class EnemyManager {
         }
     }
 
+    reduceEnemyBlock(amount) {
+        if (amount > 0) {
+            this.enemyBlockValue = Math.max(0, this.enemyBlockValue - amount);
+        }
+    }
+
     destroyEnemyBlock() {
         if (this.enemyBlockValue > 0) {
             this.enemyBlockValue = 0;
