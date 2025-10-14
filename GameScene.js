@@ -21,11 +21,23 @@ import { WildOneRelic } from './relics/WildOneRelic.js';
 import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
-import { MAX_CUSTOM_DICE, createDieBlueprint, getRandomCustomDieOptions } from './dice/CustomDiceDefinitions.js';
+import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRandomCustomDieOptions } from './dice/CustomDiceDefinitions.js';
 import { computeDieContribution } from './dice/CustomDiceLogic.js';
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
 
 const SHOP_RELIC_COUNT = 3;
+
+function getRandomIndexExclusive(maxExclusive) {
+    if (!Number.isFinite(maxExclusive) || maxExclusive <= 0) {
+        return 0;
+    }
+
+    if (typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function') {
+        return Phaser.Math.Between(0, maxExclusive - 1);
+    }
+
+    return Math.floor(Math.random() * maxExclusive);
+}
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -215,6 +227,8 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
         createMenuUI(this);
         this.relicUI.createShelf();
+
+        this.applyTestingModeStartingResources();
 
         // --- Health bar ---
         this.healthBar = setupHealthBar(this);
@@ -574,6 +588,94 @@ export class GameScene extends Phaser.Scene {
 
         // Enable sort button after the first roll
         setTextButtonEnabled(this.sortButton, true);
+    }
+
+    applyTestingModeStartingResources() {
+        if (!this.testingModeEnabled) {
+            return;
+        }
+
+        this.populateTestingModeDiceLoadout();
+        this.grantTestingModeRelics(6);
+    }
+
+    populateTestingModeDiceLoadout() {
+        if (!this.testingModeEnabled) {
+            return;
+        }
+
+        const pool = Array.isArray(SELECTABLE_CUSTOM_DICE_IDS) ? [...SELECTABLE_CUSTOM_DICE_IDS] : [];
+        if (pool.length === 0) {
+            return;
+        }
+
+        const basePool = [...pool];
+        const selections = [];
+        let workingPool = [...basePool];
+
+        while (selections.length < MAX_CUSTOM_DICE && workingPool.length > 0) {
+            const index = getRandomIndexExclusive(workingPool.length);
+            selections.push(workingPool.splice(index, 1)[0]);
+
+            if (workingPool.length === 0 && selections.length < MAX_CUSTOM_DICE && basePool.length > 0) {
+                workingPool = [...basePool];
+            }
+        }
+
+        this.customDiceLoadout = [];
+        selections.forEach(id => {
+            this.addCustomDieToLoadout(id);
+        });
+    }
+
+    grantTestingModeRelics(targetCount = 6) {
+        if (!this.testingModeEnabled || typeof targetCount !== 'number' || targetCount <= 0) {
+            return;
+        }
+
+        const unowned = typeof this.getUnownedRelics === 'function' ? this.getUnownedRelics() : [];
+        const available = Array.isArray(unowned) ? [...unowned] : [];
+        if (available.length === 0) {
+            return;
+        }
+
+        const pool = [...available];
+        const selections = [];
+
+        while (selections.length < targetCount && pool.length > 0) {
+            const index = getRandomIndexExclusive(pool.length);
+            selections.push(pool.splice(index, 1)[0]);
+        }
+
+        let grantedAny = false;
+        selections.forEach(relic => {
+            if (this.grantRelicDirectly(relic, { skipUiUpdate: true })) {
+                grantedAny = true;
+            }
+        });
+
+        if (grantedAny && this.relicUI) {
+            this.relicUI.updateDisplay();
+        }
+    }
+
+    grantRelicDirectly(relic, { skipUiUpdate = false } = {}) {
+        if (!relic || !relic.id || this.ownedRelicIds.has(relic.id)) {
+            return false;
+        }
+
+        this.ownedRelicIds.add(relic.id);
+        this.relics.push(relic);
+
+        if (typeof relic.apply === 'function') {
+            relic.apply(this);
+        }
+
+        if (!skipUiUpdate && this.relicUI) {
+            this.relicUI.updateDisplay();
+        }
+
+        return true;
     }
 
     addCustomDieToLoadout(id, options = {}) {
@@ -2326,6 +2428,10 @@ export class GameScene extends Phaser.Scene {
     toggleTestingMode() {
         this.testingModeEnabled = !this.testingModeEnabled;
         this.updateTestingModeButtonState();
+
+        if (this.testingModeEnabled) {
+            this.applyTestingModeStartingResources();
+        }
 
         const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
         if (enemy) {
