@@ -34,6 +34,37 @@ export function getDieEmoji(dieOrId) {
     return typeof definition.emoji === 'string' ? definition.emoji : '';
 }
 
+export function doesDieFaceValueTriggerRule(die, { zone } = {}) {
+    if (!die) {
+        return false;
+    }
+
+    const blueprint = getBlueprint(die);
+    const definition = getCustomDieDefinitionById(blueprint.id);
+    const isUpgraded = !!blueprint.isUpgraded;
+    const faceValue = typeof die.displayValue === 'number'
+        ? die.displayValue
+        : (typeof die.value === 'number' ? die.value : 0);
+
+    switch (definition.id) {
+        case 'firecracker':
+            return faceValue >= 1 && faceValue <= 2;
+        case 'medicine':
+            return faceValue >= 1 && faceValue <= 3;
+        case 'flameout':
+            return faceValue > 0 && (isUpgraded || faceValue <= 4);
+        case 'demolition': {
+            if (zone !== 'attack') {
+                return false;
+            }
+            const threshold = isUpgraded ? 3 : 2;
+            return faceValue >= 1 && faceValue <= threshold;
+        }
+        default:
+            return false;
+    }
+}
+
 export function getDieAllowedZones(dieOrBlueprint) {
     const id = typeof dieOrBlueprint === 'string'
         ? dieOrBlueprint
