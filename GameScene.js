@@ -89,6 +89,8 @@ export class GameScene extends Phaser.Scene {
         this.pendingLockCount = 0;
         this.weakenedDice = new Set();
         this.pendingWeakenCount = 0;
+
+        this.mapTitleText = null;
     }
 
     resetRelicState() {
@@ -152,6 +154,8 @@ export class GameScene extends Phaser.Scene {
         this.maps = Array.isArray(MAP_CONFIGS) ? [...MAP_CONFIGS] : [];
         this.currentMapIndex = -1;
         this.currentMapConfig = null;
+
+        this.mapTitleText = null;
     }
 
     preload() {
@@ -220,6 +224,13 @@ export class GameScene extends Phaser.Scene {
             color: '#f1c40f'
         });
         this.updateGoldUI();
+
+        this.mapTitleText = this.add.text(this.scale.width - CONSTANTS.UI_MARGIN, CONSTANTS.UI_MARGIN, '', {
+            fontSize: '20px',
+            color: '#ecf0f1'
+        }).setOrigin(1, 0);
+        this.mapTitleText.setDepth(60);
+        this.updateMapTitleText();
 
         this.playerBurnText = this.add.text(0, 0, '', {
             fontSize: '20px',
@@ -405,6 +416,7 @@ export class GameScene extends Phaser.Scene {
         const enemy = this.enemyManager.getCurrentEnemy();
         if (enemy && typeof enemy.onPlayerReroll === 'function') {
             enemy.onPlayerReroll(count, this.enemyManager);
+            this.refreshEnemyIntentText();
             this.updateEnemyStatusText();
         }
     }
@@ -1206,6 +1218,7 @@ export class GameScene extends Phaser.Scene {
         const config = this.maps[mapIndex];
         this.currentMapIndex = mapIndex;
         this.currentMapConfig = config;
+        this.updateMapTitleText();
 
         const enemyFactory = config && typeof config.createEnemies === 'function'
             ? config.createEnemies
@@ -1237,6 +1250,18 @@ export class GameScene extends Phaser.Scene {
         this.prepareNextEnemyMove();
 
         return true;
+    }
+
+    updateMapTitleText() {
+        if (!this.mapTitleText) {
+            return;
+        }
+
+        const label = this.currentMapConfig && this.currentMapConfig.displayName
+            ? this.currentMapConfig.displayName
+            : '';
+        const hasLabel = label && label.length > 0;
+        this.mapTitleText.setText(hasLabel ? `${label}` : '');
     }
 
     hasNextMap() {
@@ -1342,11 +1367,59 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.upcomingEnemyMove = this.enemyManager.prepareNextMove();
-        if (this.enemyIntentText) {
-            const label = this.upcomingEnemyMove ? this.upcomingEnemyMove.label : '...';
-            this.enemyIntentText.setText(`Next: ${label}`);
-        }
+        this.refreshEnemyIntentText();
         this.updateEnemyStatusText();
+    }
+
+    getEnemyIntentDescription(enemy, move) {
+        if (!move) {
+            return '...';
+        }
+
+        if (enemy && typeof enemy.getIntentDescription === 'function') {
+            const custom = enemy.getIntentDescription(move, {
+                enemyManager: this.enemyManager,
+                scene: this
+            });
+            if (typeof custom === 'string' && custom.trim().length > 0) {
+                return custom;
+            }
+        }
+
+        if (move && typeof move.getLabel === 'function') {
+            const generated = move.getLabel();
+            if (typeof generated === 'string' && generated.trim().length > 0) {
+                return generated;
+            }
+        }
+
+        if (move && typeof move.label === 'string' && move.label.trim().length > 0) {
+            return move.label;
+        }
+
+        return '...';
+    }
+
+    refreshEnemyIntentText() {
+        if (!this.enemyIntentText) {
+            return;
+        }
+
+        const hasEnemyManager = !!this.enemyManager;
+        const enemy = hasEnemyManager ? this.enemyManager.getCurrentEnemy() : null;
+        const isEnemyActive = hasEnemyManager && enemy && !this.enemyManager.isCurrentEnemyDefeated();
+
+        if (!isEnemyActive) {
+            const hasPending = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+            this.enemyIntentText.setText(hasPending ? 'Select your next node' : 'All enemies defeated');
+            return;
+        }
+
+        const description = this.getEnemyIntentDescription(enemy, this.upcomingEnemyMove);
+        if (this.upcomingEnemyMove) {
+            this.upcomingEnemyMove.label = description;
+        }
+        this.enemyIntentText.setText(`Next: ${description}`);
     }
 
     updateEnemyStatusText() {
@@ -1844,6 +1917,7 @@ export class GameScene extends Phaser.Scene {
 
         this.inCombat = false;
         this.updateRollButtonState();
+        this.updateMapTitleText();
 
         if (this.sortButton) {
             setTextButtonEnabled(this.sortButton, false, { disabledAlpha: 0.3 });
@@ -2147,12 +2221,10 @@ export class GameScene extends Phaser.Scene {
         setVisibility(this.rollsRemainingText, showCombatUI);
 
         if (this.menuButton) {
-            setVisibility(this.menuButton, showCombatUI);
+            setVisibility(this.menuButton, true);
         }
 
-        if (!showCombatUI) {
-            this.closeMenu();
-        } else if (this.menuPanel) {
+        if (this.menuPanel) {
             this.menuPanel.setVisible(this.isMenuOpen);
         }
 
@@ -2174,6 +2246,11 @@ export class GameScene extends Phaser.Scene {
         setVisibility(this.attackPreviewText, showCombatUI);
         setVisibility(this.defendComboText, showCombatUI);
         setVisibility(this.attackComboText, showCombatUI);
+
+        if (this.mapTitleText) {
+            const hasText = this.mapTitleText.text && this.mapTitleText.text.length > 0;
+            this.mapTitleText.setVisible(isMapView && hasText);
+        }
 
         if (this.enemyHealthBar) {
             const elements = ['barBg', 'barFill', 'text', 'nameText', 'intentText', 'statusText'];

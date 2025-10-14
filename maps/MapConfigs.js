@@ -50,13 +50,13 @@ const mapTwoEnemySequence = [
 export const MAP_CONFIGS = [
     {
         id: 'map-1',
-        displayName: 'Map 1',
+        displayName: 'Map 1: Molten Forge',
         createEnemies: mapOneEnemyFactories,
         enemySequence: DEFAULT_PATH_ENEMY_SEQUENCE
     },
     {
         id: 'map-2',
-        displayName: 'Map 2',
+        displayName: 'Map 2: Iron Bastion',
         createEnemies: mapTwoEnemyFactories,
         enemySequence: mapTwoEnemySequence
     }
