@@ -26,14 +26,6 @@ const DEFINITIONS = [
         allowedZones: ['attack']
     },
     {
-        id: 'bomb',
-        name: 'Bombard',
-        emoji: '💣',
-        description: 'Damage all enemies by FV.',
-        upgradeDescription: 'Damage all enemies by FV + 2.',
-        allowedZones: ['attack', 'defend']
-    },
-    {
         id: 'bonk',
         name: 'Bonk',
         emoji: '🦴',
@@ -75,7 +67,20 @@ const DEFINITIONS = [
     }
 ];
 
-export const CUSTOM_DICE_DEFINITIONS = DEFINITIONS.reduce((acc, def) => {
+const IN_DEVELOPMENT_DEFINITIONS = [
+    {
+        id: 'bomb',
+        name: 'Bombard',
+        emoji: '💣',
+        description: 'Damage all enemies by FV.',
+        upgradeDescription: 'Damage all enemies by FV + 2.',
+        allowedZones: ['attack', 'defend']
+    }
+];
+
+const ALL_DEFINITIONS = [...DEFINITIONS, ...IN_DEVELOPMENT_DEFINITIONS];
+
+export const CUSTOM_DICE_DEFINITIONS = ALL_DEFINITIONS.reduce((acc, def) => {
     acc[def.id] = def;
     return acc;
 }, {});
@@ -83,6 +88,8 @@ export const CUSTOM_DICE_DEFINITIONS = DEFINITIONS.reduce((acc, def) => {
 export const SELECTABLE_CUSTOM_DICE_IDS = DEFINITIONS
     .filter(def => def.id !== 'standard')
     .map(def => def.id);
+
+export const IN_DEVELOPMENT_CUSTOM_DICE_IDS = IN_DEVELOPMENT_DEFINITIONS.map(def => def.id);
 
 export function getCustomDieDefinitionById(id) {
     if (!id || !CUSTOM_DICE_DEFINITIONS[id]) {
