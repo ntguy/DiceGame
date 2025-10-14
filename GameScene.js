@@ -67,7 +67,7 @@ export class GameScene extends Phaser.Scene {
         this.muteButton = null;
         this.isMuted = false;
         this.isGameOver = false;
-        this.testingModeEnabled = true;
+        this.testingModeEnabled = false;
         this.pathManager = null;
         this.pathUI = null;
         this.currentPathNodeId = null;
@@ -141,7 +141,7 @@ export class GameScene extends Phaser.Scene {
         this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
         this.testingModeEnabled = data && typeof data.testingModeEnabled === 'boolean'
             ? data.testingModeEnabled
-            : true;
+            : false;
         this.isGameOver = false;
         this.gameOverManager = null;
         this.pathManager = null;
