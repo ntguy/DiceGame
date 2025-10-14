@@ -12,7 +12,11 @@ export function getDieEmoji(dieOrId) {
         ? dieOrId
         : (dieOrId && dieOrId.dieBlueprint ? dieOrId.dieBlueprint.id : dieOrId?.id);
     const definition = getCustomDieDefinitionById(id);
-    return definition.emoji || '🎲';
+    if (!definition) {
+        return '';
+    }
+
+    return typeof definition.emoji === 'string' ? definition.emoji : '';
 }
 
 export function getDieAllowedZones(dieOrBlueprint) {

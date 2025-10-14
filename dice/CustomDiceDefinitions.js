@@ -3,15 +3,15 @@ export const MAX_CUSTOM_DICE = 6;
 const DEFINITIONS = [
     {
         id: 'standard',
-        name: 'Standard Die',
-        emoji: '🎲',
+        name: 'Standard',
+        emoji: '',
         description: 'A reliable die with no special properties.',
         upgradeDescription: 'Upgrade TBD.',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'shield',
-        name: 'Bulwark Die',
+        name: 'Bulwark',
         emoji: '🛡️',
         description: 'Can only defend. 2× face value while resolving Defend.',
         upgradeDescription: 'Upgrade: 2× face value while in Defend.',
@@ -19,7 +19,7 @@ const DEFINITIONS = [
     },
     {
         id: 'sword',
-        name: 'Warrior Die',
+        name: 'Warrior',
         emoji: '⚔️',
         description: 'Can only attack. 2× face value while resolving Attack.',
         upgradeDescription: 'Upgrade: 2× face value while in Attack.',
@@ -27,7 +27,7 @@ const DEFINITIONS = [
     },
     {
         id: 'bomb',
-        name: 'Bombard Die',
+        name: 'Bombard',
         emoji: '💣',
         description: 'Deal damage to all enemies equal to face value.',
         upgradeDescription: 'Upgrade: Damage equals face value + 2.',
@@ -35,7 +35,7 @@ const DEFINITIONS = [
     },
     {
         id: 'bone',
-        name: 'Wishbone Die',
+        name: 'Wishbone',
         emoji: '🦴',
         description: 'Counts as 6 face value if the zone has no combo.',
         upgradeDescription: 'Upgrade: Counts as 8 face value in No combo.',
@@ -43,7 +43,7 @@ const DEFINITIONS = [
     },
     {
         id: 'pear',
-        name: 'Pear Pair Die',
+        name: 'Pear Pair',
         emoji: '🍐',
         description: '+5 combo bonus when part of a Pair.',
         upgradeDescription: 'Upgrade: +6 combo bonus in Pair or Two Pair.',
@@ -51,7 +51,7 @@ const DEFINITIONS = [
     },
     {
         id: 'extinguisher',
-        name: 'Extinguisher Die',
+        name: 'Extinguisher',
         emoji: '🧯',
         description: 'If rolling 1-4, cleanse burn equal to face value.',
         upgradeDescription: 'Upgrade: Cleanse burn equal to face value.',
@@ -59,7 +59,7 @@ const DEFINITIONS = [
     },
     {
         id: 'unlock',
-        name: 'Unlocked Die',
+        name: 'Unlocked',
         emoji: '🔓',
         description: 'If attacking with a 1, destroy all enemy block.',
         upgradeDescription: 'Upgrade: Any 1 destroys all enemy block.',
@@ -67,7 +67,7 @@ const DEFINITIONS = [
     },
     {
         id: 'lucky',
-        name: 'Lucky Die',
+        name: 'Lucky',
         emoji: '🤞',
         description: 'Double chance to roll a 1 or a 6.',
         upgradeDescription: 'Upgrade: Double chance to roll a 3 or 6.',

@@ -7,6 +7,10 @@ const CARD_WIDTH = 250;
 const CARD_HEIGHT = 260;
 const CARD_GAP = 24;
 const EMOJI_TEXT_PADDING = { top: 6, bottom: 6 };
+const TOGGLE_MARGIN = 28;
+const TOGGLE_WIDTH = 210;
+const TOGGLE_HEIGHT = 48;
+const TOGGLE_BOX_SIZE = 26;
 
 export class DiceRewardUI {
     constructor(scene, { options = [], onSelect, onClose } = {}) {
@@ -15,7 +19,9 @@ export class DiceRewardUI {
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => false;
         this.onClose = typeof onClose === 'function' ? onClose : () => {};
         this.cardContainers = [];
+        this.cardEntries = [];
         this.isDestroyed = false;
+        this.viewUpgrade = false;
 
         this.create();
     }
@@ -45,12 +51,74 @@ export class DiceRewardUI {
         this.backdrop = modal.backdrop;
         this.container = modal.container;
 
+        this.createUpgradeToggle();
         this.renderOptions();
+    }
+
+    createUpgradeToggle() {
+        const toggleContainer = this.scene.add.container(
+            PANEL_WIDTH / 2 - TOGGLE_MARGIN - TOGGLE_WIDTH / 2,
+            -PANEL_HEIGHT / 2 + TOGGLE_MARGIN + TOGGLE_HEIGHT / 2
+        );
+
+        const toggleBackground = this.scene.add.rectangle(0, 0, TOGGLE_WIDTH, TOGGLE_HEIGHT, 0x000000, 0)
+            .setInteractive({ useHandCursor: true });
+
+        const boxX = -TOGGLE_WIDTH / 2 + TOGGLE_BOX_SIZE / 2 + 12;
+        const box = this.scene.add.rectangle(boxX, 0, TOGGLE_BOX_SIZE, TOGGLE_BOX_SIZE, 0x271438, 0.9)
+            .setStrokeStyle(2, 0xf1c40f, 0.85);
+
+        const checkmark = this.scene.add.text(boxX, 0, '✔', {
+            fontSize: '20px',
+            color: '#f1c40f'
+        }).setOrigin(0.5);
+        checkmark.setVisible(false);
+
+        const label = this.scene.add.text(boxX + TOGGLE_BOX_SIZE / 2 + 16, 0, 'View Upgrade', {
+            fontSize: '20px',
+            color: '#f9e79f'
+        }).setOrigin(0, 0.5);
+
+        toggleBackground.on('pointerup', () => {
+            this.setViewUpgrade(!this.viewUpgrade);
+            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
+                this.scene.sound.play('menuSelect', { volume: 0.4 });
+            }
+        });
+
+        toggleBackground.on('pointerover', () => {
+            box.setFillStyle(0x2f1c44, 0.95);
+        });
+
+        toggleBackground.on('pointerout', () => {
+            box.setFillStyle(0x271438, 0.9);
+        });
+
+        toggleContainer.add([toggleBackground, box, checkmark, label]);
+        this.container.add(toggleContainer);
+
+        this.toggle = {
+            container: toggleContainer,
+            background: toggleBackground,
+            box,
+            checkmark,
+            label
+        };
+    }
+
+    setViewUpgrade(value) {
+        this.viewUpgrade = !!value;
+        if (this.toggle && this.toggle.checkmark) {
+            this.toggle.checkmark.setVisible(this.viewUpgrade);
+        }
+
+        this.updateCardViews();
     }
 
     renderOptions() {
         this.cardContainers.forEach(container => container.destroy(true));
         this.cardContainers = [];
+        this.cardEntries = [];
 
         const cardSpacing = CARD_WIDTH + CARD_GAP;
         const startX = this.options.length > 1
@@ -71,12 +139,12 @@ export class DiceRewardUI {
 
             cardContainer.setPosition(cardX, cardY);
 
-            const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, option.emoji || '🎲', {
+            const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, option.emoji || '', {
                 fontSize: '52px',
                 padding: EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
-            const nameText = this.scene.add.text(0, icon.y + 46, option.name || 'Die', {
+            const nameText = this.scene.add.text(0, icon.y + 46, option.name || 'Unknown', {
                 fontSize: '24px',
                 color: '#ffffff',
                 fontStyle: 'bold'
@@ -85,13 +153,6 @@ export class DiceRewardUI {
             const descriptionText = this.scene.add.text(0, nameText.y + 28, option.description || '', {
                 fontSize: '16px',
                 color: '#f8f9f9',
-                wordWrap: { width: CARD_WIDTH - 48 }
-            }).setOrigin(0.5, 0);
-
-            const upgradeLabel = option.upgradeDescription ? option.upgradeDescription : '';
-            const upgradeText = this.scene.add.text(0, descriptionText.y + 86, upgradeLabel, {
-                fontSize: '15px',
-                color: '#c39bd3',
                 wordWrap: { width: CARD_WIDTH - 48 }
             }).setOrigin(0.5, 0);
 
@@ -124,10 +185,49 @@ export class DiceRewardUI {
                 }
             });
 
-            cardContainer.add([cardBg, icon, nameText, descriptionText, upgradeText, buttonBg, buttonText]);
+            cardContainer.add([cardBg, icon, nameText, descriptionText, buttonBg, buttonText]);
             this.container.add(cardContainer);
             this.cardContainers.push(cardContainer);
+
+            const entry = {
+                option,
+                container: cardContainer,
+                icon,
+                nameText,
+                descriptionText
+            };
+
+            this.cardEntries.push(entry);
+            this.updateCardEntry(entry);
         });
+
+        this.updateCardViews();
+    }
+
+    updateCardViews() {
+        this.cardEntries.forEach(entry => this.updateCardEntry(entry));
+    }
+
+    updateCardEntry(entry) {
+        if (!entry) {
+            return;
+        }
+
+        const { option, nameText, descriptionText } = entry;
+        const isUpgrade = this.viewUpgrade;
+
+        const baseName = option.name || 'Unknown';
+        const displayName = isUpgrade ? `${baseName}+` : baseName;
+        const nameColor = isUpgrade ? '#f1c40f' : '#ffffff';
+
+        nameText.setText(displayName);
+        nameText.setColor(nameColor);
+
+        const description = isUpgrade
+            ? option.upgradeDescription || option.description || ''
+            : option.description || '';
+
+        descriptionText.setText(description);
     }
 
     destroy() {
@@ -138,6 +238,12 @@ export class DiceRewardUI {
 
         this.cardContainers.forEach(container => container.destroy(true));
         this.cardContainers = [];
+        this.cardEntries = [];
+
+        if (this.toggle && this.toggle.container) {
+            this.toggle.container.destroy(true);
+            this.toggle = null;
+        }
 
         destroyModal(this.modal);
         this.modal = null;
