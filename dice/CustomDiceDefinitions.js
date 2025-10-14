@@ -64,6 +64,30 @@ const DEFINITIONS = [
         description: 'Double chance to roll a 1 or a 6.',
         upgradeDescription: 'Double chance to roll a 3 or 6.',
         allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'firecracker',
+        name: 'Firecracker',
+        emoji: '🧨',
+        description: 'FV=1-2: Burn the enemy 2.',
+        upgradeDescription: 'FV=1-2: Burn the enemy 3.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'medicene',
+        name: 'MeDICEne',
+        emoji: '💊',
+        description: 'FV=1-3: Heal 5.',
+        upgradeDescription: 'FV=1-3: Heal 8.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'wild',
+        name: 'Wild',
+        emoji: '🤪',
+        description: 'FV=1-4: Acts as wild for combo.',
+        upgradeDescription: 'Acts as wild for combo.',
+        allowedZones: ['attack', 'defend']
     }
 ];
 

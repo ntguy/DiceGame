@@ -174,6 +174,30 @@ function getPostResolutionEffects({ die, zone }) {
         }
     }
 
+    if (definition.id === 'firecracker') {
+        // Firecracker die: stacks burn on the enemy when rolled low.
+        const withinThreshold = faceValue >= 1 && faceValue <= 2;
+        if (withinThreshold) {
+            const burnAmount = isUpgraded ? 3 : 2;
+            effects.push(context => {
+                const { scene } = context || {};
+                callSceneMethod(scene, 'applyEnemyBurn', burnAmount);
+            });
+        }
+    }
+
+    if (definition.id === 'medicene') {
+        // MeDICEne die: heals the player on gentle rolls.
+        const withinThreshold = faceValue >= 1 && faceValue <= 3;
+        if (withinThreshold) {
+            const healAmount = isUpgraded ? 8 : 5;
+            effects.push(context => {
+                const { scene } = context || {};
+                callSceneMethod(scene, 'healPlayer', healAmount);
+            });
+        }
+    }
+
     return effects;
 }
 
