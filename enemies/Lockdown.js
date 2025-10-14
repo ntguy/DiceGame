@@ -7,37 +7,78 @@ export class LockdownEnemy extends BaseEnemy {
 
         this.baseDefensePerReroll = 1;
         this.defensePerReroll = this.baseDefensePerReroll;
+        this.currentDefenseBonus = 0;
+
+        const createMove = ({ key, title, components, actions, createActions }) => {
+            const baseComponents = Array.isArray(components)
+                ? components.map(component => ({ ...component }))
+                : [];
+
+            const moveConfig = {
+                key,
+                intentTitle: title,
+                intentComponents: baseComponents,
+                label: () => this.composeMoveLabel(title, baseComponents, { includeDefenseBonus: false })
+            };
+
+            if (typeof createActions === 'function') {
+                moveConfig.createActions = createActions;
+            } else {
+                moveConfig.actions = Array.isArray(actions) ? actions : [];
+            }
+
+            return moveConfig;
+        };
 
         this.moves = [
-            {
+            createMove({
                 key: 'lockdown_guarded_blow',
-                label: 'Iron Curtain: Defend 5 + Attack 10',
+                title: 'Iron Curtain',
+                components: [
+                    { type: 'defend', value: 5 },
+                    { type: 'attack', value: 10 }
+                ],
                 actions: [defendAction(5), attackAction(10)]
-            },
-            {
+            }),
+            createMove({
                 key: 'lockdown_suppress',
-                label: 'Suppression Protocol: Defend 5 + Lock 2 Dice + Weaken 2 Dice',
+                title: 'Suppression Protocol',
+                components: [
+                    { type: 'defend', value: 5 },
+                    { type: 'lock', value: 2 },
+                    { type: 'weaken', value: 2 }
+                ],
                 actions: [defendAction(5), lockAction(2), weakenAction(2)]
-            },
-            {
+            }),
+            createMove({
                 key: 'lockdown_heat',
-                label: 'Thermal Shield: Defend 5 + Burn 10',
+                title: 'Thermal Shield',
+                components: [
+                    { type: 'defend', value: 5 },
+                    { type: 'burn', value: 10 }
+                ],
                 actions: [defendAction(5), burnAction(10)]
-            },
-            {
+            }),
+            createMove({
                 key: 'lockdown_escalate',
-                label: 'Total Control: Defend 10 + Lock 1 Die + Weaken 1 Die',
+                title: 'Total Control',
+                components: [
+                    { type: 'defend', value: 10 },
+                    { type: 'lock', value: 1 },
+                    { type: 'weaken', value: 1 }
+                ],
                 createActions: () => {
                     this.defensePerReroll += 1;
                     return [defendAction(10), lockAction(1), weakenAction(1)];
                 }
-            }
+            })
         ];
     }
 
     onEncounterStart() {
         this.defensePerReroll = this.baseDefensePerReroll;
         this.moveIndex = 0;
+        this.currentDefenseBonus = 0;
     }
 
     getStatusDescription() {
@@ -53,6 +94,101 @@ export class LockdownEnemy extends BaseEnemy {
         const gained = count * Math.max(0, this.defensePerReroll);
         if (gained > 0 && typeof enemyManager.addEnemyBlock === 'function') {
             enemyManager.addEnemyBlock(gained);
+            this.currentDefenseBonus += gained;
         }
+    }
+
+    getNextMove() {
+        this.currentDefenseBonus = 0;
+        return super.getNextMove();
+    }
+
+    composeMoveLabel(title, components, { includeDefenseBonus = true } = {}) {
+        const { description } = this.buildIntentLabelData(title, components, { includeDefenseBonus });
+        return description;
+    }
+
+    buildIntentLabelData(title, components, { includeDefenseBonus = true } = {}) {
+        const safeTitle = title || 'Move';
+        const list = Array.isArray(components) ? components : [];
+
+        let baseDefenseTotal = 0;
+        list.forEach(component => {
+            if (component && component.type === 'defend') {
+                baseDefenseTotal += typeof component.value === 'number' ? component.value : 0;
+            }
+        });
+
+        const defenseBonus = includeDefenseBonus ? Math.max(0, this.currentDefenseBonus || 0) : 0;
+        const parts = [];
+        let defendAdded = false;
+
+        const formatCount = (count, singular, plural) => {
+            const value = typeof count === 'number' ? count : 0;
+            const noun = value === 1 ? singular : plural;
+            return `${value} ${noun}`;
+        };
+
+        list.forEach(component => {
+            if (!component) {
+                return;
+            }
+
+            const value = typeof component.value === 'number'
+                ? component.value
+                : (typeof component.count === 'number' ? component.count : 0);
+
+            switch (component.type) {
+                case 'defend': {
+                    if (defendAdded) {
+                        break;
+                    }
+                    const totalDefense = baseDefenseTotal + defenseBonus;
+                    parts.push(`Defend ${totalDefense}`);
+                    defendAdded = true;
+                    break;
+                }
+                case 'attack':
+                    parts.push(`Attack ${value}`);
+                    break;
+                case 'burn':
+                    parts.push(`Burn ${value}`);
+                    break;
+                case 'lock':
+                    parts.push(`Lock ${formatCount(value, 'Die', 'Dice')}`);
+                    break;
+                case 'weaken':
+                    parts.push(`Weaken ${formatCount(value, 'Die', 'Dice')}`);
+                    break;
+                default:
+                    if (component.label) {
+                        parts.push(component.label);
+                    }
+                    break;
+            }
+        });
+
+        const description = parts.length > 0
+            ? `${safeTitle}: ${parts.join(' + ')}`
+            : safeTitle;
+
+        return {
+            description,
+            baseDefenseTotal,
+            defenseBonus
+        };
+    }
+
+    getIntentDescription(move) {
+        const components = Array.isArray(move.intentComponents) ? move.intentComponents : [];
+        const title = move.intentTitle || 'Move';
+        const { description, baseDefenseTotal, defenseBonus } = this.buildIntentLabelData(title, components, { includeDefenseBonus: true });
+
+        if (baseDefenseTotal > 0 && defenseBonus > 0) {
+            const totalDefense = baseDefenseTotal + defenseBonus;
+            return `${description}\nReroll Bonus: +${defenseBonus} Defense (Total ${totalDefense})`;
+        }
+
+        return description;
     }
 }

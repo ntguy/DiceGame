@@ -34,17 +34,31 @@ export class BaseEnemy {
         const move = this.moves[this.moveIndex % this.moves.length];
         this.moveIndex += 1;
 
-        const label = typeof move.label === 'function' ? move.label() : move.label;
+        const labelFn = typeof move.label === 'function'
+            ? move.label.bind(this)
+            : null;
+        const label = labelFn ? labelFn() : (typeof move.label === 'string' ? move.label : '');
         const actions = typeof move.createActions === 'function' ? move.createActions() : (move.actions || []);
 
         const hydratedActions = Array.isArray(actions)
             ? actions.map(action => ({ ...action }))
             : [];
 
+        const clonedComponents = Array.isArray(move.intentComponents)
+            ? move.intentComponents.map(component => ({ ...component }))
+            : undefined;
+
+        const labelGetter = labelFn
+            ? () => labelFn()
+            : () => (typeof move.label === 'string' ? move.label : '');
+
         return {
             key: `${move.key}_${this.moveIndex}`,
             label: label || '',
-            actions: hydratedActions
+            actions: hydratedActions,
+            intentComponents: clonedComponents,
+            intentTitle: move.intentTitle || move.title || '',
+            getLabel: labelGetter
         };
     }
 }
