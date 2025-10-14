@@ -19,7 +19,7 @@ export function createDie(scene, slotIndex, blueprint) {
     container.bg = bg;
 
     container.baseStrokeStyle = { width: 2, color: 0xffffff, alpha: 0.35 };
-    container.highlightStrokeStyle = { width: 3, color: 0xf1c40f, alpha: 1 };
+    container.highlightStrokeStyle = { width: 2, color: 0xf1c40f, alpha: 0.7 };
     container.currentZone = null;
 
     container.updateFaceValueHighlight = function() {
