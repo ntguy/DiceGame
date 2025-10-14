@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../config.js';
 import { createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { rollCustomDieValue, getDieEmoji, isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
+import { callSceneMethod } from '../utils/SceneHelpers.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
 
 export function createDie(scene, slotIndex, blueprint) {
@@ -35,6 +36,7 @@ export function createDie(scene, slotIndex, blueprint) {
     container.displayPipColor = 0xffffff;
 
     container.renderFace = function(faceValue, { pipColor, updateValue = true } = {}) {
+        // Wild One relic: render rolled 1s with black pips when active.
         const color = typeof pipColor === 'number' ? pipColor : (faceValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff);
         drawDiePips(scene, container, faceValue, { pipColor: color, updateValue });
     };
@@ -56,6 +58,7 @@ export function createDie(scene, slotIndex, blueprint) {
     // Add die methods
     container.roll = function() {
         const rolledValue = rollCustomDieValue(scene, container);
+        // Wild One relic: default rerolls of 1 should appear as wild (black) pips.
         const pipColor = rolledValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
         this.renderFace(rolledValue, { pipColor, updateValue: true });
     };
@@ -218,7 +221,5 @@ export function snapToGrid(die, diceArray, scene) {
         });
     });
 
-    if (scene && typeof scene.updateZonePreviewText === 'function') {
-        scene.updateZonePreviewText();
-    }
+    callSceneMethod(scene, 'updateZonePreviewText');
 }

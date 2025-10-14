@@ -17,6 +17,7 @@ export class FamilyRelic extends Relic {
         }
 
         scene.hasFamilyRelic = true;
+        // Family relic: track heal amount for each future Full House.
         scene.familyHealPerFullHouse = 10;
     }
 }

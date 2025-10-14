@@ -1,4 +1,5 @@
 import { Relic } from './RelicBase.js';
+import { callSceneManagerMethod } from '../utils/SceneHelpers.js';
 
 export class BlockbusterRelic extends Relic {
     constructor() {
@@ -18,9 +19,7 @@ export class BlockbusterRelic extends Relic {
 
         scene.hasBlockbusterRelic = true;
         scene.blockDamageMultiplier = 2;
-
-        if (scene.enemyManager && typeof scene.enemyManager.setBlockDamageMultiplier === 'function') {
-            scene.enemyManager.setBlockDamageMultiplier(scene.blockDamageMultiplier);
-        }
+        // Blockbuster relic: make enemy block take amplified damage immediately.
+        callSceneManagerMethod(scene, 'enemyManager', 'setBlockDamageMultiplier', scene.blockDamageMultiplier);
     }
 }

@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../config.js';
 import { isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
 import { snapToGrid } from './Dice.js';
+import { callSceneMethod } from '../utils/SceneHelpers.js';
 
 export function setupZones(scene) {
     const zoneWidth = CONSTANTS.DEFAULT_ZONE_WIDTH + 6;
@@ -47,9 +48,7 @@ export function removeFromZones(scene, die) {
     scene.defendSlots = scene.defendSlots.map(s => s === die ? null : s);
     scene.attackSlots = scene.attackSlots.map(s => s === die ? null : s);
 
-    if (scene && typeof scene.updateZonePreviewText === 'function') {
-        scene.updateZonePreviewText();
-    }
+    callSceneMethod(scene, 'updateZonePreviewText');
 }
 
 
@@ -83,7 +82,5 @@ export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     die.y = y;
     die.setDepth(2);
 
-    if (scene && typeof scene.updateZonePreviewText === 'function') {
-        scene.updateZonePreviewText();
-    }
+    callSceneMethod(scene, 'updateZonePreviewText');
 }

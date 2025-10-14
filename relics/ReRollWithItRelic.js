@@ -1,4 +1,5 @@
 import { Relic } from './RelicBase.js';
+import { callSceneMethod } from '../utils/SceneHelpers.js';
 
 export class ReRollWithItRelic extends Relic {
     constructor() {
@@ -17,8 +18,7 @@ export class ReRollWithItRelic extends Relic {
         }
 
         scene.rerollDefensePerDie = (scene.rerollDefensePerDie || 0) + 1;
-        if (typeof scene.updateZonePreviewText === 'function') {
-            scene.updateZonePreviewText();
-        }
+        // Re-Roll with it relic: refresh previews to include new defense bonus.
+        callSceneMethod(scene, 'updateZonePreviewText');
     }
 }

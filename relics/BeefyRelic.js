@@ -1,4 +1,5 @@
 import { Relic } from './RelicBase.js';
+import { callSceneMethod } from '../utils/SceneHelpers.js';
 
 export class BeefyRelic extends Relic {
     constructor() {
@@ -12,10 +13,10 @@ export class BeefyRelic extends Relic {
     }
 
     apply(scene) {
-        if (!scene || typeof scene.increasePlayerMaxHealth !== 'function') {
+        if (!scene) {
             return;
         }
-
-        scene.increasePlayerMaxHealth(20, { heal: true });
+        // Beefy relic: boost max HP and heal immediately.
+        callSceneMethod(scene, 'increasePlayerMaxHealth', 20, { heal: true });
     }
 }

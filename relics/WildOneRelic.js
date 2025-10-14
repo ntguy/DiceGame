@@ -1,4 +1,5 @@
 import { Relic } from './RelicBase.js';
+import { callSceneMethod } from '../utils/SceneHelpers.js';
 
 export class WildOneRelic extends Relic {
     constructor() {
@@ -17,8 +18,7 @@ export class WildOneRelic extends Relic {
         }
 
         scene.hasWildOneRelic = true;
-        if (typeof scene.updateZonePreviewText === 'function') {
-            scene.updateZonePreviewText();
-        }
+        // Wild One relic: update UI so wildcard assignments appear immediately.
+        callSceneMethod(scene, 'updateZonePreviewText');
     }
 }
