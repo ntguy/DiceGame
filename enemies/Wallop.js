@@ -3,7 +3,7 @@ import { attackAction, burnAction, defendAction } from './EnemyActions.js';
 
 export class WallopEnemy extends BaseEnemy {
     constructor() {
-        super({ name: 'Wallop', maxHealth: 120 });
+        super({ name: 'Wallop', maxHealth: 111 });
         this._phaseIndex = 0;
         this._scalingAttackValue = 30;
     }
@@ -23,8 +23,8 @@ export class WallopEnemy extends BaseEnemy {
             this._phaseIndex += 1;
             return {
                 key: `wallop_guard_${countdown}`,
-                label: `Defend for 20 (${countdown})`,
-                actions: [defendAction(20)]
+                label: `Defend for 15 (${countdown})`,
+                actions: [defendAction(15)]
             };
         }
 

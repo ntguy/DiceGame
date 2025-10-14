@@ -113,7 +113,7 @@ export function createMenuUI(scene) {
     menuPanel.add(settingsTitle);
 
     const muteButtonY = settingsTop + 74;
-    const toggleSpacing = 60;
+    const toggleSpacing = 50;
 
     scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
         fontSize: '22px',
