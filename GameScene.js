@@ -113,7 +113,6 @@ export class GameScene extends Phaser.Scene {
         this.ownedRelicIds = new Set();
         this.currentShopRelics = null;
         this.hasBlockbusterRelic = false;
-        this.blockDamageMultiplier = 1; // Blockbuster relic multiplier baseline.
         this.hasFamilyRelic = false;
         this.familyHealPerFullHouse = 0;
         this.rerollDefensePerDie = 0;
@@ -122,10 +121,6 @@ export class GameScene extends Phaser.Scene {
         this.unlocksOnLongStraights = false;
         if (this.relicUI) {
             this.relicUI.reset();
-        }
-        if (this.enemyManager && typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
-            // Blockbuster relic: ensure enemy manager reflects the current multiplier.
-            this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
         }
     }
 
@@ -260,9 +255,6 @@ export class GameScene extends Phaser.Scene {
 
         // --- Enemy ---
         this.enemyManager = new EnemyManager();
-        if (typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
-            this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
-        }
         const initialEnemy = this.enemyManager.getCurrentEnemy();
         this.enemyHealthBar = setupEnemyUI(this, initialEnemy ? initialEnemy.name : '???');
         this.enemyIntentText = this.enemyHealthBar.intentText;
@@ -492,7 +484,9 @@ export class GameScene extends Phaser.Scene {
                 return false;
             }
             if (Array.isArray(wildcardFlags) && typeof wildcardFlags[index] === 'boolean') {
-                return wildcardFlags[index];
+                if (wildcardFlags[index]) {
+                    return true;
+                }
             }
             const relicWildcard = this.hasWildOneRelic && die.value === 1;
             return relicWildcard || doesDieActAsWildcardForCombo(die);
@@ -1471,8 +1465,6 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.applyEnemyBurnTickDamage();
-
         const enemy = this.enemyManager.getCurrentEnemy();
         if (!enemy) {
             this.handleAllEnemiesDefeated();
@@ -1501,6 +1493,24 @@ export class GameScene extends Phaser.Scene {
 
         this.enemyManager.primeUpcomingDefenses();
         this.executeZoneEffects(attackResult ? attackResult.preResolutionEffects : null, 'attack', { attackResult, defendResult });
+
+        const burnResolution = this.applyEnemyBurnTickDamage();
+        if (burnResolution && (burnResolution.damageDealt > 0 || burnResolution.blockedAmount > 0)) {
+            if (this.enemyManager.isCurrentEnemyDefeated()) {
+                this.playerBlockValue = 0;
+                this.handleEnemyDefeat();
+                return;
+            }
+        }
+
+        if (this.hasBlockbusterRelic && this.enemyManager && effectiveAttackScore > 0) {
+            const reducedBy = this.enemyManager.halveEnemyBlock();
+            if (reducedBy > 0) {
+                this.refreshEnemyIntentText();
+                this.updateEnemyStatusText();
+            }
+        }
+
         this.enemyManager.applyPlayerAttack(effectiveAttackScore);
         this.updateEnemyHealthUI();
         this.updateEnemyBurnUI();
@@ -1789,10 +1799,23 @@ export class GameScene extends Phaser.Scene {
             return { damageDealt: 0, blockedAmount: 0 };
         }
 
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (!enemy || this.enemyManager.isCurrentEnemyDefeated()) {
+            this.updateEnemyBurnUI();
+            return { damageDealt: 0, blockedAmount: 0 };
+        }
+
         const result = this.enemyManager.applyEnemyBurnTick();
         if (!result) {
             this.updateEnemyBurnUI();
             return { damageDealt: 0, blockedAmount: 0 };
+        }
+
+        if (result.blockedAmount > 0) {
+            if (this.enemyManager && !this.enemyManager.isCurrentEnemyDefeated()) {
+                this.refreshEnemyIntentText();
+                this.updateEnemyStatusText();
+            }
         }
 
         if (result.damageDealt > 0 || result.blockedAmount > 0) {

@@ -5,7 +5,6 @@ export class EnemyManager {
         this.currentEnemy = null;
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
-        this.blockDamageMultiplier = 1;
         this.enemyBurnValue = 0;
     }
 
@@ -64,14 +63,12 @@ export class EnemyManager {
             return { damageDealt: 0, blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)) };
         }
 
-        const blockMultiplier = Math.max(1, this.blockDamageMultiplier || 1);
-        const maxBlockConsumed = amount * blockMultiplier;
-        const blockConsumed = Math.min(this.enemyBlockValue, maxBlockConsumed);
-        const blockedAmount = Math.min(amount, blockMultiplier === 1
-            ? blockConsumed
-            : Math.ceil(blockConsumed / blockMultiplier));
-        this.enemyBlockValue = Math.max(0, this.enemyBlockValue - blockConsumed);
-        const damageDealt = Math.max(0, amount - blockedAmount);
+        const blockBefore = this.enemyBlockValue;
+        const blockedAmount = Math.min(blockBefore, amount);
+        if (blockedAmount > 0) {
+            this.enemyBlockValue = Math.max(0, blockBefore - amount);
+        }
+        const damageDealt = Math.max(0, amount - blockBefore);
 
         if (damageDealt > 0) {
             this.currentEnemy.takeDamage(damageDealt);
@@ -128,9 +125,17 @@ export class EnemyManager {
         }
     }
 
-    setBlockDamageMultiplier(multiplier = 1) {
-        const value = typeof multiplier === 'number' && multiplier > 0 ? multiplier : 1;
-        this.blockDamageMultiplier = value;
+    halveEnemyBlock() {
+        // Blockbuster relic: halve remaining block before the player attack resolves.
+        if (this.enemyBlockValue <= 0) {
+            return 0;
+        }
+
+        const original = this.enemyBlockValue;
+        const halved = Math.floor(original / 2);
+        const reducedBy = original - halved;
+        this.enemyBlockValue = halved;
+        return reducedBy;
     }
 
     healCurrentEnemy(amount) {
@@ -164,14 +169,27 @@ export class EnemyManager {
     }
 
     applyEnemyBurnTick() {
+        // Firecracker die & other burn sources: burn chips block first, then spills into health.
         if (!this.currentEnemy || this.enemyBurnValue <= 0) {
             return { damageDealt: 0, blockedAmount: 0 };
         }
 
-        const result = this.applyPlayerAttack(this.enemyBurnValue) || { damageDealt: 0, blockedAmount: 0 };
+        const burnAmount = this.enemyBurnValue;
+        const blockBefore = this.enemyBlockValue;
+        const blockedAmount = Math.min(blockBefore, burnAmount);
+
+        if (blockedAmount > 0) {
+            this.enemyBlockValue = Math.max(0, blockBefore - burnAmount);
+        }
+
+        const damageDealt = Math.max(0, burnAmount - blockBefore);
+        if (damageDealt > 0) {
+            this.currentEnemy.takeDamage(damageDealt);
+        }
+
         return {
-            damageDealt: result.damageDealt || 0,
-            blockedAmount: result.blockedAmount || 0
+            damageDealt,
+            blockedAmount
         };
     }
 
