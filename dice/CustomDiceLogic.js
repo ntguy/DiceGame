@@ -1,4 +1,5 @@
 import { createDieBlueprint, getCustomDieDefinitionById } from './CustomDiceDefinitions.js';
+import { callSceneMethod, callSceneManagerMethod } from '../utils/SceneHelpers.js';
 
 function getBlueprint(die) {
     if (die && die.dieBlueprint) {
@@ -59,6 +60,7 @@ export function rollCustomDieValue(scene, die) {
 
     switch (definition.id) {
         case 'lucky':
+            // Lucky die: skew odds toward higher rolls when upgraded.
             if (isUpgraded) {
                 return rollWeighted([1, 1, 2, 1, 1, 2]);
             }
@@ -76,10 +78,13 @@ function getBaseFaceContribution({ die, zone, comboType }) {
 
     switch (definition.id) {
         case 'shield':
+            // Shield die: doubles defensive contributions.
             return zone === 'defend' ? baseFace * 2 : baseFace;
         case 'sword':
+            // Sword die: doubles offensive contributions.
             return zone === 'attack' ? baseFace * 2 : baseFace;
         case 'bonk':
+            // Bonk die: guarantees strong value with no combo.
             if (comboType === 'No combo') {
                 return isUpgraded ? 8 : 6;
             }
@@ -96,6 +101,7 @@ function getComboBonusModifier({ die, zone, comboType }) {
 
     switch (definition.id) {
         case 'pear': {
+            // Pear die: boosts pair-based combos.
             if (comboType === 'Pair') {
                 return isUpgraded ? 6 : 5;
             }
@@ -116,16 +122,12 @@ function getPreResolutionEffects({ die, zone }) {
     const faceValue = typeof die.value === 'number' ? die.value : 0;
 
     if (definition.id === 'demolition') {
+        // Demolition die: removes enemy block when rolling a 1.
         if (faceValue === 1 && (zone === 'attack' || isUpgraded)) {
             return [context => {
                 const { scene } = context || {};
-                if (!scene || !scene.enemyManager || typeof scene.enemyManager.destroyEnemyBlock !== 'function') {
-                    return;
-                }
-                scene.enemyManager.destroyEnemyBlock();
-                if (typeof scene.updateEnemyHealthUI === 'function') {
-                    scene.updateEnemyHealthUI();
-                }
+                callSceneManagerMethod(scene, 'enemyManager', 'destroyEnemyBlock');
+                callSceneMethod(scene, 'updateEnemyHealthUI');
             }];
         }
     }
@@ -142,34 +144,27 @@ function getPostResolutionEffects({ die, zone }) {
     const effects = [];
 
     if (definition.id === 'bomb') {
+        // Bomb die: damages every enemy after resolution.
         const damage = faceValue + (isUpgraded ? 2 : 0);
         if (damage > 0) {
             effects.push(context => {
                 const { scene } = context || {};
-                if (!scene || !scene.enemyManager || typeof scene.enemyManager.damageAllEnemies !== 'function') {
-                    return;
-                }
-                const manager = scene.enemyManager;
-                const defeatedCurrent = manager.damageAllEnemies(damage) === true;
-                if (typeof scene.updateEnemyHealthUI === 'function') {
-                    scene.updateEnemyHealthUI();
-                }
-                if (defeatedCurrent && typeof scene.handleEnemyDefeat === 'function') {
-                    scene.handleEnemyDefeat();
+                const defeatedCurrent = callSceneManagerMethod(scene, 'enemyManager', 'damageAllEnemies', damage) === true;
+                callSceneMethod(scene, 'updateEnemyHealthUI');
+                if (defeatedCurrent) {
+                    callSceneMethod(scene, 'handleEnemyDefeat');
                 }
             });
         }
     }
 
     if (definition.id === 'flameout') {
+        // Flameout die: cleanses burn when rolled low or upgraded.
         const shouldCleanse = isUpgraded || (faceValue >= 1 && faceValue <= 4);
         if (shouldCleanse && faceValue > 0) {
             effects.push(context => {
                 const { scene } = context || {};
-                if (!scene || typeof scene.reducePlayerBurn !== 'function') {
-                    return;
-                }
-                scene.reducePlayerBurn(faceValue);
+                callSceneMethod(scene, 'reducePlayerBurn', faceValue);
             });
         }
     }

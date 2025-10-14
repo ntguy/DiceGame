@@ -99,7 +99,7 @@ export class GameScene extends Phaser.Scene {
         this.ownedRelicIds = new Set();
         this.currentShopRelics = null;
         this.hasBlockbusterRelic = false;
-        this.blockDamageMultiplier = 1;
+        this.blockDamageMultiplier = 1; // Blockbuster relic multiplier baseline.
         this.hasFamilyRelic = false;
         this.familyHealPerFullHouse = 0;
         this.rerollDefensePerDie = 0;
@@ -110,6 +110,7 @@ export class GameScene extends Phaser.Scene {
             this.relicUI.reset();
         }
         if (this.enemyManager && typeof this.enemyManager.setBlockDamageMultiplier === 'function') {
+            // Blockbuster relic: ensure enemy manager reflects the current multiplier.
             this.enemyManager.setBlockDamageMultiplier(this.blockDamageMultiplier);
         }
     }
@@ -370,9 +371,9 @@ export class GameScene extends Phaser.Scene {
         const diceValues = Array.isArray(diceList)
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
             : [];
-        const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0;
+        const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0; // Re-Roll with it relic bonus.
         const comboInfo = this.hasWildOneRelic
-            ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) })
+            ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) }) // Wild One relic support.
             : evaluateCombo(diceList);
         const comboType = comboInfo.type;
         const assignments = Array.isArray(comboInfo.assignments) ? [...comboInfo.assignments] : [...diceValues];
@@ -400,6 +401,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     applyRerollDefenseBonus(count) {
+        // Re-Roll with it relic: accumulate bonus defense for each reroll.
         if (!this.rerollDefensePerDie || count <= 0) {
             return;
         }
@@ -422,6 +424,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateWildcardDisplays({ defendAssignments, attackAssignments } = {}) {
+        // Wild One relic: keep dice visuals aligned with wildcard assignments.
         const diceSet = new Set([
             ...(Array.isArray(this.dice) ? this.dice : []),
             ...(Array.isArray(this.defendDice) ? this.defendDice : []),
@@ -439,6 +442,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         if (!this.hasWildOneRelic) {
+            // Without Wild One there are no wildcard faces to maintain.
             return;
         }
 
@@ -458,6 +462,7 @@ export class GameScene extends Phaser.Scene {
                 }
 
                 const boundedValue = Math.max(1, Math.min(6, assignedValue));
+                // Wild One relic: show chosen wildcard value with black pips.
                 die.renderFace(boundedValue, { pipColor: 0x000000, updateValue: false });
                 die.wildAssignedValue = boundedValue;
             });
@@ -856,6 +861,7 @@ export class GameScene extends Phaser.Scene {
         runEffects(attackResult.preResolutionEffects, 'attack');
 
         if (this.familyHealPerFullHouse > 0) {
+            // Family relic: award healing for Full House combos.
             let healAmount = 0;
             if (defendResult.comboType === 'Full House') {
                 healAmount += this.familyHealPerFullHouse;
@@ -869,6 +875,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (this.unlocksOnLongStraights) {
+            // Unlocked and Loaded relic: trigger unlocks on long straights.
             const unlockCombos = ['Straight Penta', 'Straight Sex'];
             if (unlockCombos.includes(defendResult.comboType) || unlockCombos.includes(attackResult.comboType)) {
                 this.unlockAllDice();

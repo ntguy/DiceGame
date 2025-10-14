@@ -17,5 +17,6 @@ export class UnlockedAndLoadedRelic extends Relic {
         }
 
         scene.unlocksOnLongStraights = true;
+        // Unlocked and Loaded relic: long straights unlock dice automatically.
     }
 }
