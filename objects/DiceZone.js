@@ -1,4 +1,5 @@
 import { CONSTANTS } from '../config.js';
+import { isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
 import { snapToGrid } from './Dice.js';
 
 export function setupZones(scene) {
@@ -53,6 +54,12 @@ export function removeFromZones(scene, die) {
 
 
 export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
+    const zoneType = diceList === scene.defendDice ? 'defend' : 'attack';
+    if (!isZoneAllowedForDie(die, zoneType)) {
+        snapToGrid(die, scene.dice, scene);
+        return;
+    }
+
     const idx = slots.findIndex(s => s === null);
     if (idx === -1) {
         snapToGrid(die, scene.dice, scene);

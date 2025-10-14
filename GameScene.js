@@ -21,6 +21,9 @@ import { WildOneRelic } from './relics/WildOneRelic.js';
 import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
+import { MAX_CUSTOM_DICE, createDieBlueprint, getRandomCustomDieOptions } from './dice/CustomDiceDefinitions.js';
+import { computeDieContribution } from './dice/CustomDiceLogic.js';
+import { DiceRewardUI } from './objects/DiceRewardUI.js';
 
 const SHOP_RELIC_COUNT = 3;
 
@@ -69,6 +72,9 @@ export class GameScene extends Phaser.Scene {
         this.attackComboText = null;
         this.comboListTexts = [];
         this.pendingPostCombatTransition = false;
+
+        this.customDiceLoadout = [];
+        this.diceRewardUI = null;
 
         this.relicUI = new RelicUIManager(this);
 
@@ -133,6 +139,8 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
         this.activeFacilityUI = null;
+        this.customDiceLoadout = [];
+        this.diceRewardUI = null;
         this.resetRelicState();
         this.resetMenuState();
         this.defendPreviewText = null;
@@ -170,6 +178,8 @@ export class GameScene extends Phaser.Scene {
         this.currentPathNodeId = null;
         this.inCombat = false;
         this.pendingPostCombatTransition = false;
+        this.customDiceLoadout = [];
+        this.diceRewardUI = null;
         this.resetRelicState();
         this.relicCatalog = [
             new BlockbusterRelic(),
@@ -349,29 +359,32 @@ export class GameScene extends Phaser.Scene {
         const diceValues = Array.isArray(diceList)
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
             : [];
-        const baseDiceSum = Array.isArray(diceList)
-            ? diceList.reduce((sum, die) => {
-                if (!die || typeof die.value !== 'number') {
-                    return sum;
-                }
-                return sum + (die.isWeakened ? 0 : die.value);
-            }, 0)
-            : 0;
         const rerollBonus = zone === 'defend' ? this.rerollDefenseBonus : 0;
         const comboInfo = this.hasWildOneRelic
             ? evaluateCombo(diceList, { resolveWildcards: (values, evaluator) => resolveWildcardCombo(values, evaluator) })
             : evaluateCombo(diceList);
         const comboType = comboInfo.type;
-        const comboBonus = scoreCombo(comboType);
         const assignments = Array.isArray(comboInfo.assignments) ? [...comboInfo.assignments] : [...diceValues];
-        const baseSum = baseDiceSum + rerollBonus;
+        const contributions = Array.isArray(diceList)
+            ? diceList.map(die => computeDieContribution(this, die, { zone, comboType }))
+            : [];
+
+        const baseContribution = contributions.reduce((sum, entry) => sum + (entry && entry.faceValueContribution ? entry.faceValueContribution : 0), 0);
+        const comboBonusExtra = contributions.reduce((sum, entry) => sum + (entry && entry.comboBonusModifier ? entry.comboBonusModifier : 0), 0);
+
+        const baseSum = baseContribution + rerollBonus;
+        const comboBonus = scoreCombo(comboType) + comboBonusExtra;
+        const preResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.preResolutionEffects)) ? entry.preResolutionEffects : []);
+        const postResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.postResolutionEffects)) ? entry.postResolutionEffects : []);
 
         return {
             baseSum,
             comboBonus,
             comboType,
             total: baseSum + comboBonus,
-            assignments
+            assignments,
+            preResolutionEffects,
+            postResolutionEffects
         };
     }
 
@@ -501,10 +514,11 @@ export class GameScene extends Phaser.Scene {
         // First roll → create dice
         if (isFirstRoll) {
             this.dice = [];
-            for (let i = 0; i < CONSTANTS.DICE_PER_SET; i++) {
-                const die = createDie(this, i);
+            const blueprints = this.getActiveDiceBlueprints();
+            blueprints.forEach((blueprint, index) => {
+                const die = createDie(this, index, blueprint);
                 this.dice.push(die);
-            }
+            });
             diceInPlay = this.getDiceInPlay();
         }
 
@@ -543,6 +557,93 @@ export class GameScene extends Phaser.Scene {
 
         // Enable sort button after the first roll
         setTextButtonEnabled(this.sortButton, true);
+    }
+
+    addCustomDieToLoadout(id, options = {}) {
+        if (!id) {
+            return false;
+        }
+
+        if (!Array.isArray(this.customDiceLoadout)) {
+            this.customDiceLoadout = [];
+        }
+
+        if (this.customDiceLoadout.length >= MAX_CUSTOM_DICE) {
+            return false;
+        }
+
+        const blueprint = createDieBlueprint(id, { isUpgraded: !!options.isUpgraded });
+        this.customDiceLoadout = [...this.customDiceLoadout, blueprint];
+        return true;
+    }
+
+    upgradeCustomDieById(id) {
+        if (!id || !Array.isArray(this.customDiceLoadout)) {
+            return false;
+        }
+
+        let upgraded = false;
+        this.customDiceLoadout = this.customDiceLoadout.map(entry => {
+            if (!upgraded && entry.id === id && !entry.isUpgraded) {
+                upgraded = true;
+                return { ...entry, isUpgraded: true };
+            }
+            return { ...entry };
+        });
+
+        if (upgraded) {
+            this.getDiceInPlay().forEach(die => {
+                if (die && die.dieBlueprint && die.dieBlueprint.id === id) {
+                    die.dieBlueprint = { ...die.dieBlueprint, isUpgraded: true };
+                    if (typeof die.updateEmoji === 'function') {
+                        die.updateEmoji();
+                    }
+                }
+            });
+        }
+
+        return upgraded;
+    }
+
+    handleCustomDieSelection(id, definition) {
+        const added = this.addCustomDieToLoadout(id);
+        if (!added) {
+            return false;
+        }
+
+        if (definition && (definition.name || definition.emoji)) {
+            const label = [definition.emoji || '', definition.name || 'Die'].join(' ').trim();
+            this.showNodeMessage(`Added ${label}`, '#f9e79f');
+        }
+
+        return true;
+    }
+
+    presentCustomDieReward() {
+        if (this.customDiceLoadout && this.customDiceLoadout.length >= MAX_CUSTOM_DICE) {
+            this.requestEnterMapStateAfterCombat();
+            return;
+        }
+
+        if (this.diceRewardUI) {
+            this.diceRewardUI.destroy();
+            this.diceRewardUI = null;
+        }
+
+        const options = getRandomCustomDieOptions(this, 3);
+        if (!Array.isArray(options) || options.length === 0) {
+            this.requestEnterMapStateAfterCombat();
+            return;
+        }
+
+        this.diceRewardUI = new DiceRewardUI(this, {
+            options,
+            onSelect: (id, definition) => this.handleCustomDieSelection(id, definition),
+            onClose: () => {
+                this.diceRewardUI = null;
+                this.requestEnterMapStateAfterCombat();
+            }
+        });
     }
 
     applyPendingLocks() {
@@ -723,6 +824,25 @@ export class GameScene extends Phaser.Scene {
         const defendScore = defendResult.total;
         const attackScore = attackResult.total;
 
+        const runEffects = (effects, zone) => {
+            if (!Array.isArray(effects)) {
+                return;
+            }
+            effects.forEach(effect => {
+                if (typeof effect === 'function') {
+                    effect({
+                        scene: this,
+                        zone,
+                        attackResult,
+                        defendResult
+                    });
+                }
+            });
+        };
+
+        runEffects(defendResult.preResolutionEffects, 'defend');
+        runEffects(attackResult.preResolutionEffects, 'attack');
+
         if (this.familyHealPerFullHouse > 0) {
             let healAmount = 0;
             if (defendResult.comboType === 'Full House') {
@@ -777,6 +897,9 @@ export class GameScene extends Phaser.Scene {
 
         this.processTurnOutcome({ attackScore, defendScore, attackResult, defendResult });
 
+        runEffects(defendResult.postResolutionEffects, 'defend');
+        runEffects(attackResult.postResolutionEffects, 'attack');
+
         if (diceToResolve.length === 0) {
             this.time.delayedCall(1000, finishResolution);
             return;
@@ -802,6 +925,20 @@ export class GameScene extends Phaser.Scene {
         if (this.resolveButton) {
             setTextButtonEnabled(this.resolveButton, false);
         }
+    }
+
+    getActiveDiceBlueprints() {
+        const loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        const blueprints = loadout.map(entry => ({
+            id: entry.id,
+            isUpgraded: !!entry.isUpgraded
+        }));
+
+        while (blueprints.length < CONSTANTS.DICE_PER_SET) {
+            blueprints.push(createDieBlueprint('standard'));
+        }
+
+        return blueprints.slice(0, CONSTANTS.DICE_PER_SET).map(entry => ({ ...entry }));
     }
 
     getDiceInPlay() {
@@ -1050,6 +1187,10 @@ export class GameScene extends Phaser.Scene {
             || this.isHealthBarAnimating(this.healthBar);
 
         if (animationsActive) {
+            return;
+        }
+
+        if (this.diceRewardUI) {
             return;
         }
 
@@ -1348,6 +1489,21 @@ export class GameScene extends Phaser.Scene {
             this.playerBurnText.setAlpha(1);
             this.playerBurnText.setScale(1);
         }
+    }
+
+    reducePlayerBurn(amount) {
+        if (!amount || amount <= 0 || this.playerBurn <= 0) {
+            return 0;
+        }
+
+        const reduction = Math.min(this.playerBurn, Math.max(0, Math.floor(amount)));
+        if (reduction <= 0) {
+            return 0;
+        }
+
+        this.playerBurn -= reduction;
+        this.updateBurnUI();
+        return reduction;
     }
 
     resetPlayerBurn() {
@@ -1897,7 +2053,11 @@ export class GameScene extends Phaser.Scene {
 
         this.enemyManager.clearCurrentEnemy();
         this.prepareNextEnemyMove();
-        this.requestEnterMapStateAfterCombat();
+        if (this.customDiceLoadout && this.customDiceLoadout.length < MAX_CUSTOM_DICE) {
+            this.presentCustomDieReward();
+        } else {
+            this.requestEnterMapStateAfterCombat();
+        }
     }
 
     handleAllEnemiesDefeated() {
