@@ -6,6 +6,7 @@ export class EnemyManager {
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
         this.blockDamageMultiplier = 1;
+        this.enemyBurnValue = 0;
     }
 
     setEnemies(enemies = []) {
@@ -27,6 +28,7 @@ export class EnemyManager {
         this.currentEnemy = this.enemies[index];
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
+        this.enemyBurnValue = 0;
         return this.currentEnemy;
     }
 
@@ -35,6 +37,7 @@ export class EnemyManager {
         this.currentEnemy = null;
         this.upcomingMove = null;
         this.enemyBlockValue = 0;
+        this.enemyBurnValue = 0;
     }
 
     getEnemyBlock() {
@@ -134,6 +137,42 @@ export class EnemyManager {
         if (this.currentEnemy && amount > 0) {
             this.currentEnemy.heal(amount);
         }
+    }
+
+    getEnemyBurn() {
+        return this.enemyBurnValue;
+    }
+
+    resetEnemyBurn() {
+        if (this.enemyBurnValue !== 0) {
+            this.enemyBurnValue = 0;
+        }
+    }
+
+    applyEnemyBurn(amount) {
+        if (!this.currentEnemy || amount <= 0) {
+            return 0;
+        }
+
+        const burn = Math.max(0, Math.floor(amount));
+        if (burn <= 0) {
+            return 0;
+        }
+
+        this.enemyBurnValue += burn;
+        return burn;
+    }
+
+    applyEnemyBurnTick() {
+        if (!this.currentEnemy || this.enemyBurnValue <= 0) {
+            return { damageDealt: 0, blockedAmount: 0 };
+        }
+
+        const result = this.applyPlayerAttack(this.enemyBurnValue) || { damageDealt: 0, blockedAmount: 0 };
+        return {
+            damageDealt: result.damageDealt || 0,
+            blockedAmount: result.blockedAmount || 0
+        };
     }
 
     isCurrentEnemyDefeated() {

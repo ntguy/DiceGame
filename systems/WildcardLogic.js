@@ -2,17 +2,20 @@ import { scoreCombo } from './ComboSystem.js';
 
 export function resolveWildcardCombo(values, evaluateComboFn, {
     wildcardValue = 1,
-    possibleFaces = [1, 2, 3, 4, 5, 6]
+    possibleFaces = [1, 2, 3, 4, 5, 6],
+    wildcardIndices: explicitWildcardIndices = null
 } = {}) {
     if (!Array.isArray(values) || typeof evaluateComboFn !== 'function') {
         return { type: 'No combo' };
     }
 
     const baseValues = [...values];
-    const wildcardIndices = baseValues
-        .map((value, index) => ({ value, index }))
-        .filter(entry => entry.value === wildcardValue)
-        .map(entry => entry.index);
+    const wildcardIndices = Array.isArray(explicitWildcardIndices)
+        ? explicitWildcardIndices.filter(index => Number.isInteger(index) && index >= 0 && index < baseValues.length)
+        : baseValues
+            .map((value, index) => ({ value, index }))
+            .filter(entry => entry.value === wildcardValue)
+            .map(entry => entry.index);
 
     if (wildcardIndices.length === 0) {
         const evaluation = evaluateComboFn(baseValues);

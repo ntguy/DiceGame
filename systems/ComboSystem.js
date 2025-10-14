@@ -69,9 +69,11 @@ function evaluateComboInternal(values) {
 }
 
 export function evaluateCombo(diceArray, options = {}) {
-    const values = Array.isArray(diceArray)
-        ? diceArray.map(d => typeof d.value === 'number' ? d.value : 0)
-        : [];
+    const values = Array.isArray(options.overrideValues)
+        ? options.overrideValues.map(value => (typeof value === 'number' ? value : 0))
+        : (Array.isArray(diceArray)
+            ? diceArray.map(d => typeof d.value === 'number' ? d.value : 0)
+            : []);
 
     const resolver = options.resolveWildcards;
     if (typeof resolver === 'function') {
