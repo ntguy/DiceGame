@@ -1120,7 +1120,7 @@ export class GameScene extends Phaser.Scene {
             ? this.currentMapConfig.displayName
             : '';
         const hasLabel = label && label.length > 0;
-        this.mapTitleText.setText(hasLabel ? `Current Map: ${label}` : '');
+        this.mapTitleText.setText(hasLabel ? `${label}` : '');
     }
 
     hasNextMap() {
