@@ -8,11 +8,8 @@ export function doesDieActAsWildcardForCombo(die) {
 
     switch (definition.id) {
         case 'wild':
-            // Wild die: acts as a combo wildcard on low faces, or always when upgraded.
-            if (blueprint.isUpgraded) {
-                return faceValue >= 1;
-            }
-            return faceValue >= 1 && faceValue <= 4;
+            // Wild die: always acts as a combo wildcard regardless of current face value.
+            return faceValue >= 1;
         default:
             return false;
     }

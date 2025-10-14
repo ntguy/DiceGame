@@ -58,23 +58,35 @@ export class EnemyManager {
         return move;
     }
 
-    applyPlayerAttack(amount) {
+    applyPlayerAttack(amount, { applyBlockbuster = false } = {}) {
         if (!this.currentEnemy || amount <= 0) {
-            return { damageDealt: 0, blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)) };
+            return {
+                damageDealt: 0,
+                blockedAmount: Math.min(this.enemyBlockValue, Math.max(0, amount || 0)),
+                halvedBlock: 0
+            };
         }
 
-        const blockBefore = this.enemyBlockValue;
-        const blockedAmount = Math.min(blockBefore, amount);
-        if (blockedAmount > 0) {
-            this.enemyBlockValue = Math.max(0, blockBefore - amount);
+        let workingBlock = this.enemyBlockValue;
+        let halvedBlock = 0;
+
+        if (applyBlockbuster && workingBlock > 0) {
+            const halved = Math.floor(workingBlock / 2);
+            halvedBlock = workingBlock - halved;
+            workingBlock = halved;
         }
-        const damageDealt = Math.max(0, amount - blockBefore);
+
+        const blockedAmount = Math.min(workingBlock, amount);
+        const remainingBlock = Math.max(0, workingBlock - amount);
+        const damageDealt = Math.max(0, amount - workingBlock);
+
+        this.enemyBlockValue = remainingBlock;
 
         if (damageDealt > 0) {
             this.currentEnemy.takeDamage(damageDealt);
         }
 
-        return { damageDealt, blockedAmount };
+        return { damageDealt, blockedAmount, halvedBlock };
     }
 
     damageAllEnemies(amount) {
@@ -123,19 +135,6 @@ export class EnemyManager {
         if (this.enemyBlockValue > 0) {
             this.enemyBlockValue = 0;
         }
-    }
-
-    halveEnemyBlock() {
-        // Blockbuster relic: halve remaining block before the player attack resolves.
-        if (this.enemyBlockValue <= 0) {
-            return 0;
-        }
-
-        const original = this.enemyBlockValue;
-        const halved = Math.floor(original / 2);
-        const reducedBy = original - halved;
-        this.enemyBlockValue = halved;
-        return reducedBy;
     }
 
     healCurrentEnemy(amount) {

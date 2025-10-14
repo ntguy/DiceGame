@@ -1503,15 +1503,14 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
-        if (this.hasBlockbusterRelic && this.enemyManager && effectiveAttackScore > 0) {
-            const reducedBy = this.enemyManager.halveEnemyBlock();
-            if (reducedBy > 0) {
-                this.refreshEnemyIntentText();
-                this.updateEnemyStatusText();
-            }
-        }
+        const attackResolution = this.enemyManager.applyPlayerAttack(effectiveAttackScore, {
+            applyBlockbuster: this.hasBlockbusterRelic
+        });
 
-        this.enemyManager.applyPlayerAttack(effectiveAttackScore);
+        if (attackResolution && attackResolution.halvedBlock > 0) {
+            this.refreshEnemyIntentText();
+            this.updateEnemyStatusText();
+        }
         this.updateEnemyHealthUI();
         this.updateEnemyBurnUI();
 
