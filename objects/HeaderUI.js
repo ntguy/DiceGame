@@ -2,6 +2,7 @@ import { CONSTANTS } from '../config.js';
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 
 const DEFAULT_BUTTON_WIDTH = 72;
+const DEFAULT_BUTTON_HEIGHT = 40;
 
 function createHeaderButton(scene, {
     label,
@@ -14,7 +15,7 @@ function createHeaderButton(scene, {
     const button = scene.add.text(x, CONSTANTS.HEADER_HEIGHT / 2, label, {
         fontSize,
         color: '#ecf0f1',
-        padding: { x: 18, y: 10 },
+        padding: { x: 18, y: 6 },
         align: 'center'
     }).setOrigin(origin.x, origin.y);
 
@@ -29,8 +30,9 @@ function createHeaderButton(scene, {
     button.on('pointerdown', onClick);
     button.setScrollFactor(0);
 
-    button.setFixedSize(width, button.height);
+    button.setFixedSize(width, DEFAULT_BUTTON_HEIGHT);
     button.setData('buttonWidth', width);
+    button.setData('buttonHeight', DEFAULT_BUTTON_HEIGHT);
 
     return button;
 }
@@ -75,6 +77,8 @@ export function createHeaderUI(scene) {
         onClick: () => scene.toggleMenu(),
         fontSize: '28px'
     });
+    menuButton.setData('defaultFontSize', '24px');
+    menuButton.setData('expandedFontSize', '28px');
 
     const settingsButton = createHeaderButton(scene, {
         label: '⚙',
@@ -83,6 +87,8 @@ export function createHeaderUI(scene) {
         onClick: () => scene.toggleSettings(),
         fontSize: '28px'
     });
+    settingsButton.setData('defaultFontSize', '24px');
+    settingsButton.setData('expandedFontSize', '28px');
 
     const instructionsButton = createHeaderButton(scene, {
         label: '📘',
