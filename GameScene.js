@@ -198,6 +198,8 @@ export class GameScene extends Phaser.Scene {
         this.load.audio('swoosh', './audio/swoosh.mp3');
         this.load.audio('chimeShort', './audio/chime-short.mp3');
         this.load.audio('chimeLong', './audio/chime-long.mp3');
+        this.load.audio('tick', './audio/tick.mp3');
+        this.load.audio('tock', './audio/tock.mp3');
     }
     
     create() {

@@ -7,12 +7,12 @@ const CARD_WIDTH = 250;
 const CARD_HEIGHT = 280;
 const CARD_GAP = 24;
 const EMOJI_TEXT_PADDING = { top: 6, bottom: 6 };
+const CHECKBOX_BOX_SIZE = 50;
 const CHECKBOX_WIDTH = 210;
-const CHECKBOX_HEIGHT = 44;
-const CHECKBOX_BOX_SIZE = 26;
+const CHECKBOX_HEIGHT = CHECKBOX_BOX_SIZE + 30;
 const BUTTON_WIDTH = 260;
 const BUTTON_HEIGHT = 58;
-const BUTTON_OFFSET_Y = PANEL_HEIGHT / 2 - 70;
+const BUTTON_OFFSET_Y = PANEL_HEIGHT / 2 - 50;
 
 export class DiceUpgradeUI {
     constructor(scene, { dice = [], onUpgrade, onClose } = {}) {
@@ -101,24 +101,24 @@ export class DiceUpgradeUI {
                 wordWrap: { width: CARD_WIDTH - 48 }
             }).setOrigin(0.5, 0);
 
-            const checkboxContainer = this.scene.add.container(0, CARD_HEIGHT / 2 - 72);
+            const checkboxContainer = this.scene.add.container(0, CARD_HEIGHT / 2 - 75);
             const checkboxBg = this.scene.add.rectangle(0, 0, CHECKBOX_WIDTH, CHECKBOX_HEIGHT, 0x000000, 0)
                 .setInteractive({ useHandCursor: true });
 
-            const boxX = -CHECKBOX_WIDTH / 2 + CHECKBOX_BOX_SIZE / 2 + 8;
-            const box = this.scene.add.rectangle(boxX, 0, CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE, 0x271438, 0.9)
+            const box = this.scene.add.rectangle(0, 0, CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE, 0x271438, 0.9)
                 .setStrokeStyle(2, 0xf1c40f, 0.85);
 
-            const checkmark = this.scene.add.text(boxX, 0, '✔', {
+            const checkmark = this.scene.add.text(0, 0, '✔', {
                 fontSize: '20px',
                 color: '#f1c40f'
             }).setOrigin(0.5);
             checkmark.setVisible(false);
 
-            const label = this.scene.add.text(boxX + CHECKBOX_BOX_SIZE / 2 + 12, 0, 'Select', {
+            const label = this.scene.add.text(0, CHECKBOX_BOX_SIZE / 2 + 10, 'Select', {
                 fontSize: '18px',
-                color: '#f9e79f'
-            }).setOrigin(0, 0.5);
+                color: '#f9e79f',
+                align: 'center'
+            }).setOrigin(0.5, 0);
 
             checkboxBg.on('pointerover', () => {
                 box.setFillStyle(0x2f1c44, 0.95);
@@ -130,9 +130,6 @@ export class DiceUpgradeUI {
             });
 
             checkboxBg.on('pointerup', () => {
-                if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                    this.scene.sound.play('menuSelect', { volume: 0.4 });
-                }
                 this.toggleSelection(option.uid);
             });
 
@@ -190,7 +187,9 @@ export class DiceUpgradeUI {
             const upgraded = this.onUpgrade(selections);
             if (upgraded) {
                 if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                    this.scene.sound.play('chimeLong', { volume: 0.6 });
+                    this.scene.sound.play('chimeLong', {
+                        volume: 0.6,
+                    });
                 }
                 this.destroy();
                 this.onClose();
@@ -209,6 +208,9 @@ export class DiceUpgradeUI {
         }
 
         if (this.selectedEntries.has(uid)) {
+            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
+                this.scene.sound.play('tock', {volume: 0.5});
+            }
             this.selectedEntries.delete(uid);
         } else {
             if (this.selectedEntries.size >= 2) {
@@ -218,6 +220,9 @@ export class DiceUpgradeUI {
             const option = this.options.find(opt => opt.uid === uid);
             if (option) {
                 this.selectedEntries.set(uid, option);
+                if (this.scene.sound && typeof this.scene.sound.play === 'function') {
+                    this.scene.sound.play('tick', {volume: 0.5});
+                }
             }
         }
 
