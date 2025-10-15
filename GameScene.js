@@ -28,6 +28,7 @@ import { DiceUpgradeUI } from './objects/DiceUpgradeUI.js';
 import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRandomCustomDieOptions, getCustomDieDefinitionById } from './dice/CustomDiceDefinitions.js';
 import { computeDieContribution, doesDieActAsWildcardForCombo } from './dice/CustomDiceLogic.js';
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
+import { playDiceRollSounds } from './utils/SoundHelpers.js';
 
 const SHOP_RELIC_COUNT = 3;
 
@@ -215,6 +216,9 @@ export class GameScene extends Phaser.Scene {
         this.load.audio('chimeLong', './audio/chime-long.mp3');
         this.load.audio('tick', './audio/tick.mp3');
         this.load.audio('tock', './audio/tock.mp3');
+        this.load.audio('towerOfTenEnter', './audio/tower-of-ten-enter.mp3');
+        this.load.audio('towerOfTenWin', './audio/tower-of-ten-win.mp3');
+        this.load.audio('towerOfTenBust', './audio/tower-of-ten-bust.mp3');
     }
     
     create() {
@@ -764,21 +768,11 @@ export class GameScene extends Phaser.Scene {
         const diceSelectedCount = diceInPlay.filter(d => d.selected).length;
         const isFirstRoll = this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS;
 
-        if (isFirstRoll || diceSelectedCount === CONSTANTS.DICE_PER_SET) {
-            this.sound.play('multiDiceRoll');
-            this.sound.play('diceRoll', { volume: 0.75 });
-            this.time.delayedCall(Phaser.Math.Between(100, 300), () => {
-                this.sound.play('diceRoll', { volume: 0.5 });
-            });
-        } else {
-            const defaultVolume = CONSTANTS.DEFAULT_SFX_VOLUME;
-            for (let i = 0; i < diceSelectedCount; i++) {
-                const delay = i == 0 ? 0 : Phaser.Math.Between(100, 300);
-                this.time.delayedCall(delay, () => {
-                    this.sound.play('diceRoll', { volume: ((defaultVolume/(i+1)) + 0.05) });
-                });
-            }
-        }
+        playDiceRollSounds(this, {
+            isFirstRoll,
+            totalDice: diceInPlay.length,
+            selectedCount: diceSelectedCount
+        });
 
         // First roll → create dice
         if (isFirstRoll) {
@@ -2359,9 +2353,30 @@ export class GameScene extends Phaser.Scene {
 
         this.destroyFacilityUI();
 
+        this.playTowerOfTenEntrySound();
+
         this.activeFacilityUI = new TowerOfTenUI(this, {
             onComplete: result => this.handleTowerOfTenResult(result)
         });
+    }
+
+    playTowerOfTenEntrySound() {
+        if (!this.sound || typeof this.sound.play !== 'function') {
+            return;
+        }
+        this.sound.play('towerOfTenEnter', { volume: 0.85 });
+    }
+
+    playTowerOfTenExitSound({ outcome, gold = 0 } = {}) {
+        if (!this.sound || typeof this.sound.play !== 'function') {
+            return;
+        }
+
+        if (outcome === 'cashout' && gold > 0) {
+            this.sound.play('towerOfTenWin', { volume: 0.9 });
+        } else if (outcome === 'bust') {
+            this.sound.play('towerOfTenBust', { volume: 0.9 });
+        }
     }
 
     handleInfirmaryChoice(selection) {
@@ -2418,6 +2433,8 @@ export class GameScene extends Phaser.Scene {
 
     handleTowerOfTenResult({ gold = 0, penalty = 0, total = 0, outcome = 'leave' } = {}) {
         this.destroyFacilityUI();
+
+        this.playTowerOfTenExitSound({ outcome, gold });
 
         if (gold > 0) {
             this.addGold(gold);
