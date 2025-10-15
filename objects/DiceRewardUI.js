@@ -1,5 +1,5 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
-import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
+import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;
@@ -186,6 +186,9 @@ export class DiceRewardUI {
             });
 
             buttonBg.on('pointerup', () => {
+                if (!buttonBg.input || !buttonBg.input.enabled) {
+                    return;
+                }
                 const selected = this.onSelect(option.id, option);
                 if (selected) {
                     this.scene.sound.play('chimeShort', { volume: 0.6 });
@@ -203,7 +206,8 @@ export class DiceRewardUI {
                 container: cardContainer,
                 icon,
                 nameText,
-                descriptionText
+                descriptionText,
+                button: { background: buttonBg, text: buttonText }
             };
 
             this.cardEntries.push(entry);
@@ -222,7 +226,7 @@ export class DiceRewardUI {
             return;
         }
 
-        const { option, nameText, descriptionText } = entry;
+        const { option, nameText, descriptionText, button } = entry;
         const isUpgrade = this.viewUpgrade;
 
         const baseName = option.name || 'Unknown';
@@ -237,6 +241,14 @@ export class DiceRewardUI {
             : option.description || '';
 
         descriptionText.setText(description);
+
+        if (button && button.background) {
+            const enabled = !isUpgrade;
+            setRectangleButtonEnabled(button.background, enabled);
+            if (button.text) {
+                button.text.setAlpha(enabled ? 1 : 0.45);
+            }
+        }
     }
 
     destroy() {
