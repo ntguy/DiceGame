@@ -74,20 +74,31 @@ export function createHeaderUI(scene) {
         onClick: () => scene.toggleSettings()
     });
 
+    const instructionsButton = createHeaderButton(scene, {
+        label: '📘',
+        x: settingsButton.x - settingsButton.displayWidth - buttonSpacing,
+        origin: { x: 1, y: 0.5 },
+        onClick: () => scene.toggleInstructions()
+    });
+
     const layoutButtons = () => {
         const menuX = headerWidth - CONSTANTS.UI_MARGIN;
         menuButton.setX(menuX);
         const settingsX = menuX - menuButton.displayWidth - buttonSpacing;
         settingsButton.setX(settingsX);
+        const instructionsX = settingsX - settingsButton.displayWidth - buttonSpacing;
+        instructionsButton.setX(instructionsX);
     };
     layoutButtons();
 
     container.add(menuButton);
     container.add(settingsButton);
+    container.add(instructionsButton);
 
     scene.headerContainer = container;
     scene.menuButton = menuButton;
     scene.settingsButton = settingsButton;
+    scene.instructionsButton = instructionsButton;
     scene.layoutHeaderButtons = layoutButtons;
     scene.mapTitleText = mapTitleText;
 }

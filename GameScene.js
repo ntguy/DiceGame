@@ -6,6 +6,7 @@ import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
 import { createMenuUI } from './objects/MenuUI.js';
 import { createSettingsUI } from './objects/SettingsUI.js';
 import { createHeaderUI } from './objects/HeaderUI.js';
+import { InstructionsUI } from './objects/InstructionsUI.js';
 import { evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
@@ -151,6 +152,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     resetMenuState() {
+        if (this.instructionsUI && typeof this.instructionsUI.destroy === 'function') {
+            this.instructionsUI.destroy();
+        }
         this.menuButton = null;
         this.menuPanel = null;
         this.menuCloseButton = null;
@@ -161,6 +165,9 @@ export class GameScene extends Phaser.Scene {
         this.settingsPanel = null;
         this.settingsCloseButton = null;
         this.isSettingsOpen = false;
+        this.instructionsButton = null;
+        this.instructionsUI = null;
+        this.isInstructionsOpen = false;
         this.headerContainer = null;
         this.layoutHeaderButtons = null;
     }
@@ -264,6 +271,7 @@ export class GameScene extends Phaser.Scene {
         this.updateRollButtonState();
         createMenuUI(this);
         createSettingsUI(this);
+        this.instructionsUI = new InstructionsUI(this);
         this.relicUI.createShelf();
 
         this.applyTestingModeStartingResources();
@@ -384,6 +392,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.closeSettings();
+        this.closeInstructions();
         this.isMenuOpen = true;
         if (this.menuPanel) {
             this.menuPanel.setVisible(true);
@@ -432,6 +441,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.closeMenu();
+        this.closeInstructions();
         this.isSettingsOpen = true;
         if (this.settingsPanel) {
             this.settingsPanel.setVisible(true);
@@ -459,6 +469,50 @@ export class GameScene extends Phaser.Scene {
 
         const suffix = this.isSettingsOpen ? '✕' : '⚙';
         this.settingsButton.setText(`${suffix}`);
+        if (this.layoutHeaderButtons) {
+            this.layoutHeaderButtons();
+        }
+    }
+
+    toggleInstructions() {
+        if (!this.instructionsUI) {
+            return;
+        }
+
+        if (this.isInstructionsOpen) {
+            this.closeInstructions();
+        } else {
+            this.openInstructions();
+        }
+    }
+
+    openInstructions() {
+        if (this.isInstructionsOpen || !this.instructionsUI) {
+            return;
+        }
+
+        this.closeMenu();
+        this.closeSettings();
+        this.isInstructionsOpen = true;
+        this.instructionsUI.open();
+        this.updateInstructionsButtonLabel();
+    }
+
+    closeInstructions() {
+        this.isInstructionsOpen = false;
+        if (this.instructionsUI) {
+            this.instructionsUI.close();
+        }
+        this.updateInstructionsButtonLabel();
+    }
+
+    updateInstructionsButtonLabel() {
+        if (!this.instructionsButton) {
+            return;
+        }
+
+        const suffix = this.isInstructionsOpen ? '✕' : '📘';
+        this.instructionsButton.setText(`${suffix}`);
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }
