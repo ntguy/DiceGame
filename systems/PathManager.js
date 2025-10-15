@@ -2,7 +2,8 @@ const NODE_TYPES = {
     ENEMY: 'enemy',
     SHOP: 'shop',
     INFIRMARY: 'infirmary',
-    TOWER: 'tower'
+    TOWER: 'tower',
+    UPGRADE: 'upgrade'
 };
 
 const DEFAULT_ENEMY_SEQUENCE = [
@@ -31,7 +32,7 @@ const DEFAULT_ENEMY_SEQUENCE = [
 ];
 
 export class PathManager {
-    constructor({ enemySequence } = {}, randomSource = Math.random) {
+    constructor({ enemySequence, allowUpgradeNodes = false, upgradeNodeMinEnemyIndex = 1 } = {}, randomSource = Math.random) {
         this.randomFn = typeof randomSource === 'function' ? randomSource : Math.random;
         this.nodes = [];
         this.nodeMap = new Map();
@@ -41,6 +42,10 @@ export class PathManager {
         this.enemySequence = Array.isArray(enemySequence) && enemySequence.length > 0
             ? enemySequence.map(entry => ({ ...entry }))
             : DEFAULT_ENEMY_SEQUENCE.map(entry => ({ ...entry }));
+        this.allowUpgradeNodes = !!allowUpgradeNodes;
+        this.upgradeNodeMinEnemyIndex = Number.isFinite(upgradeNodeMinEnemyIndex)
+            ? Math.max(0, upgradeNodeMinEnemyIndex)
+            : 1;
 
         this.generatePath();
 
@@ -48,6 +53,16 @@ export class PathManager {
         if (this.frontier.length === 0 && this.nodes.length > 0) {
             this.frontier = [this.nodes[0].id];
         }
+    }
+
+    getFacilityTypesForEnemyIndex(enemyIndex) {
+        const facilityTypes = [NODE_TYPES.SHOP, NODE_TYPES.INFIRMARY, NODE_TYPES.TOWER];
+
+        if (this.allowUpgradeNodes && enemyIndex >= this.upgradeNodeMinEnemyIndex) {
+            facilityTypes.push(NODE_TYPES.UPGRADE);
+        }
+
+        return facilityTypes;
     }
 
     generatePath() {
@@ -76,7 +91,7 @@ export class PathManager {
             }
 
             const nextEnemyId = `enemy-${index + 1}`;
-            const facilityTypes = [NODE_TYPES.SHOP, NODE_TYPES.INFIRMARY, NODE_TYPES.TOWER];
+            const facilityTypes = this.getFacilityTypesForEnemyIndex(index);
             const branchTypes = [];
             const pool = facilityTypes.slice();
             while (branchTypes.length < 2 && pool.length > 0) {
@@ -84,7 +99,16 @@ export class PathManager {
                 branchTypes.push(pool.splice(index, 1)[0]);
             }
             if (branchTypes.length < 2) {
-                branchTypes.push(NODE_TYPES.SHOP, NODE_TYPES.INFIRMARY);
+                const fallbackPool = facilityTypes.slice();
+                while (branchTypes.length < 2 && fallbackPool.length > 0) {
+                    const type = fallbackPool.shift();
+                    if (!branchTypes.includes(type)) {
+                        branchTypes.push(type);
+                    }
+                }
+                while (branchTypes.length < 2) {
+                    branchTypes.push(NODE_TYPES.SHOP);
+                }
                 branchTypes.splice(2);
             }
 
@@ -100,7 +124,9 @@ export class PathManager {
                         ? 'Shop'
                         : type === NODE_TYPES.INFIRMARY
                             ? 'Infirmary'
-                            : 'Tower of Ten',
+                            : type === NODE_TYPES.TOWER
+                                ? 'Tower of Ten'
+                                : 'Upgrade Dice',
                     connections: [nextEnemyId],
                     row: branchRow,
                     column: branchColumns[branchIndex]

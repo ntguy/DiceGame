@@ -80,10 +80,19 @@ export class DiceRewardUI {
         }).setOrigin(0, 0.5);
 
         toggleBackground.on('pointerup', () => {
-            this.setViewUpgrade(!this.viewUpgrade);
             if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                this.scene.sound.play('menuSelect', { volume: 0.4 });
+                switch (this.viewUpgrade){
+                    case true:
+                        this.scene.sound.play('tick', { volume: 0.5 });
+                        break;
+                    case false:
+                        this.scene.sound.play('tock', { volume: 0.5 });
+                        break;
+                    default:
+                        break;
+                }
             }
+            this.setViewUpgrade(!this.viewUpgrade);
         });
 
         toggleBackground.on('pointerover', () => {

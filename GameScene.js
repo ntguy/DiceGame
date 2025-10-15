@@ -21,7 +21,8 @@ import { WildOneRelic } from './relics/WildOneRelic.js';
 import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
-import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRandomCustomDieOptions } from './dice/CustomDiceDefinitions.js';
+import { DiceUpgradeUI } from './objects/DiceUpgradeUI.js';
+import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRandomCustomDieOptions, getCustomDieDefinitionById } from './dice/CustomDiceDefinitions.js';
 import { computeDieContribution, doesDieActAsWildcardForCombo } from './dice/CustomDiceLogic.js';
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
 
@@ -37,6 +38,29 @@ function getRandomIndexExclusive(maxExclusive) {
     }
 
     return Math.floor(Math.random() * maxExclusive);
+}
+
+function shuffleArray(items) {
+    if (!Array.isArray(items)) {
+        return [];
+    }
+
+    if (typeof Phaser !== 'undefined'
+        && Phaser.Utils
+        && Phaser.Utils.Array
+        && typeof Phaser.Utils.Array.Shuffle === 'function') {
+        return Phaser.Utils.Array.Shuffle([...items]);
+    }
+
+    const result = [...items];
+    for (let i = result.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = result[i];
+        result[i] = result[j];
+        result[j] = temp;
+    }
+
+    return result;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -174,6 +198,8 @@ export class GameScene extends Phaser.Scene {
         this.load.audio('swoosh', './audio/swoosh.mp3');
         this.load.audio('chimeShort', './audio/chime-short.mp3');
         this.load.audio('chimeLong', './audio/chime-long.mp3');
+        this.load.audio('tick', './audio/tick.mp3');
+        this.load.audio('tock', './audio/tock.mp3');
     }
     
     create() {
@@ -267,7 +293,10 @@ export class GameScene extends Phaser.Scene {
         this.updateEnemyBurnUI();
         const mapLoaded = this.loadMap(0);
         if (!mapLoaded) {
-            this.pathManager = new PathManager();
+            this.pathManager = new PathManager({
+                allowUpgradeNodes: true,
+                upgradeNodeMinEnemyIndex: 1
+            });
             this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
             this.updateEnemyHealthUI();
             this.prepareNextEnemyMove();
@@ -1424,7 +1453,11 @@ export class GameScene extends Phaser.Scene {
             ? config.enemySequence.map(entry => ({ ...entry }))
             : undefined;
 
-        this.pathManager = new PathManager({ enemySequence });
+        this.pathManager = new PathManager({
+            enemySequence,
+            allowUpgradeNodes: true,
+            upgradeNodeMinEnemyIndex: 1
+        });
         this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
         this.currentPathNodeId = null;
 
@@ -1935,6 +1968,9 @@ export class GameScene extends Phaser.Scene {
             case PATH_NODE_TYPES.TOWER:
                 this.openTowerOfTen();
                 break;
+            case PATH_NODE_TYPES.UPGRADE:
+                this.openDiceUpgrade();
+                break;
             default:
                 this.pathManager.completeCurrentNode();
                 this.currentPathNodeId = null;
@@ -2008,6 +2044,104 @@ export class GameScene extends Phaser.Scene {
             onPurchase: relicId => this.handleShopPurchase(relicId),
             onClose: () => this.closeShop()
         });
+    }
+
+    getUpgradeableDiceOptions(count = 3) {
+        const loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        const candidates = loadout
+            .map((entry, index) => ({ ...entry, index }))
+            .filter(entry => entry && !entry.isUpgraded);
+
+        if (candidates.length === 0) {
+            return [];
+        }
+
+        const shuffled = shuffleArray(candidates);
+        const selection = shuffled.slice(0, Math.min(count, shuffled.length));
+
+        return selection.map(entry => {
+            const definition = getCustomDieDefinitionById(entry.id);
+            return {
+                uid: `${entry.index}-${entry.id}-${entry.isUpgraded ? 'u' : 'b'}`,
+                id: entry.id,
+                name: definition.name || entry.id || 'Die',
+                emoji: definition.emoji || '',
+                description: definition.description || '',
+                upgradeDescription: definition.upgradeDescription
+                    || definition.description
+                    || ''
+            };
+        });
+    }
+
+    openDiceUpgrade() {
+        if (this.pathUI) {
+            this.pathUI.hide();
+        }
+
+        this.destroyFacilityUI();
+
+        const options = this.getUpgradeableDiceOptions(3);
+        if (options.length < 2) {
+            const message = options.length === 0
+                ? 'No dice available to upgrade.'
+                : 'Not enough dice to upgrade.';
+            if (message) {
+                this.showNodeMessage(message, '#f9e79f');
+            }
+            this.completeFacilityNode();
+            return;
+        }
+
+        this.activeFacilityUI = new DiceUpgradeUI(this, {
+            dice: options,
+            onUpgrade: selections => this.handleDiceUpgradeSelection(selections),
+            onClose: () => this.completeFacilityNode()
+        });
+    }
+
+    handleDiceUpgradeSelection(selections = []) {
+        if (!Array.isArray(selections) || selections.length !== 2) {
+            return false;
+        }
+
+        let upgradedCount = 0;
+        const upgradedNames = [];
+
+        selections.forEach(option => {
+            if (!option || !option.id) {
+                return;
+            }
+
+            const upgraded = this.upgradeCustomDieById(option.id);
+            if (upgraded) {
+                upgradedCount += 1;
+                if (option.name) {
+                    upgradedNames.push(option.name);
+                } else {
+                    const definition = getCustomDieDefinitionById(option.id);
+                    if (definition && definition.name) {
+                        upgradedNames.push(definition.name);
+                    }
+                }
+            }
+        });
+
+        if (upgradedCount !== selections.length) {
+            return false;
+        }
+
+        let message = '';
+        if (upgradedNames.length === 2) {
+            message = `Upgraded ${upgradedNames[0]} & ${upgradedNames[1]}`;
+        } else if (upgradedNames.length === 1) {
+            message = `Upgraded ${upgradedNames[0]}`;
+        } else {
+            message = `Upgraded ${upgradedCount} dice`;
+        }
+
+        this.showNodeMessage(message, '#f1c40f');
+        return true;
     }
 
     handleShopPurchase(relicId) {
@@ -2206,6 +2340,21 @@ export class GameScene extends Phaser.Scene {
 
         if (message) {
             this.showNodeMessage(message, color);
+        }
+
+        this.enterMapState();
+    }
+
+    completeFacilityNode() {
+        this.destroyFacilityUI();
+
+        if (this.pathManager) {
+            this.pathManager.completeCurrentNode();
+        }
+
+        this.currentPathNodeId = null;
+        if (this.pathUI) {
+            this.pathUI.updateState();
         }
 
         this.enterMapState();
