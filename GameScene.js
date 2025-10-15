@@ -216,9 +216,9 @@ export class GameScene extends Phaser.Scene {
         this.load.audio('chimeLong', './audio/chime-long.mp3');
         this.load.audio('tick', './audio/tick.mp3');
         this.load.audio('tock', './audio/tock.mp3');
-        this.load.audio('towerOfTenEnter', './audio/tower-of-ten-enter.mp3');
-        this.load.audio('towerOfTenWin', './audio/tower-of-ten-win.mp3');
-        this.load.audio('towerOfTenBust', './audio/tower-of-ten-bust.mp3');
+        this.load.audio('towerOfTenEnter', './audio/ToT-enter.mp3');
+        this.load.audio('towerOfTenWin', './audio/ToT-win.mp3');
+        this.load.audio('towerOfTenBust', './audio/ToT-lose.mp3');
     }
     
     create() {
