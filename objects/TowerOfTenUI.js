@@ -1,6 +1,7 @@
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 import { createDieFace, setDieBackgroundFill } from './ui/DieFace.js';
+import { playDiceRollSounds } from '../utils/SoundHelpers.js';
 
 const PANEL_WIDTH = 820;
 const PANEL_HEIGHT = 550;
@@ -559,6 +560,11 @@ export class TowerOfTenUI {
     }
 
     performFirstRoll() {
+        playDiceRollSounds(this.scene, {
+            isFirstRoll: true,
+            totalDice: this.diceCount,
+            selectedCount: this.diceCount
+        });
         this.diceValues = this.diceValues.map(() => rollDie());
         this.hasRolled = true;
         this.rerollUsed = false;
@@ -572,6 +578,11 @@ export class TowerOfTenUI {
     }
 
     performReroll() {
+        const rerollCount = this.diceSelected.reduce((count, selected) => (selected ? count + 1 : count), 0);
+        playDiceRollSounds(this.scene, {
+            totalDice: this.diceCount,
+            selectedCount: rerollCount
+        });
         this.diceValues = this.diceValues.map((value, index) => (this.diceSelected[index] ? rollDie() : value));
         this.rerollUsed = true;
         this.diceSelected = this.diceSelected.map(() => false);
