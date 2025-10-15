@@ -8,6 +8,8 @@ const BODY_WIDTH = PANEL_WIDTH - 160;
 const PAGE_SPACING = 60;
 
 const KEYWORD_COLOR = '#f4d03f';
+const DEFENSE_COLOR = '#5dade2';
+const ATTACK_COLOR = '#e74c3c';
 const BODY_TEXT_COLOR = '#ecf0f1';
 const BULLET_COLOR = '#f7dc6f';
 const BULLET_INDENT = 28;
@@ -20,12 +22,10 @@ const PAGES = [
         title: 'Welcome to Dice Game (WIP)!',
         points: [
             {
-                text: 'Descend through multiple maps filled with evolving encounters.',
-                keywords: [{ phrase: 'multiple maps', color: KEYWORD_COLOR }]
+                text: 'Descend through multiple maps, battling monsters and growing your collection of dice.',
             },
             {
-                text: 'Battle monsters and grow your collection of powerful dice.',
-                keywords: [{ phrase: 'powerful dice', color: KEYWORD_COLOR }]
+                text: 'Choose your path wisely to power up between battles.',
             }
         ]
     },
@@ -33,19 +33,19 @@ const PAGES = [
         title: 'Rolling & Resolving',
         points: [
             {
-                text: 'Roll your entire hand to form your opening setup at the start of battle.',
-                keywords: [{ phrase: 'opening setup', color: KEYWORD_COLOR }]
+                text: 'At the start of each battle, roll all your dice to form your opening hand.',
+                keywords: [{ phrase: 'roll', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Spend up to 2 re-rolls on any dice to chase combos for the Defend (🛡️) and Attack (⚔️) zones.',
+                text: 'You have 2 re-rolls to use on any number of dice, aiming to form combos to place in the Defend (🛡️) and Attack (⚔️) zones.',
                 keywords: [
                     { phrase: '2 re-rolls', color: KEYWORD_COLOR },
-                    { phrase: 'Defend (🛡️)', color: KEYWORD_COLOR },
-                    { phrase: 'Attack (⚔️)', color: KEYWORD_COLOR }
+                    { phrase: 'Defend (🛡️)', color: DEFENSE_COLOR },
+                    { phrase: 'Attack (⚔️)', color: ATTACK_COLOR }
                 ]
             },
             {
-                text: 'Press Resolve after arranging your zones to play your turn.',
+                text: 'Press Resolve to play your turn.',
                 keywords: [{ phrase: 'Resolve', color: KEYWORD_COLOR }]
             }
         ]
@@ -62,11 +62,11 @@ const PAGES = [
                 ]
             },
             {
-                text: 'Face Value adds the sum of die faces placed in a zone.',
+                text: 'Face Value: adds the sum of die faces placed in a zone.',
                 keywords: [{ phrase: 'Face Value', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Combo Bonus rewards rarer patterns—check the menu for exact values.',
+                text: 'Combo Bonus: rewards rarer patterns — check the menu for exact values.',
                 keywords: [{ phrase: 'Combo Bonus', color: KEYWORD_COLOR }]
             }
         ]
@@ -75,16 +75,15 @@ const PAGES = [
         title: 'Collecting Dice',
         points: [
             {
-                text: 'Choose a special die after each battle to strengthen your hand.',
+                text: 'Choose a special die after each battle to improve your hand.',
                 keywords: [{ phrase: 'special die', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Carry up to six dice and discard to make room for new finds.',
-                keywords: [{ phrase: 'six dice', color: KEYWORD_COLOR }]
+                text: 'Carry up to 6 dice. Discard within your pack to make room for new finds.',
+                keywords: [{ phrase: '6', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Tap a die icon during battle for a quick reminder of its effect.',
-                keywords: [{ phrase: 'die icon', color: KEYWORD_COLOR }]
+                text: 'Tap a die icon during battle for a reminder of its effect.',
             }
         ]
     },
@@ -92,19 +91,15 @@ const PAGES = [
         title: 'Relics',
         points: [
             {
-                text: 'Relics grant permanent upgrades throughout your run.',
-                keywords: [{ phrase: 'Relics', color: KEYWORD_COLOR }]
+                text: 'Relics are found in shops or after bosses.',
+                keywords: [{ phrase: 'Relics', color: KEYWORD_COLOR }, { phrase: 'shops', color: KEYWORD_COLOR }, { phrase: 'bosses', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Carry up to six relics at once, mirroring your dice limit.',
-                keywords: [{ phrase: 'six relics', color: KEYWORD_COLOR }]
+                text: 'Carry up to 6 relics at once. Discard within your pack to make room for new finds.',
+                keywords: [{ phrase: '6', color: KEYWORD_COLOR }, { phrase: 'Discard', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Find them in shops or by defeating powerful bosses.',
-                keywords: [
-                    { phrase: 'shops', color: KEYWORD_COLOR },
-                    { phrase: 'powerful bosses', color: KEYWORD_COLOR }
-                ]
+                text: 'Tap a relic icon during battle for a reminder of its effect.',
             }
         ]
     },
@@ -112,18 +107,18 @@ const PAGES = [
         title: 'Curses',
         points: [
             {
-                text: 'Cursed dice clear after remaining unused for one full turn.',
-                keywords: [{ phrase: 'Cursed dice', color: KEYWORD_COLOR }]
+                text: 'Some enemies can apply curses to your dice, which are cleansed if the die is unused for a turn.',
+                keywords: [{ phrase: 'curses', color: KEYWORD_COLOR }, { phrase: 'cleansed', color: KEYWORD_COLOR }, { phrase: 'unused', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Lock stops a die from being re-rolled until the curse fades.',
-                keywords: [{ phrase: 'Lock', color: KEYWORD_COLOR }]
+                text: 'Locked dice cannot be re-rolled.',
+                keywords: [{ phrase: 'Locked', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Weaken removes a die’s Face Value contribution while active.',
+                text: 'Weakened dice contribute no FV in zone scoring.',
                 keywords: [
-                    { phrase: 'Weaken', color: KEYWORD_COLOR },
-                    { phrase: 'Face Value', color: KEYWORD_COLOR }
+                    { phrase: 'Weakened', color: KEYWORD_COLOR },
+                    { phrase: 'FV', color: KEYWORD_COLOR }
                 ]
             }
         ]
