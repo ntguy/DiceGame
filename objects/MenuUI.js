@@ -81,73 +81,9 @@ export function createMenuUI(scene) {
         return text;
     });
 
-    const gapBetweenSections = 28;
     const closeButtonHeight = 58;
     const closeButtonMargin = 32;
     const closeButtonY = panelHeight - closeButtonMargin - closeButtonHeight / 2;
-    const settingsBottomLimit = closeButtonY - closeButtonHeight / 2 - gapBetweenSections;
-    const minSettingsHeight = 180;
-    const settingsTopBase = comboTop + comboSectionHeight + gapBetweenSections;
-    let settingsTop = Math.min(settingsTopBase, settingsBottomLimit - minSettingsHeight);
-    settingsTop = Math.max(settingsTop, padding);
-    let settingsHeight = Math.max(minSettingsHeight, settingsBottomLimit - settingsTop);
-    if (settingsTop + settingsHeight > settingsBottomLimit) {
-        settingsHeight = Math.max(minSettingsHeight, settingsBottomLimit - settingsTop);
-    }
-    if (settingsHeight < minSettingsHeight) {
-        settingsHeight = minSettingsHeight;
-        settingsTop = Math.max(padding, settingsBottomLimit - settingsHeight);
-    }
-    const settingsCenterY = settingsTop + settingsHeight / 2;
-
-    const settingsBg = scene.add.rectangle(panelWidth / 2, settingsCenterY, sectionWidth, settingsHeight, 0x232d3b, 0.92)
-        .setOrigin(0.5)
-        .setStrokeStyle(2, 0x76d7c4, 0.18);
-    menuPanel.add(settingsBg);
-
-    const settingsTitle = scene.add.text(panelWidth / 2, settingsTop + 16, 'Settings', {
-        fontSize: '24px',
-        color: '#76d7c4',
-        fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-    menuPanel.add(settingsTitle);
-
-    const muteButtonY = settingsTop + 74;
-    const toggleSpacing = 50;
-
-    scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
-        fontSize: '22px',
-        color: '#ecf0f1',
-        padding: { x: 18, y: 10 }
-    }).setOrigin(0.5);
-    applyTextButtonStyle(scene.muteButton, {
-        baseColor: '#34495e',
-        textColor: '#ecf0f1',
-        hoverBlend: 0.2,
-        pressBlend: 0.3,
-        disabledBlend: 0.45
-    });
-    setTextButtonEnabled(scene.muteButton, true);
-    scene.muteButton.on('pointerdown', () => scene.toggleMute());
-    menuPanel.add(scene.muteButton);
-
-    const testingButtonY = muteButtonY + toggleSpacing;
-    scene.testingModeButton = scene.add.text(panelWidth / 2, testingButtonY, '', {
-        fontSize: '22px',
-        color: '#ecf0f1',
-        padding: { x: 18, y: 10 }
-    }).setOrigin(0.5);
-    applyTextButtonStyle(scene.testingModeButton, {
-        baseColor: '#34495e',
-        textColor: '#ecf0f1',
-        hoverBlend: 0.2,
-        pressBlend: 0.3,
-        disabledBlend: 0.45
-    });
-    setTextButtonEnabled(scene.testingModeButton, true);
-    scene.testingModeButton.on('pointerdown', () => scene.toggleTestingMode());
-    menuPanel.add(scene.testingModeButton);
-
     scene.menuCloseButton = scene.add.rectangle(panelWidth / 2, closeButtonY, sectionWidth, 58, 0x2d1b3d, 0.92)
         .setInteractive({ useHandCursor: true });
     applyRectangleButtonStyle(scene.menuCloseButton, {
@@ -172,5 +108,4 @@ export function createMenuUI(scene) {
     scene.menuPanel = menuPanel;
     scene.isMenuOpen = false;
     scene.updateMenuButtonLabel();
-    scene.updateTestingModeButtonState();
 }

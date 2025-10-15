@@ -4,6 +4,7 @@ import { setupZones } from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
 import { createMenuUI } from './objects/MenuUI.js';
+import { createSettingsUI } from './objects/SettingsUI.js';
 import { evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
@@ -155,6 +156,10 @@ export class GameScene extends Phaser.Scene {
         this.muteButton = null;
         this.testingModeButton = null;
         this.isMenuOpen = false;
+        this.settingsButton = null;
+        this.settingsPanel = null;
+        this.settingsCloseButton = null;
+        this.isSettingsOpen = false;
     }
 
     init(data) {
@@ -251,6 +256,7 @@ export class GameScene extends Phaser.Scene {
         setupButtons(this);
         this.updateRollButtonState();
         createMenuUI(this);
+        createSettingsUI(this);
         this.relicUI.createShelf();
 
         this.applyTestingModeStartingResources();
@@ -375,6 +381,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        this.closeSettings();
         this.isMenuOpen = true;
         if (this.menuPanel) {
             this.menuPanel.setVisible(true);
@@ -382,8 +389,6 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateMenuButtonLabel();
-        this.updateMuteButtonState();
-        this.updateTestingModeButtonState();
     }
 
     closeMenu() {
@@ -402,6 +407,53 @@ export class GameScene extends Phaser.Scene {
 
         const suffix = this.isMenuOpen ? '✕' : '☰';
         this.menuButton.setText(`${suffix}`);
+    }
+
+    toggleSettings() {
+        if (!this.settingsPanel) {
+            return;
+        }
+
+        if (this.isSettingsOpen) {
+            this.closeSettings();
+        } else {
+            this.openSettings();
+        }
+    }
+
+    openSettings() {
+        if (this.isSettingsOpen) {
+            return;
+        }
+
+        this.closeMenu();
+        this.isSettingsOpen = true;
+        if (this.settingsPanel) {
+            this.settingsPanel.setVisible(true);
+            this.settingsPanel.setDepth(80);
+        }
+
+        this.updateSettingsButtonLabel();
+        this.updateMuteButtonState();
+        this.updateTestingModeButtonState();
+    }
+
+    closeSettings() {
+        this.isSettingsOpen = false;
+        if (this.settingsPanel) {
+            this.settingsPanel.setVisible(false);
+        }
+
+        this.updateSettingsButtonLabel();
+    }
+
+    updateSettingsButtonLabel() {
+        if (!this.settingsButton) {
+            return;
+        }
+
+        const suffix = this.isSettingsOpen ? '✕' : '⚙';
+        this.settingsButton.setText(`${suffix}`);
     }
 
     update() {
