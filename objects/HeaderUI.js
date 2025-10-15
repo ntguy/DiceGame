@@ -1,16 +1,22 @@
 import { CONSTANTS } from '../config.js';
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 
+const DEFAULT_BUTTON_WIDTH = 72;
+const DEFAULT_BUTTON_HEIGHT = 40;
+
 function createHeaderButton(scene, {
     label,
     x,
     origin,
-    onClick
+    onClick,
+    fontSize = '24px',
+    width = DEFAULT_BUTTON_WIDTH
 }) {
     const button = scene.add.text(x, CONSTANTS.HEADER_HEIGHT / 2, label, {
-        fontSize: '24px',
+        fontSize,
         color: '#ecf0f1',
-        padding: { x: 14, y: 8 }
+        padding: { x: 18, y: 6 },
+        align: 'center'
     }).setOrigin(origin.x, origin.y);
 
     applyTextButtonStyle(button, {
@@ -23,6 +29,10 @@ function createHeaderButton(scene, {
     setTextButtonEnabled(button, true);
     button.on('pointerdown', onClick);
     button.setScrollFactor(0);
+
+    button.setFixedSize(width, DEFAULT_BUTTON_HEIGHT);
+    button.setData('buttonWidth', width);
+    button.setData('buttonHeight', DEFAULT_BUTTON_HEIGHT);
 
     return button;
 }
@@ -64,19 +74,25 @@ export function createHeaderUI(scene) {
         label: '☰',
         x: headerWidth - CONSTANTS.UI_MARGIN,
         origin: { x: 1, y: 0.5 },
-        onClick: () => scene.toggleMenu()
+        onClick: () => scene.toggleMenu(),
+        fontSize: '28px'
     });
+    menuButton.setData('defaultFontSize', '24px');
+    menuButton.setData('expandedFontSize', '28px');
 
     const settingsButton = createHeaderButton(scene, {
         label: '⚙',
-        x: menuButton.x - menuButton.displayWidth - buttonSpacing,
+        x: headerWidth - CONSTANTS.UI_MARGIN,
         origin: { x: 1, y: 0.5 },
-        onClick: () => scene.toggleSettings()
+        onClick: () => scene.toggleSettings(),
+        fontSize: '28px'
     });
+    settingsButton.setData('defaultFontSize', '24px');
+    settingsButton.setData('expandedFontSize', '28px');
 
     const instructionsButton = createHeaderButton(scene, {
         label: '📘',
-        x: settingsButton.x - settingsButton.displayWidth - buttonSpacing,
+        x: headerWidth - CONSTANTS.UI_MARGIN,
         origin: { x: 1, y: 0.5 },
         onClick: () => scene.toggleInstructions()
     });
@@ -84,9 +100,11 @@ export function createHeaderUI(scene) {
     const layoutButtons = () => {
         const menuX = headerWidth - CONSTANTS.UI_MARGIN;
         menuButton.setX(menuX);
-        const settingsX = menuX - menuButton.displayWidth - buttonSpacing;
+        const settingsWidth = settingsButton.getData('buttonWidth');
+        const instructionsWidth = instructionsButton.getData('buttonWidth');
+        const settingsX = menuX - settingsWidth - buttonSpacing;
         settingsButton.setX(settingsX);
-        const instructionsX = settingsX - settingsButton.displayWidth - buttonSpacing;
+        const instructionsX = settingsX - instructionsWidth - buttonSpacing;
         instructionsButton.setX(instructionsX);
     };
     layoutButtons();
