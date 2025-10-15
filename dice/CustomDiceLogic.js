@@ -54,9 +54,6 @@ export function doesDieFaceValueTriggerRule(die, { zone } = {}) {
         case 'flameout':
             return faceValue > 0 && (isUpgraded || faceValue <= 4);
         case 'demolition': {
-            if (zone !== 'attack') {
-                return false;
-            }
             const threshold = isUpgraded ? 3 : 2;
             return faceValue >= 1 && faceValue <= threshold;
         }
@@ -169,18 +166,16 @@ function getPreResolutionEffects({ die, zone }) {
     const effects = [];
 
     if (definition.id === 'demolition') {
-        // Demolition die: chips away at enemy block before the attack lands.
-        if (zone === 'attack') {
-            const threshold = isUpgraded ? 3 : 2;
-            if (faceValue >= 1 && faceValue <= threshold) {
-                effects.push(context => {
-                    const { scene } = context || {};
-                    callSceneManagerMethod(scene, 'enemyManager', 'reduceEnemyBlock', 10);
-                    callSceneMethod(scene, 'updateEnemyHealthUI');
-                    callSceneMethod(scene, 'refreshEnemyIntentText');
-                    callSceneMethod(scene, 'updateEnemyStatusText');
-                });
-            }
+        // Demolition die: chips away at enemy block before the roll resolves.
+        const threshold = isUpgraded ? 3 : 2;
+        if (faceValue >= 1 && faceValue <= threshold) {
+            effects.push(context => {
+                const { scene } = context || {};
+                callSceneManagerMethod(scene, 'enemyManager', 'reduceEnemyBlock', 10);
+                callSceneMethod(scene, 'updateEnemyHealthUI');
+                callSceneMethod(scene, 'refreshEnemyIntentText');
+                callSceneMethod(scene, 'updateEnemyStatusText');
+            });
         }
     }
 
