@@ -2790,6 +2790,10 @@ export class GameScene extends Phaser.Scene {
             this.applyTestingModeStartingResources();
         }
 
+        if (this.pathUI) {
+            this.pathUI.updateState();
+        }
+
         const enemy = this.enemyManager ? this.enemyManager.getCurrentEnemy() : null;
         if (enemy) {
             if (this.testingModeEnabled) {
