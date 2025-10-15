@@ -193,18 +193,32 @@ export class PathUI {
         });
     }
 
+    isTestingModeActive() {
+        return !!(this.scene && this.scene.testingModeEnabled);
+    }
+
     isNodeSelectable(nodeId) {
+        if (!nodeId) {
+            return false;
+        }
+
+        if (this.isTestingModeActive()) {
+            return this.nodeRefs.has(nodeId);
+        }
+
         const availableIds = this.pathManager.getAvailableNodeIds();
         return availableIds.includes(nodeId);
     }
 
     updateState() {
         const availableIds = new Set(this.pathManager.getAvailableNodeIds());
+        const testingMode = this.isTestingModeActive();
 
         this.nodeRefs.forEach(({ node, cube, iconText, labelText, isBoss }) => {
             const typeKey = isBoss ? 'boss' : node.type;
             const baseColor = COLORS[typeKey] || COLORS.whiteStroke;
             const isCompleted = this.pathManager.isNodeCompleted(node.id);
+            const isAvailable = availableIds.has(node.id);
 
             let fillColor = baseColor;
             let strokeWidth = 4;
@@ -220,8 +234,15 @@ export class PathUI {
                 iconAlpha = 0.6;
                 labelAlpha = 0.65;
                 strokeColor = COLORS.whiteStroke;
-            } else if (availableIds.has(node.id)) {
+                if (testingMode) {
+                    interactive = true;
+                    strokeWidth = 3;
+                }
+            } else if (isAvailable || testingMode) {
                 interactive = true;
+                if (testingMode && !isAvailable) {
+                    strokeColor = COLORS.whiteStroke;
+                }
             } else {
                 fillColor = blendColor(baseColor, 0x90a4ae, 0.6);
                 strokeWidth = 2;
