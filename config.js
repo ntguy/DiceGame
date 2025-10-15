@@ -2,9 +2,11 @@ import { GameScene } from './GameScene.js';
 
 const GAME_WIDTH = 1100;
 const GAME_HEIGHT = 700;
+const HEADER_HEIGHT = 40;
 
 // Game constants
 export const CONSTANTS = {
+    HEADER_HEIGHT,
     DIE_SIZE: 60,
     GRID_Y: 500,
     SLOT_SPACING: 80, // dieSize + 20

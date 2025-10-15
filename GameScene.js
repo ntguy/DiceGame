@@ -5,6 +5,7 @@ import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
 import { createMenuUI } from './objects/MenuUI.js';
 import { createSettingsUI } from './objects/SettingsUI.js';
+import { createHeaderUI } from './objects/HeaderUI.js';
 import { evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
@@ -160,6 +161,8 @@ export class GameScene extends Phaser.Scene {
         this.settingsPanel = null;
         this.settingsCloseButton = null;
         this.isSettingsOpen = false;
+        this.headerContainer = null;
+        this.layoutHeaderButtons = null;
     }
 
     init(data) {
@@ -238,6 +241,10 @@ export class GameScene extends Phaser.Scene {
         ];
         this.resetMenuState();
 
+        this.cameras.main.setBounds(0, -CONSTANTS.HEADER_HEIGHT, this.scale.width, this.scale.height + CONSTANTS.HEADER_HEIGHT);
+        this.cameras.main.setScroll(0, -CONSTANTS.HEADER_HEIGHT);
+        createHeaderUI(this);
+
         // --- Dice arrays for zones ---
         this.defendDice = [];
         this.attackDice = [];
@@ -271,11 +278,6 @@ export class GameScene extends Phaser.Scene {
         });
         this.updateGoldUI();
 
-        this.mapTitleText = this.add.text(this.scale.width - CONSTANTS.UI_MARGIN, CONSTANTS.UI_MARGIN, '', {
-            fontSize: '20px',
-            color: '#ecf0f1'
-        }).setOrigin(1, 0);
-        this.mapTitleText.setDepth(60);
         this.updateMapTitleText();
 
         this.playerBurnText = this.add.text(0, 0, '', {
@@ -407,6 +409,9 @@ export class GameScene extends Phaser.Scene {
 
         const suffix = this.isMenuOpen ? '✕' : '☰';
         this.menuButton.setText(`${suffix}`);
+        if (this.layoutHeaderButtons) {
+            this.layoutHeaderButtons();
+        }
     }
 
     toggleSettings() {
@@ -454,6 +459,9 @@ export class GameScene extends Phaser.Scene {
 
         const suffix = this.isSettingsOpen ? '✕' : '⚙';
         this.settingsButton.setText(`${suffix}`);
+        if (this.layoutHeaderButtons) {
+            this.layoutHeaderButtons();
+        }
     }
 
     update() {
@@ -2747,6 +2755,10 @@ export class GameScene extends Phaser.Scene {
 
         if (this.menuButton) {
             setVisibility(this.menuButton, true);
+        }
+
+        if (this.settingsButton) {
+            setVisibility(this.settingsButton, true);
         }
 
         if (this.menuPanel) {
