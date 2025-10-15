@@ -188,7 +188,10 @@ export class DiceUpgradeUI {
             if (upgraded) {
                 if (this.scene.sound && typeof this.scene.sound.play === 'function') {
                     this.scene.sound.play('chimeLong', {
-                        volume: 0.6,
+                        volume: 0.5,
+                        seek: 1,
+                        rate: 2.5
+                        
                     });
                 }
                 this.destroy();

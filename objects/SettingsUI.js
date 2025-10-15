@@ -1,60 +1,18 @@
-import { CONSTANTS } from '../config.js';
-import { applyRectangleButtonStyle, applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
+import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
+import { createSidePanel } from './ui/SidePanelFactory.js';
 
 export function createSettingsUI(scene) {
-    const panelWidth = scene.scale.width * 0.28;
-    const panelHeight = scene.scale.height;
-    const panelX = scene.scale.width - panelWidth;
-    const padding = 24;
-    const sectionWidth = panelWidth - padding * 2;
-
-    if (scene.settingsButton) {
-        scene.settingsButton.destroy();
-        scene.settingsButton = null;
-    }
-
-    const buttonOffset = 12;
-    const buttonY = scene.menuButton
-        ? scene.menuButton.y - scene.menuButton.displayHeight - buttonOffset
-        : scene.scale.height - CONSTANTS.UI_MARGIN - buttonOffset;
-
-    const settingsButton = scene.add.text(CONSTANTS.UI_MARGIN, buttonY, '⚙', {
-        fontSize: '26px',
-        color: '#ecf0f1',
-        padding: { x: 18, y: 10 }
-    }).setOrigin(0, 1);
-    settingsButton.setDepth(70);
-    applyTextButtonStyle(settingsButton, {
-        baseColor: '#2c3e50',
-        textColor: '#ecf0f1',
-        hoverBlend: 0.18,
-        pressBlend: 0.28,
-        disabledBlend: 0.42
-    });
-    setTextButtonEnabled(settingsButton, true);
-    settingsButton.on('pointerdown', () => scene.toggleSettings());
-    scene.settingsButton = settingsButton;
-
     if (scene.settingsPanel) {
         scene.settingsPanel.destroy(true);
         scene.settingsPanel = null;
     }
 
-    const settingsPanel = scene.add.container(panelX, 0);
-    settingsPanel.setDepth(80);
-
-    const panelBg = scene.add.rectangle(panelWidth / 2, panelHeight / 2, panelWidth, panelHeight, 0x101820, 0.95)
-        .setOrigin(0.5)
-        .setStrokeStyle(2, 0xffffff, 0.08)
-        .setInteractive();
-    settingsPanel.add(panelBg);
-
-    const headerText = scene.add.text(panelWidth / 2, 24, 'Settings', {
-        fontSize: '32px',
-        color: '#76d7c4',
-        fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-    settingsPanel.add(headerText);
+    const panel = createSidePanel(scene, {
+        title: 'Settings',
+        titleColor: '#76d7c4',
+        closeLabel: 'Close Settings'
+    });
+    const { container: settingsPanel, panelWidth, sectionWidth } = panel;
 
     const contentTop = 90;
     const contentHeight = 200;
@@ -101,29 +59,8 @@ export function createSettingsUI(scene) {
     scene.testingModeButton.on('pointerdown', () => scene.toggleTestingMode());
     settingsPanel.add(scene.testingModeButton);
 
-    const closeButtonHeight = 58;
-    const closeButtonMargin = 32;
-    const closeButtonY = panelHeight - closeButtonMargin - closeButtonHeight / 2;
-
-    scene.settingsCloseButton = scene.add.rectangle(panelWidth / 2, closeButtonY, sectionWidth, closeButtonHeight, 0x2d1b3d, 0.92)
-        .setInteractive({ useHandCursor: true });
-    applyRectangleButtonStyle(scene.settingsCloseButton, {
-        baseColor: 0x2d1b3d,
-        baseAlpha: 0.92,
-        hoverBlend: 0.18,
-        pressBlend: 0.32,
-        disabledBlend: 0.5,
-        enabledAlpha: 1,
-        disabledAlpha: 0.45
-    });
+    scene.settingsCloseButton = panel.closeButton;
     scene.settingsCloseButton.on('pointerup', () => scene.closeSettings());
-    settingsPanel.add(scene.settingsCloseButton);
-
-    const closeText = scene.add.text(panelWidth / 2, closeButtonY, 'Close Settings', {
-        fontSize: '24px',
-        color: '#f9e79f'
-    }).setOrigin(0.5);
-    settingsPanel.add(closeText);
 
     settingsPanel.setVisible(false);
     scene.settingsPanel = settingsPanel;
