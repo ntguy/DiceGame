@@ -309,7 +309,7 @@ export class GameScene extends Phaser.Scene {
         this.gameOverManager.create();
 
         // --- Roll counter ---
-        this.rollsRemainingText = this.add.text(100, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
+        this.rollsRemainingText = this.add.text(110, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
             fontSize: "24px",
             color: "#fff"
         }).setOrigin(0.5);
