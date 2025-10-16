@@ -23,6 +23,8 @@ import { FamilyRelic } from './relics/FamilyRelic.js';
 import { ReRollWithItRelic } from './relics/ReRollWithItRelic.js';
 import { WildOneRelic } from './relics/WildOneRelic.js';
 import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
+import { RainRelic } from './relics/RainRelic.js';
+import { PrepperRelic } from './relics/PrepperRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
 import { DiceUpgradeUI } from './objects/DiceUpgradeUI.js';
@@ -75,6 +77,7 @@ export class GameScene extends Phaser.Scene {
         // Game state
         this.dice = [];
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
+        this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerMaxHealth = 100;
         this.playerHealth = this.playerMaxHealth;
         this.healthBar = null;
@@ -134,6 +137,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
 
         this.mapTitleText = null;
+        this.isFirstCombatTurn = false;
     }
 
     resetRelicState() {
@@ -148,6 +152,11 @@ export class GameScene extends Phaser.Scene {
         this.rerollDefenseBonus = 0;
         this.hasWildOneRelic = false;
         this.unlocksOnLongStraights = false;
+        this.hasRainRelic = false;
+        this.playerBurnReductionPerTurn = 0;
+        this.rollCarryoverEnabled = false;
+        this.prepperFirstTurnBonusRolls = 0;
+        this.prepperCarryoverRolls = 0;
         if (this.relicUI) {
             this.relicUI.reset();
         }
@@ -236,6 +245,7 @@ export class GameScene extends Phaser.Scene {
         this.weakenedDice = new Set();
         this.pendingWeakenCount = 0;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
+        this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerBlockValue = 0;
         this.playerBurn = 0;
         this.playerHealth = this.playerMaxHealth;
@@ -256,7 +266,9 @@ export class GameScene extends Phaser.Scene {
             new FamilyRelic(),
             new ReRollWithItRelic(),
             new WildOneRelic(),
-            new UnlockedAndLoadedRelic()
+            new UnlockedAndLoadedRelic(),
+            new RainRelic(),
+            new PrepperRelic()
         ];
         this.resetMenuState();
 
@@ -843,7 +855,7 @@ export class GameScene extends Phaser.Scene {
         // Determine which sound to play
         let diceInPlay = this.getDiceInPlay();
         const diceSelectedCount = diceInPlay.filter(d => d.selected).length;
-        const isFirstRoll = this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS;
+        const isFirstRoll = this.rollsRemaining === this.rollsRemainingAtTurnStart;
 
         playDiceRollSounds(this, {
             isFirstRoll,
@@ -891,7 +903,7 @@ export class GameScene extends Phaser.Scene {
 
         // Decrement rolls remaining
         this.rollsRemaining--;
-        this.rollsRemainingText.setText(this.rollsRemaining);
+        this.rollsRemainingText.setText(`${this.rollsRemaining}`);
 
         this.updateRollButtonState();
 
@@ -1044,6 +1056,15 @@ export class GameScene extends Phaser.Scene {
                 break;
             case 'blockbuster':
                 this.hasBlockbusterRelic = false;
+                break;
+            case 'rain':
+                this.hasRainRelic = false;
+                this.playerBurnReductionPerTurn = 0;
+                break;
+            case 'prepper':
+                this.rollCarryoverEnabled = false;
+                this.prepperFirstTurnBonusRolls = 0;
+                this.prepperCarryoverRolls = 0;
                 break;
             default:
                 break;
@@ -1360,6 +1381,11 @@ export class GameScene extends Phaser.Scene {
             }
             this.lockedDice.clear();
             this.clearAllWeakenedDice();
+            if (this.rollCarryoverEnabled) {
+                this.prepperCarryoverRolls = Math.max(0, Math.floor(this.rollsRemaining));
+            } else {
+                this.prepperCarryoverRolls = 0;
+            }
             this.resetGameState({ destroyDice: false });
             if (this.pendingPostCombatTransition) {
                 this.disableAllInputs();
@@ -2383,6 +2409,8 @@ export class GameScene extends Phaser.Scene {
         this.lockedDice.clear();
         this.pendingWeakenCount = 0;
         this.weakenedDice.clear();
+        this.isFirstCombatTurn = true;
+        this.prepperCarryoverRolls = 0;
         this.resetGameState({ destroyDice: true });
         this.resetEnemyBurn();
         this.setMapMode(false);
@@ -3060,6 +3088,12 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    applyStartOfTurnEffects() {
+        if (this.playerBurnReductionPerTurn > 0) {
+            this.reducePlayerBurn(this.playerBurnReductionPerTurn);
+        }
+    }
+
     resetGameState({ destroyDice = true } = {}) {
         this.clearAllWeakenedDice();
         if (destroyDice) {
@@ -3074,9 +3108,27 @@ export class GameScene extends Phaser.Scene {
         this.playerBlockValue = 0;
         this.rerollDefenseBonus = 0;
 
-        // Reset roll counter
-        this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
-        this.rollsRemainingText.setText(CONSTANTS.DEFAULT_MAX_ROLLS);
+        this.applyStartOfTurnEffects();
+
+        const baseRolls = CONSTANTS.DEFAULT_MAX_ROLLS;
+        let startingRolls = baseRolls;
+
+        if (this.isFirstCombatTurn && this.prepperFirstTurnBonusRolls > 0) {
+            startingRolls += this.prepperFirstTurnBonusRolls;
+        }
+
+        if (this.rollCarryoverEnabled && this.prepperCarryoverRolls > 0) {
+            startingRolls += Math.max(0, Math.floor(this.prepperCarryoverRolls));
+        }
+
+        this.prepperCarryoverRolls = 0;
+        this.isFirstCombatTurn = false;
+
+        this.rollsRemaining = Math.max(0, Math.floor(startingRolls));
+        this.rollsRemainingAtTurnStart = this.rollsRemaining;
+        if (this.rollsRemainingText) {
+            this.rollsRemainingText.setText(`${this.rollsRemaining}`);
+        }
 
         // Enable roll button, disable sort button
         setTextButtonEnabled(this.rollButton, true);
@@ -3193,7 +3245,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         // First roll (before any rolls used) -> always enabled
-        if (this.rollsRemaining === CONSTANTS.DEFAULT_MAX_ROLLS) {
+        if (this.rollsRemaining === this.rollsRemainingAtTurnStart) {
             setTextButtonEnabled(this.rollButton, true);
             return;
         }
