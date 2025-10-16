@@ -23,10 +23,9 @@ export class HotfixEnemy extends BaseEnemy {
                 key: 'burn_defend_loop',
                 label: () => `Burn ${this.scalingBurnValue} + Defend 10`,
                 createActions: () => {
-                    const burnValue = this.scalingBurnValue;
                     this.scalingBurnValue += 1;
                     return [
-                        burnAction(burnValue),
+                        burnAction(this.scalingBurnValue),
                         defendAction(10)
                     ];
                 }
