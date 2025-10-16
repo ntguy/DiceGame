@@ -3,12 +3,12 @@ import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from 
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 
-const PANEL_VERTICAL_PADDING = 40;
+const PANEL_VERTICAL_PADDING = 28;
 const COLUMN_GAP = 36;
 const ROW_VERTICAL_SPACING = 28;
 const ROW_HORIZONTAL_PADDING = 28;
 const DICE_SLOT_SIZE = 74;
-const RELIC_SLOT_RADIUS = 38;
+const RELIC_SLOT_RADIUS = 34;
 
 const DICE_SECTION_BACKGROUND_COLOR = 0x1a2b3a;
 const RELIC_SECTION_BACKGROUND_COLOR = 0x2e1a38;
@@ -66,7 +66,7 @@ export class BackpackUI {
 
     create() {
         const panelWidth = Math.max(720, Math.min(this.scene.scale.width - 40, this.scene.scale.width));
-        const panelHeight = Math.max(480, Math.min(this.scene.scale.height - 60, this.scene.scale.height));
+        const panelHeight = Math.max(450, Math.min(this.scene.scale.height - 80, this.scene.scale.height));
 
         const modal = createModal(this.scene, {
             width: panelWidth,
@@ -98,7 +98,7 @@ export class BackpackUI {
 
         const availableHeight = panelBottom - panelTop;
         const sectionHeight = (availableHeight - ROW_VERTICAL_SPACING);
-        const diceHeight = Math.max(DICE_SLOT_SIZE + 40, sectionHeight * 0.46);
+        const diceHeight = Math.max(DICE_SLOT_SIZE + 28, sectionHeight * 0.42);
         const relicHeight = Math.max(RELIC_SLOT_RADIUS * 2 + 52, sectionHeight * 0.34);
         const contentHeight = diceHeight + relicHeight + ROW_VERTICAL_SPACING;
         const verticalOffset = Math.max(0, (availableHeight - contentHeight) / 2);
@@ -258,7 +258,7 @@ export class BackpackUI {
                 color: '#ffffff'
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, RELIC_SLOT_RADIUS + 18, '', {
+            const labelText = this.scene.add.text(0, RELIC_SLOT_RADIUS + 16, '', {
                 fontSize: '16px',
                 color: INFO_SUBTEXT_COLOR,
                 align: 'center',
@@ -447,6 +447,9 @@ export class BackpackUI {
             const selectedSlot = this.diceSlots[this.selectedDiceIndex];
             if (selectedSlot && selectedSlot.data) {
                 this.showDiceInfo(selectedSlot.data.name, selectedSlot.data.description);
+            } else {
+                this.selectedDiceIndex = null;
+                this.showDefaultDiceInfo();
             }
         }
     }
@@ -491,6 +494,9 @@ export class BackpackUI {
             const selectedSlot = this.relicSlots[this.selectedRelicIndex];
             if (selectedSlot && selectedSlot.data) {
                 this.showRelicInfo(selectedSlot.data.name, selectedSlot.data.description);
+            } else {
+                this.selectedRelicIndex = null;
+                this.showDefaultRelicInfo();
             }
         }
     }
@@ -502,21 +508,21 @@ export class BackpackUI {
 
         const data = this.diceSlots[index].data;
         if (data) {
-            this.selectedDiceIndex = index;
-            this.selectedRelicIndex = null;
-            const description = data.isUpgraded
-                ? data.description || DEFAULT_EMPTY_DIE_TEXT.description
-                : data.description || DEFAULT_EMPTY_DIE_TEXT.description;
-            this.showDiceInfo(data.name || 'Die', description);
-            this.showDefaultRelicInfo();
+            if (this.selectedDiceIndex === index) {
+                this.selectedDiceIndex = null;
+                this.showDefaultDiceInfo();
+            } else {
+                this.selectedDiceIndex = index;
+                const description = data.isUpgraded
+                    ? data.description || DEFAULT_EMPTY_DIE_TEXT.description
+                    : data.description || DEFAULT_EMPTY_DIE_TEXT.description;
+                this.showDiceInfo(data.name || 'Die', description);
+            }
         } else {
             this.selectedDiceIndex = null;
-            this.selectedRelicIndex = null;
-            this.showDiceInfo(DEFAULT_EMPTY_DIE_TEXT.name, DEFAULT_EMPTY_DIE_TEXT.description);
-            this.showDefaultRelicInfo();
+            this.showDefaultDiceInfo();
         }
         this.updateDiceHighlights();
-        this.updateRelicHighlights();
     }
 
     handleRelicSlotClick(index) {
@@ -526,17 +532,17 @@ export class BackpackUI {
 
         const data = this.relicSlots[index].data;
         if (data) {
-            this.selectedRelicIndex = index;
-            this.selectedDiceIndex = null;
-            this.showRelicInfo(data.name || 'Relic', data.description || DEFAULT_EMPTY_RELIC_TEXT.description);
-            this.showDefaultDiceInfo();
+            if (this.selectedRelicIndex === index) {
+                this.selectedRelicIndex = null;
+                this.showDefaultRelicInfo();
+            } else {
+                this.selectedRelicIndex = index;
+                this.showRelicInfo(data.name || 'Relic', data.description || DEFAULT_EMPTY_RELIC_TEXT.description);
+            }
         } else {
             this.selectedRelicIndex = null;
-            this.selectedDiceIndex = null;
-            this.showRelicInfo(DEFAULT_EMPTY_RELIC_TEXT.name, DEFAULT_EMPTY_RELIC_TEXT.description);
-            this.showDefaultDiceInfo();
+            this.showDefaultRelicInfo();
         }
-        this.updateDiceHighlights();
         this.updateRelicHighlights();
     }
 
