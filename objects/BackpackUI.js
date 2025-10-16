@@ -3,9 +3,9 @@ import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from 
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 
-const PANEL_VERTICAL_PADDING = 48;
+const PANEL_VERTICAL_PADDING = 40;
 const COLUMN_GAP = 36;
-const ROW_VERTICAL_SPACING = 36;
+const ROW_VERTICAL_SPACING = 28;
 const ROW_HORIZONTAL_PADDING = 28;
 const DICE_SLOT_SIZE = 74;
 const RELIC_SLOT_RADIUS = 38;
@@ -29,6 +29,7 @@ const INFO_TITLE_FONT_SIZE = '26px';
 const INFO_DESCRIPTION_COLOR = '#ecf0f1';
 const INFO_DESCRIPTION_FONT_SIZE = '20px';
 const INFO_SUBTEXT_COLOR = '#85929e';
+const INFO_UPGRADED_COLOR = '#f4d03f';
 const CLOSE_BUTTON_FILL_COLOR = 0x1b2631;
 const CLOSE_BUTTON_TEXT_COLOR = '#d6eaf8';
 
@@ -50,9 +51,10 @@ export class BackpackUI {
         this.container = null;
         this.diceSlots = [];
         this.relicSlots = [];
-        this.infoTitleText = null;
-        this.infoDescriptionText = null;
-        this.infoHintText = null;
+        this.diceInfoTitleText = null;
+        this.diceInfoDescriptionText = null;
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
         this.closeButton = null;
         this.isVisible = false;
         this.selectedDiceIndex = null;
@@ -64,7 +66,7 @@ export class BackpackUI {
 
     create() {
         const panelWidth = Math.max(720, Math.min(this.scene.scale.width - 40, this.scene.scale.width));
-        const panelHeight = Math.max(520, Math.min(this.scene.scale.height - 40, this.scene.scale.height));
+        const panelHeight = Math.max(480, Math.min(this.scene.scale.height - 60, this.scene.scale.height));
 
         const modal = createModal(this.scene, {
             width: panelWidth,
@@ -81,44 +83,60 @@ export class BackpackUI {
         this.backdrop = modal.backdrop;
         this.container = modal.container;
 
-        if (this.backdrop) {
-            this.backdrop.on('pointerup', () => {
-                this.scene.closeBackpack();
-            });
-        }
-
         const panelLeft = -panelWidth / 2;
         const panelRight = panelWidth / 2;
         const panelTop = -panelHeight / 2 + PANEL_VERTICAL_PADDING;
         const panelBottom = panelHeight / 2 - PANEL_VERTICAL_PADDING;
-        const leftColumnWidth = panelWidth * (2 / 3) - COLUMN_GAP;
-        const rightColumnWidth = panelWidth - leftColumnWidth - COLUMN_GAP * 2;
-        const leftColumnCenterX = panelLeft + COLUMN_GAP + leftColumnWidth / 2;
-        const rightColumnCenterX = panelRight - COLUMN_GAP - rightColumnWidth / 2;
+        const contentLeft = panelLeft + COLUMN_GAP;
+        const contentRight = panelRight - COLUMN_GAP;
+        const totalContentWidth = contentRight - contentLeft;
+        const infoGap = COLUMN_GAP;
+        const sectionWidth = totalContentWidth * 0.58;
+        const infoWidth = totalContentWidth - sectionWidth - infoGap;
+        const sectionCenterX = contentLeft + sectionWidth / 2;
+        const infoCenterX = contentRight - infoWidth / 2;
 
-        const rowHeight = Math.max(DICE_SLOT_SIZE + 56, (panelBottom - panelTop - ROW_VERTICAL_SPACING) / 2);
-        const topRowCenterY = panelTop + rowHeight / 2;
-        const bottomRowCenterY = topRowCenterY + rowHeight + ROW_VERTICAL_SPACING;
+        const availableHeight = panelBottom - panelTop;
+        const sectionHeight = (availableHeight - ROW_VERTICAL_SPACING);
+        const diceHeight = Math.max(DICE_SLOT_SIZE + 40, sectionHeight * 0.46);
+        const relicHeight = Math.max(RELIC_SLOT_RADIUS * 2 + 52, sectionHeight * 0.34);
+        const contentHeight = diceHeight + relicHeight + ROW_VERTICAL_SPACING;
+        const verticalOffset = Math.max(0, (availableHeight - contentHeight) / 2);
+        const diceCenterY = panelTop + verticalOffset + diceHeight / 2;
+        const relicCenterY = diceCenterY + diceHeight / 2 + ROW_VERTICAL_SPACING + relicHeight / 2;
 
         this.createDiceSection({
-            centerX: leftColumnCenterX,
-            centerY: topRowCenterY,
-            width: leftColumnWidth,
-            height: rowHeight
+            centerX: sectionCenterX,
+            centerY: diceCenterY,
+            width: sectionWidth,
+            height: diceHeight
+        });
+
+        this.createDiceInfoSection({
+            centerX: infoCenterX,
+            centerY: diceCenterY,
+            width: infoWidth,
+            height: diceHeight
         });
 
         this.createRelicSection({
-            centerX: leftColumnCenterX,
-            centerY: bottomRowCenterY,
-            width: leftColumnWidth,
-            height: rowHeight
+            centerX: sectionCenterX,
+            centerY: relicCenterY,
+            width: sectionWidth,
+            height: relicHeight
         });
 
-        this.createInfoSection({
-            centerX: rightColumnCenterX,
-            top: panelTop,
-            bottom: panelBottom,
-            width: rightColumnWidth
+        const relicInfoBounds = this.createRelicInfoSection({
+            centerX: infoCenterX,
+            centerY: relicCenterY,
+            width: infoWidth,
+            height: relicHeight
+        });
+
+        this.createCloseButton({
+            right: contentRight,
+            y: Math.min(panelBottom - 18, relicInfoBounds.bottom + 18),
+            width: Math.max(160, infoWidth - 40)
         });
     }
 
@@ -179,6 +197,35 @@ export class BackpackUI {
         });
     }
 
+    createDiceInfoSection({ centerX, centerY, width, height }) {
+        const background = this.scene.add.rectangle(centerX, centerY, width, height, INFO_SECTION_BACKGROUND_COLOR, 0.94)
+            .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.8);
+        this.container.add(background);
+
+        this.diceInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 20, 'Backpack', {
+            fontSize: INFO_TITLE_FONT_SIZE,
+            color: INFO_TITLE_COLOR,
+            fontStyle: 'bold',
+            align: 'center',
+            wordWrap: { width: width - 48 }
+        }).setOrigin(0.5, 0);
+        this.container.add(this.diceInfoTitleText);
+
+        this.diceInfoDescriptionText = this.scene.add.text(centerX, this.diceInfoTitleText.y + 48, 'Select a die to learn more about it.', {
+            fontSize: INFO_DESCRIPTION_FONT_SIZE,
+            color: INFO_DESCRIPTION_COLOR,
+            align: 'left',
+            wordWrap: { width: width - 48 },
+            lineSpacing: 8
+        }).setOrigin(0.5, 0);
+        this.container.add(this.diceInfoDescriptionText);
+
+        return {
+            top: centerY - height / 2,
+            bottom: centerY + height / 2
+        };
+    }
+
     createRelicSection({ centerX, centerY, width, height }) {
         const background = this.scene.add.rectangle(centerX, centerY, width, height, RELIC_SECTION_BACKGROUND_COLOR, 0.9)
             .setStrokeStyle(2, RELIC_SLOT_STROKE_COLOR, 0.35);
@@ -237,46 +284,45 @@ export class BackpackUI {
         });
     }
 
-    createInfoSection({ centerX, top, bottom, width }) {
-        const height = bottom - top;
-        const background = this.scene.add.rectangle(centerX, (top + bottom) / 2, width, height, INFO_SECTION_BACKGROUND_COLOR, 0.94)
+    createRelicInfoSection({ centerX, centerY, width, height }) {
+        const background = this.scene.add.rectangle(centerX, centerY, width, height, INFO_SECTION_BACKGROUND_COLOR, 0.94)
             .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.8);
         this.container.add(background);
 
-        this.infoTitleText = this.scene.add.text(centerX, top + 24, 'Backpack', {
+        this.relicInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 20, 'Backpack', {
             fontSize: INFO_TITLE_FONT_SIZE,
             color: INFO_TITLE_COLOR,
             fontStyle: 'bold',
             align: 'center',
             wordWrap: { width: width - 48 }
         }).setOrigin(0.5, 0);
-        this.container.add(this.infoTitleText);
+        this.container.add(this.relicInfoTitleText);
 
-        this.infoDescriptionText = this.scene.add.text(centerX, this.infoTitleText.y + 48, 'Select a die or relic to learn more about it.', {
+        this.relicInfoDescriptionText = this.scene.add.text(centerX, this.relicInfoTitleText.y + 48, 'Select a relic to learn more about it.', {
             fontSize: INFO_DESCRIPTION_FONT_SIZE,
             color: INFO_DESCRIPTION_COLOR,
             align: 'left',
             wordWrap: { width: width - 48 },
             lineSpacing: 8
         }).setOrigin(0.5, 0);
-        this.container.add(this.infoDescriptionText);
+        this.container.add(this.relicInfoDescriptionText);
 
-        this.infoHintText = this.scene.add.text(centerX, bottom - 110, 'Tip: Upgraded dice display their enhanced effects.', {
-            fontSize: '16px',
-            color: INFO_SUBTEXT_COLOR,
-            align: 'center',
-            wordWrap: { width: width - 48 }
-        }).setOrigin(0.5, 0);
-        this.container.add(this.infoHintText);
+        return {
+            top: centerY - height / 2,
+            bottom: centerY + height / 2,
+            right: centerX + width / 2
+        };
+    }
 
-        const buttonWidth = width - 64;
+    createCloseButton({ right, y, width }) {
+        const buttonWidth = width;
         const buttonHeight = 54;
-        const buttonY = bottom - 48;
 
-        const buttonBackground = this.scene.add.rectangle(centerX, buttonY, buttonWidth, buttonHeight, CLOSE_BUTTON_FILL_COLOR, 0.95)
+        const buttonBackground = this.scene.add.rectangle(right, y, buttonWidth, buttonHeight, CLOSE_BUTTON_FILL_COLOR, 0.95)
+            .setOrigin(1, 0.5)
             .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.85)
             .setInteractive({ useHandCursor: true });
-        const buttonLabel = this.scene.add.text(centerX, buttonY, 'Close', {
+        const buttonLabel = this.scene.add.text(right - buttonWidth / 2, y, 'Close', {
             fontSize: '22px',
             color: CLOSE_BUTTON_TEXT_COLOR,
             fontStyle: 'bold'
@@ -333,10 +379,8 @@ export class BackpackUI {
         this.selectedRelicIndex = null;
         this.updateDiceHighlights();
         this.updateRelicHighlights();
-        if (this.infoTitleText && this.infoDescriptionText) {
-            this.infoTitleText.setText('Backpack');
-            this.infoDescriptionText.setText('Select a die or relic to learn more about it.');
-        }
+        this.showDefaultDiceInfo();
+        this.showDefaultRelicInfo();
     }
 
     refreshContent() {
@@ -344,6 +388,12 @@ export class BackpackUI {
         this.refreshRelicSlots();
         this.updateDiceHighlights();
         this.updateRelicHighlights();
+        if (this.selectedDiceIndex === null) {
+            this.showDefaultDiceInfo();
+        }
+        if (this.selectedRelicIndex === null) {
+            this.showDefaultRelicInfo();
+        }
     }
 
     refreshDiceSlots() {
@@ -377,7 +427,9 @@ export class BackpackUI {
                 slot.background.setStrokeStyle(2, DICE_SLOT_STROKE_COLOR, 0.9);
                 slot.emojiText.setText(slot.data.emoji || '🎲');
                 slot.emojiText.setAlpha(1);
-                slot.labelText.setText(slot.data.baseName || '');
+                const labelText = slot.data.baseName ? `${slot.data.baseName}${slot.data.isUpgraded ? ' +' : ''}` : '';
+                slot.labelText.setText(labelText);
+                slot.labelText.setColor(slot.data.isUpgraded ? INFO_UPGRADED_COLOR : INFO_SUBTEXT_COLOR);
                 slot.background.setInteractive({ useHandCursor: true });
             } else {
                 slot.data = null;
@@ -386,9 +438,17 @@ export class BackpackUI {
                 slot.emojiText.setText('');
                 slot.emojiText.setAlpha(0.65);
                 slot.labelText.setText('');
+                slot.labelText.setColor(INFO_SUBTEXT_COLOR);
                 slot.background.setInteractive({ useHandCursor: true });
             }
         });
+
+        if (this.selectedDiceIndex !== null) {
+            const selectedSlot = this.diceSlots[this.selectedDiceIndex];
+            if (selectedSlot && selectedSlot.data) {
+                this.showDiceInfo(selectedSlot.data.name, selectedSlot.data.description);
+            }
+        }
     }
 
     refreshRelicSlots() {
@@ -426,6 +486,13 @@ export class BackpackUI {
                 slot.background.setInteractive({ useHandCursor: true });
             }
         }
+
+        if (this.selectedRelicIndex !== null) {
+            const selectedSlot = this.relicSlots[this.selectedRelicIndex];
+            if (selectedSlot && selectedSlot.data) {
+                this.showRelicInfo(selectedSlot.data.name, selectedSlot.data.description);
+            }
+        }
     }
 
     handleDiceSlotClick(index) {
@@ -440,11 +507,13 @@ export class BackpackUI {
             const description = data.isUpgraded
                 ? data.description || DEFAULT_EMPTY_DIE_TEXT.description
                 : data.description || DEFAULT_EMPTY_DIE_TEXT.description;
-            this.showInfo(data.name || 'Die', description);
+            this.showDiceInfo(data.name || 'Die', description);
+            this.showDefaultRelicInfo();
         } else {
             this.selectedDiceIndex = null;
             this.selectedRelicIndex = null;
-            this.showInfo(DEFAULT_EMPTY_DIE_TEXT.name, DEFAULT_EMPTY_DIE_TEXT.description);
+            this.showDiceInfo(DEFAULT_EMPTY_DIE_TEXT.name, DEFAULT_EMPTY_DIE_TEXT.description);
+            this.showDefaultRelicInfo();
         }
         this.updateDiceHighlights();
         this.updateRelicHighlights();
@@ -459,23 +528,42 @@ export class BackpackUI {
         if (data) {
             this.selectedRelicIndex = index;
             this.selectedDiceIndex = null;
-            this.showInfo(data.name || 'Relic', data.description || DEFAULT_EMPTY_RELIC_TEXT.description);
+            this.showRelicInfo(data.name || 'Relic', data.description || DEFAULT_EMPTY_RELIC_TEXT.description);
+            this.showDefaultDiceInfo();
         } else {
             this.selectedRelicIndex = null;
             this.selectedDiceIndex = null;
-            this.showInfo(DEFAULT_EMPTY_RELIC_TEXT.name, DEFAULT_EMPTY_RELIC_TEXT.description);
+            this.showRelicInfo(DEFAULT_EMPTY_RELIC_TEXT.name, DEFAULT_EMPTY_RELIC_TEXT.description);
+            this.showDefaultDiceInfo();
         }
         this.updateDiceHighlights();
         this.updateRelicHighlights();
     }
 
-    showInfo(title, description) {
-        if (this.infoTitleText) {
-            this.infoTitleText.setText(title || 'Backpack');
+    showDiceInfo(title, description) {
+        if (this.diceInfoTitleText) {
+            this.diceInfoTitleText.setText(title || 'Backpack');
         }
-        if (this.infoDescriptionText) {
-            this.infoDescriptionText.setText(description || '');
+        if (this.diceInfoDescriptionText) {
+            this.diceInfoDescriptionText.setText(description || '');
         }
+    }
+
+    showRelicInfo(title, description) {
+        if (this.relicInfoTitleText) {
+            this.relicInfoTitleText.setText(title || 'Backpack');
+        }
+        if (this.relicInfoDescriptionText) {
+            this.relicInfoDescriptionText.setText(description || '');
+        }
+    }
+
+    showDefaultDiceInfo() {
+        this.showDiceInfo('Backpack', 'Select a die to learn more about it.');
+    }
+
+    showDefaultRelicInfo() {
+        this.showRelicInfo('Backpack', 'Select a relic to learn more about it.');
     }
 
     updateDiceHighlights() {
@@ -525,9 +613,10 @@ export class BackpackUI {
         this.container = null;
         this.diceSlots = [];
         this.relicSlots = [];
-        this.infoTitleText = null;
-        this.infoDescriptionText = null;
-        this.infoHintText = null;
+        this.diceInfoTitleText = null;
+        this.diceInfoDescriptionText = null;
+        this.relicInfoTitleText = null;
+        this.relicInfoDescriptionText = null;
         this.closeButton = null;
         this.isVisible = false;
     }
