@@ -27,7 +27,7 @@ export class HotfixEnemy extends BaseEnemy {
                     this.scalingBurnValue += 1;
                     return [
                         burnAction(burnValue),
-                        defendAction(5)
+                        defendAction(10)
                     ];
                 }
             }
