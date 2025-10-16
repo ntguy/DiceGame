@@ -3,8 +3,7 @@ import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from 
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 
-const PANEL_VERTICAL_PADDING = 28;
-const COLUMN_GAP = 36;
+const COLUMN_GAP = 24;
 const ROW_VERTICAL_SPACING = 28;
 const ROW_HORIZONTAL_PADDING = 28;
 const DICE_SLOT_SIZE = 74;
@@ -65,8 +64,8 @@ export class BackpackUI {
     }
 
     create() {
-        const panelWidth = Math.max(720, Math.min(this.scene.scale.width - 40, this.scene.scale.width));
-        const panelHeight = Math.max(450, Math.min(this.scene.scale.height - 80, this.scene.scale.height));
+        const panelWidth = Math.max(720, this.scene.scale.width - 40);
+        const panelHeight = Math.max(450, this.scene.scale.height - 150);
 
         const modal = createModal(this.scene, {
             width: panelWidth,
@@ -85,24 +84,22 @@ export class BackpackUI {
 
         const panelLeft = -panelWidth / 2;
         const panelRight = panelWidth / 2;
-        const panelTop = -panelHeight / 2 + PANEL_VERTICAL_PADDING;
-        const panelBottom = panelHeight / 2 - PANEL_VERTICAL_PADDING;
+        const panelTop = -panelHeight / 2;
+        const panelBottom = panelHeight / 2;
         const contentLeft = panelLeft + COLUMN_GAP;
         const contentRight = panelRight - COLUMN_GAP;
         const totalContentWidth = contentRight - contentLeft;
         const infoGap = COLUMN_GAP;
-        const sectionWidth = totalContentWidth * 0.58;
+        const sectionWidth = totalContentWidth * 0.6;
         const infoWidth = totalContentWidth - sectionWidth - infoGap;
         const sectionCenterX = contentLeft + sectionWidth / 2;
         const infoCenterX = contentRight - infoWidth / 2;
 
         const availableHeight = panelBottom - panelTop;
         const sectionHeight = (availableHeight - ROW_VERTICAL_SPACING);
-        const diceHeight = Math.max(DICE_SLOT_SIZE + 28, sectionHeight * 0.42);
-        const relicHeight = Math.max(RELIC_SLOT_RADIUS * 2 + 52, sectionHeight * 0.34);
-        const contentHeight = diceHeight + relicHeight + ROW_VERTICAL_SPACING;
-        const verticalOffset = Math.max(0, (availableHeight - contentHeight) / 2);
-        const diceCenterY = panelTop + verticalOffset + diceHeight / 2;
+        const diceHeight = Math.max(DICE_SLOT_SIZE + 28, sectionHeight * 0.4);
+        const relicHeight = Math.max(RELIC_SLOT_RADIUS * 2 + 52, sectionHeight * 0.4);
+        const diceCenterY = panelTop + ROW_VERTICAL_SPACING + diceHeight / 2;
         const relicCenterY = diceCenterY + diceHeight / 2 + ROW_VERTICAL_SPACING + relicHeight / 2;
 
         this.createDiceSection({
@@ -135,8 +132,8 @@ export class BackpackUI {
 
         this.createCloseButton({
             right: contentRight,
-            y: Math.min(panelBottom - 18, relicInfoBounds.bottom + 18),
-            width: Math.max(160, infoWidth - 40)
+            y: panelBottom - 44,
+            width: infoWidth,
         });
     }
 
@@ -160,7 +157,7 @@ export class BackpackUI {
 
         this.diceSlots = Array.from({ length: MAX_CUSTOM_DICE }, (_, index) => {
             const x = startX + index * (DICE_SLOT_SIZE + slotSpacing);
-            const slotContainer = this.scene.add.container(x, centerY + 12);
+            const slotContainer = this.scene.add.container(x, centerY);
 
             const slotBackground = this.scene.add.rectangle(0, 0, DICE_SLOT_SIZE, DICE_SLOT_SIZE, DICE_SLOT_EMPTY_FILL_COLOR, 0.85)
                 .setStrokeStyle(2, DICE_SLOT_STROKE_COLOR, 0.25)
@@ -247,7 +244,7 @@ export class BackpackUI {
 
         this.relicSlots = Array.from({ length: slotsPerRow }, (_, index) => {
             const x = startX + index * (RELIC_SLOT_RADIUS * 2 + slotSpacing);
-            const slotContainer = this.scene.add.container(x, centerY + 12);
+            const slotContainer = this.scene.add.container(x, centerY);
 
             const slotBackground = this.scene.add.circle(0, 0, RELIC_SLOT_RADIUS, RELIC_SLOT_EMPTY_FILL_COLOR, 0.9)
                 .setStrokeStyle(2, RELIC_SLOT_STROKE_COLOR, 0.3)
@@ -411,7 +408,7 @@ export class BackpackUI {
             if (blueprint && blueprint.id) {
                 const definition = getCustomDieDefinitionById(blueprint.id);
                 const name = blueprint.isUpgraded && definition.upgradeDescription
-                    ? `${definition.name || 'Die'} +`
+                    ? `${definition.name || 'Die'}+`
                     : definition.name || 'Die';
                 const description = blueprint.isUpgraded && definition.upgradeDescription
                     ? definition.upgradeDescription
