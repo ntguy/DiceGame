@@ -20,5 +20,6 @@ export class WildOneRelic extends Relic {
         scene.hasWildOneRelic = true;
         // Wild One relic: update UI so wildcard assignments appear immediately.
         callSceneMethod(scene, 'updateZonePreviewText');
+        callSceneMethod(scene, 'refreshActiveDiceVisuals');
     }
 }

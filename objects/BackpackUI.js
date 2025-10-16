@@ -1,7 +1,7 @@
 import { CONSTANTS } from '../config.js';
 import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { createModal, destroyModal } from './ui/ModalComponents.js';
-import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
+import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 
 const COLUMN_GAP = 24;
 const ROW_VERTICAL_SPACING = 28;
@@ -31,6 +31,9 @@ const INFO_SUBTEXT_COLOR = '#85929e';
 const INFO_UPGRADED_COLOR = '#f4d03f';
 const CLOSE_BUTTON_FILL_COLOR = 0x1b2631;
 const CLOSE_BUTTON_TEXT_COLOR = '#d6eaf8';
+const DISCARD_BUTTON_FILL_COLOR = 0x7f1d2d;
+const DISCARD_BUTTON_STROKE_COLOR = 0xffc2c7;
+const DISCARD_BUTTON_TEXT_COLOR = '#ffe6eb';
 
 const DEFAULT_EMPTY_DIE_TEXT = {
     name: 'Empty Slot',
@@ -58,6 +61,8 @@ export class BackpackUI {
         this.isVisible = false;
         this.selectedDiceIndex = null;
         this.selectedRelicIndex = null;
+        this.diceDiscardButton = null;
+        this.relicDiscardButton = null;
 
         this.create();
         this.setVisible(false);
@@ -123,7 +128,7 @@ export class BackpackUI {
             height: relicHeight
         });
 
-        const relicInfoBounds = this.createRelicInfoSection({
+        this.createRelicInfoSection({
             centerX: infoCenterX,
             centerY: relicCenterY,
             width: infoWidth,
@@ -217,6 +222,45 @@ export class BackpackUI {
         }).setOrigin(0.5, 0);
         this.container.add(this.diceInfoDescriptionText);
 
+        const buttonWidth = Math.max(200, width - 48);
+        const buttonHeight = 48;
+        const buttonY = centerY + height / 2 - buttonHeight / 2 - 16;
+
+        const buttonBackground = this.scene.add.rectangle(centerX, buttonY, buttonWidth, buttonHeight, DISCARD_BUTTON_FILL_COLOR, 0.95)
+            .setStrokeStyle(2, DISCARD_BUTTON_STROKE_COLOR, 0.85)
+            .setInteractive({ useHandCursor: true });
+
+        const buttonLabel = this.scene.add.text(centerX, buttonY, 'Discard Die', {
+            fontSize: '20px',
+            color: DISCARD_BUTTON_TEXT_COLOR,
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        applyRectangleButtonStyle(buttonBackground, {
+            baseColor: DISCARD_BUTTON_FILL_COLOR,
+            baseAlpha: 0.95,
+            hoverBlend: 0.18,
+            pressBlend: 0.32,
+            disabledBlend: 0.4,
+            enabledAlpha: 1,
+            disabledAlpha: 0.25
+        });
+
+        buttonBackground.on('pointerup', () => {
+            if (!buttonBackground.visible || !buttonBackground.input || !buttonBackground.input.enabled) {
+                return;
+            }
+            this.handleDiscardSelectedDie();
+        });
+
+        this.container.add(buttonBackground);
+        this.container.add(buttonLabel);
+
+        this.diceDiscardButton = { background: buttonBackground, label: buttonLabel };
+        buttonBackground.setVisible(false);
+        buttonLabel.setVisible(false);
+        setRectangleButtonEnabled(buttonBackground, false);
+
         return {
             top: centerY - height / 2,
             bottom: centerY + height / 2
@@ -304,6 +348,45 @@ export class BackpackUI {
         }).setOrigin(0.5, 0);
         this.container.add(this.relicInfoDescriptionText);
 
+        const buttonWidth = Math.max(200, width - 48);
+        const buttonHeight = 48;
+        const buttonY = centerY + height / 2 - buttonHeight / 2 - 16;
+
+        const buttonBackground = this.scene.add.rectangle(centerX, buttonY, buttonWidth, buttonHeight, DISCARD_BUTTON_FILL_COLOR, 0.95)
+            .setStrokeStyle(2, DISCARD_BUTTON_STROKE_COLOR, 0.85)
+            .setInteractive({ useHandCursor: true });
+
+        const buttonLabel = this.scene.add.text(centerX, buttonY, 'Discard Relic', {
+            fontSize: '20px',
+            color: DISCARD_BUTTON_TEXT_COLOR,
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        applyRectangleButtonStyle(buttonBackground, {
+            baseColor: DISCARD_BUTTON_FILL_COLOR,
+            baseAlpha: 0.95,
+            hoverBlend: 0.18,
+            pressBlend: 0.32,
+            disabledBlend: 0.4,
+            enabledAlpha: 1,
+            disabledAlpha: 0.25
+        });
+
+        buttonBackground.on('pointerup', () => {
+            if (!buttonBackground.visible || !buttonBackground.input || !buttonBackground.input.enabled) {
+                return;
+            }
+            this.handleDiscardSelectedRelic();
+        });
+
+        this.container.add(buttonBackground);
+        this.container.add(buttonLabel);
+
+        this.relicDiscardButton = { background: buttonBackground, label: buttonLabel };
+        buttonBackground.setVisible(false);
+        buttonLabel.setVisible(false);
+        setRectangleButtonEnabled(buttonBackground, false);
+
         return {
             top: centerY - height / 2,
             bottom: centerY + height / 2,
@@ -378,6 +461,8 @@ export class BackpackUI {
         this.updateRelicHighlights();
         this.showDefaultDiceInfo();
         this.showDefaultRelicInfo();
+        this.updateDiceDiscardButtonState();
+        this.updateRelicDiscardButtonState();
     }
 
     refreshContent() {
@@ -391,10 +476,13 @@ export class BackpackUI {
         if (this.selectedRelicIndex === null) {
             this.showDefaultRelicInfo();
         }
+        this.updateDiceDiscardButtonState();
+        this.updateRelicDiscardButtonState();
     }
 
     refreshDiceSlots() {
         if (!Array.isArray(this.diceSlots) || this.diceSlots.length === 0) {
+            this.updateDiceDiscardButtonState();
             return;
         }
 
@@ -414,6 +502,8 @@ export class BackpackUI {
                     ? definition.upgradeDescription
                     : definition.description || 'No description available.';
                 slot.data = {
+                    id: blueprint.id,
+                    uid: blueprint.uid,
                     name,
                     description,
                     emoji: definition.emoji || '',
@@ -449,10 +539,13 @@ export class BackpackUI {
                 this.showDefaultDiceInfo();
             }
         }
+
+        this.updateDiceDiscardButtonState();
     }
 
     refreshRelicSlots() {
         if (!Array.isArray(this.relicSlots) || this.relicSlots.length === 0) {
+            this.updateRelicDiscardButtonState();
             return;
         }
 
@@ -466,6 +559,7 @@ export class BackpackUI {
             const relic = ownedRelics[index];
             if (relic) {
                 slot.data = {
+                    id: relic.id,
                     name: relic.name || 'Relic',
                     description: relic.description || 'No description available.',
                     icon: relic.icon || '♦'
@@ -496,6 +590,27 @@ export class BackpackUI {
                 this.showDefaultRelicInfo();
             }
         }
+
+        this.updateRelicDiscardButtonState();
+    }
+
+    handleDiscardSelectedDie() {
+        const index = this.selectedDiceIndex;
+        if (typeof index !== 'number') {
+            return;
+        }
+
+        const discardSucceeded = this.scene && typeof this.scene.discardCustomDieAtIndex === 'function'
+            ? this.scene.discardCustomDieAtIndex(index)
+            : false;
+
+        if (discardSucceeded) {
+            this.selectedDiceIndex = null;
+            this.showDefaultDiceInfo();
+            this.updateDiceHighlights();
+        }
+
+        this.updateDiceDiscardButtonState();
     }
 
     handleDiceSlotClick(index) {
@@ -520,6 +635,32 @@ export class BackpackUI {
             this.showDefaultDiceInfo();
         }
         this.updateDiceHighlights();
+        this.updateDiceDiscardButtonState();
+    }
+
+    handleDiscardSelectedRelic() {
+        const index = this.selectedRelicIndex;
+        if (typeof index !== 'number') {
+            return;
+        }
+
+        const slot = Array.isArray(this.relicSlots) ? this.relicSlots[index] : null;
+        const relicId = slot && slot.data ? slot.data.id : null;
+        if (!relicId) {
+            return;
+        }
+
+        const discardSucceeded = this.scene && typeof this.scene.discardRelicById === 'function'
+            ? this.scene.discardRelicById(relicId)
+            : false;
+
+        if (discardSucceeded) {
+            this.selectedRelicIndex = null;
+            this.showDefaultRelicInfo();
+            this.updateRelicHighlights();
+        }
+
+        this.updateRelicDiscardButtonState();
     }
 
     handleRelicSlotClick(index) {
@@ -541,6 +682,7 @@ export class BackpackUI {
             this.showDefaultRelicInfo();
         }
         this.updateRelicHighlights();
+        this.updateRelicDiscardButtonState();
     }
 
     showDiceInfo(title, description) {
@@ -567,6 +709,48 @@ export class BackpackUI {
 
     showDefaultRelicInfo() {
         this.showRelicInfo('Backpack', 'Select a relic to learn more about it.');
+    }
+
+    updateDiceDiscardButtonState() {
+        if (!this.diceDiscardButton) {
+            return;
+        }
+
+        const { background, label } = this.diceDiscardButton;
+        if (!background || !label) {
+            return;
+        }
+
+        const hasSelection = typeof this.selectedDiceIndex === 'number';
+        const slot = hasSelection && Array.isArray(this.diceSlots)
+            ? this.diceSlots[this.selectedDiceIndex]
+            : null;
+        const canDiscard = !!(slot && slot.data && slot.data.id && slot.data.id !== 'standard');
+
+        background.setVisible(canDiscard);
+        label.setVisible(canDiscard);
+        setRectangleButtonEnabled(background, canDiscard);
+    }
+
+    updateRelicDiscardButtonState() {
+        if (!this.relicDiscardButton) {
+            return;
+        }
+
+        const { background, label } = this.relicDiscardButton;
+        if (!background || !label) {
+            return;
+        }
+
+        const hasSelection = typeof this.selectedRelicIndex === 'number';
+        const slot = hasSelection && Array.isArray(this.relicSlots)
+            ? this.relicSlots[this.selectedRelicIndex]
+            : null;
+        const canDiscard = !!(slot && slot.data && slot.data.id);
+
+        background.setVisible(canDiscard);
+        label.setVisible(canDiscard);
+        setRectangleButtonEnabled(background, canDiscard);
     }
 
     updateDiceHighlights() {
@@ -622,5 +806,7 @@ export class BackpackUI {
         this.relicInfoDescriptionText = null;
         this.closeButton = null;
         this.isVisible = false;
+        this.diceDiscardButton = null;
+        this.relicDiscardButton = null;
     }
 }

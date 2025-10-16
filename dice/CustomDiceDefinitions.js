@@ -136,10 +136,19 @@ export function getRandomCustomDieOptions(scene, count = 3, { excludeIds = [] } 
     return slice.map(id => getCustomDieDefinitionById(id));
 }
 
+let nextBlueprintUid = 1;
+
+function generateBlueprintUid() {
+    const uid = `bp-${nextBlueprintUid}`;
+    nextBlueprintUid += 1;
+    return uid;
+}
+
 export function createDieBlueprint(id, { isUpgraded = false } = {}) {
     const definition = getCustomDieDefinitionById(id);
     return {
         id: definition.id,
-        isUpgraded: !!isUpgraded
+        isUpgraded: !!isUpgraded,
+        uid: generateBlueprintUid()
     };
 }

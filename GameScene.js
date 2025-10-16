@@ -989,6 +989,67 @@ export class GameScene extends Phaser.Scene {
         return true;
     }
 
+    discardRelicById(relicId) {
+        if (!relicId || !this.ownedRelicIds.has(relicId)) {
+            return false;
+        }
+
+        const ownedIndex = Array.isArray(this.relics)
+            ? this.relics.findIndex(relic => relic && relic.id === relicId)
+            : -1;
+
+        const relic = ownedIndex !== -1 ? this.relics[ownedIndex] : null;
+
+        if (ownedIndex !== -1) {
+            this.relics = this.relics.filter((_, index) => index !== ownedIndex);
+        }
+
+        this.ownedRelicIds.delete(relicId);
+
+        this.removeRelicEffects(relic || { id: relicId });
+
+        if (this.relicUI) {
+            this.relicUI.updateDisplay();
+        }
+
+        this.refreshBackpackContents();
+        this.updateZonePreviewText();
+
+        return true;
+    }
+
+    removeRelicEffects(relic) {
+        if (!relic || !relic.id) {
+            return;
+        }
+
+        switch (relic.id) {
+            case 'beefy':
+                this.decreasePlayerMaxHealth(20);
+                break;
+            case 'family':
+                this.hasFamilyRelic = false;
+                this.familyHealPerFullHouse = 0;
+                break;
+            case 'reroll-with-it':
+                this.rerollDefensePerDie = Math.max(0, (this.rerollDefensePerDie || 0) - 1);
+                this.rerollDefenseBonus = 0;
+                break;
+            case 'wild-one':
+                this.hasWildOneRelic = false;
+                this.refreshActiveDiceVisuals();
+                break;
+            case 'unlocked-and-loaded':
+                this.unlocksOnLongStraights = false;
+                break;
+            case 'blockbuster':
+                this.hasBlockbusterRelic = false;
+                break;
+            default:
+                break;
+        }
+    }
+
     addCustomDieToLoadout(id, options = {}) {
         if (!id) {
             return false;
@@ -1345,10 +1406,29 @@ export class GameScene extends Phaser.Scene {
     }
 
     getActiveDiceBlueprints() {
-        const loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        let loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        if (loadout.length > 0) {
+            let mutated = false;
+            loadout = loadout.map(entry => {
+                if (!entry) {
+                    return entry;
+                }
+                if (entry.uid) {
+                    return entry;
+                }
+                const { uid } = createDieBlueprint(entry.id, { isUpgraded: entry.isUpgraded });
+                mutated = true;
+                return { ...entry, uid };
+            });
+            if (mutated) {
+                this.customDiceLoadout = loadout;
+            }
+        }
+
         const blueprints = loadout.map(entry => ({
             id: entry.id,
-            isUpgraded: !!entry.isUpgraded
+            isUpgraded: !!entry.isUpgraded,
+            uid: entry.uid
         }));
 
         while (blueprints.length < CONSTANTS.DICE_PER_SET) {
@@ -1356,6 +1436,126 @@ export class GameScene extends Phaser.Scene {
         }
 
         return blueprints.slice(0, CONSTANTS.DICE_PER_SET).map(entry => ({ ...entry }));
+    }
+
+    refreshActiveDiceVisuals() {
+        const diceInPlay = this.getDiceInPlay();
+        diceInPlay.forEach(die => {
+            if (!die) {
+                return;
+            }
+
+            if (typeof die.updateEmoji === 'function') {
+                die.updateEmoji();
+            }
+
+            const value = typeof die.displayValue === 'number'
+                ? die.displayValue
+                : (typeof die.value === 'number' ? die.value : 1);
+
+            if (typeof die.renderFace === 'function') {
+                die.renderFace(value, { updateValue: true });
+            } else if (typeof value === 'number') {
+                die.value = value;
+            }
+
+            if (typeof die.updateFaceValueHighlight === 'function') {
+                die.updateFaceValueHighlight();
+            }
+
+            if (typeof die.updateVisualState === 'function') {
+                die.updateVisualState();
+            }
+        });
+    }
+
+    applyBlueprintToDie(die, blueprint) {
+        if (!die || !blueprint) {
+            return false;
+        }
+
+        const value = typeof die.displayValue === 'number'
+            ? die.displayValue
+            : (typeof die.value === 'number' ? die.value : 1);
+
+        die.dieBlueprint = { ...blueprint };
+
+        if (typeof die.renderFace === 'function') {
+            die.renderFace(value || 1, { updateValue: true });
+        } else {
+            die.value = value || 1;
+        }
+
+        if (typeof die.updateEmoji === 'function') {
+            die.updateEmoji();
+        }
+
+        if (typeof die.updateFaceValueHighlight === 'function') {
+            die.updateFaceValueHighlight();
+        }
+
+        if (typeof die.updateVisualState === 'function') {
+            die.updateVisualState();
+        }
+
+        return true;
+    }
+
+    replaceDiceWithStandard({ uid, blueprint } = {}) {
+        const diceInPlay = this.getDiceInPlay();
+        if (!Array.isArray(diceInPlay) || diceInPlay.length === 0) {
+            return false;
+        }
+
+        const replacementBlueprint = createDieBlueprint('standard');
+        let replaced = false;
+
+        for (const die of diceInPlay) {
+            if (!die || !die.dieBlueprint) {
+                continue;
+            }
+
+            const matchesUid = uid && die.dieBlueprint.uid === uid;
+            const matchesBlueprint = !uid && blueprint
+                && die.dieBlueprint.id === blueprint.id
+                && !!die.dieBlueprint.isUpgraded === !!blueprint.isUpgraded;
+
+            if (!matchesUid && !matchesBlueprint) {
+                continue;
+            }
+
+            this.applyBlueprintToDie(die, replacementBlueprint);
+            replaced = true;
+            break;
+        }
+
+        return replaced;
+    }
+
+    discardCustomDieAtIndex(index) {
+        if (!Number.isInteger(index) || index < 0) {
+            return false;
+        }
+
+        const loadout = Array.isArray(this.customDiceLoadout) ? [...this.customDiceLoadout] : [];
+        if (index >= loadout.length) {
+            return false;
+        }
+
+        const [removedBlueprint] = loadout.splice(index, 1);
+        if (!removedBlueprint) {
+            return false;
+        }
+
+        this.customDiceLoadout = loadout;
+
+        this.refreshBackpackContents();
+
+        this.replaceDiceWithStandard({ uid: removedBlueprint.uid, blueprint: removedBlueprint });
+
+        this.updateZonePreviewText();
+
+        return true;
     }
 
     getDiceInPlay() {
@@ -2651,6 +2851,25 @@ export class GameScene extends Phaser.Scene {
         }
         this.updateHealthUI();
         return amount;
+    }
+
+    decreasePlayerMaxHealth(amount) {
+        if (!amount || amount <= 0) {
+            return 0;
+        }
+
+        const targetMax = Math.max(1, this.playerMaxHealth - amount);
+        const reduced = this.playerMaxHealth - targetMax;
+        if (reduced <= 0) {
+            return 0;
+        }
+
+        this.playerMaxHealth = targetMax;
+        if (this.playerHealth > this.playerMaxHealth) {
+            this.playerHealth = this.playerMaxHealth;
+        }
+        this.updateHealthUI();
+        return reduced;
     }
 
     increasePlayerMaxHealthByPercent(percent, { heal = false } = {}) {
