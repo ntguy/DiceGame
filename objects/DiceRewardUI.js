@@ -230,7 +230,7 @@ export class DiceRewardUI {
         const isUpgrade = this.viewUpgrade;
 
         const baseName = option.name || 'Unknown';
-        const displayName = isUpgrade ? `${baseName}+` : baseName;
+        const displayName = isUpgrade ? ` ${baseName}+` : ` ${baseName} `;
         const nameColor = isUpgrade ? '#f1c40f' : '#ffffff';
 
         nameText.setText(displayName);

@@ -246,7 +246,7 @@ export class DiceUpgradeUI {
         const isSelected = this.selectedEntries.has(option.uid);
 
         const baseName = option.name || 'Unknown';
-        const displayName = isSelected ? `${baseName}+` : `${baseName} `;
+        const displayName = isSelected ? ` ${baseName}+` : ` ${baseName} `;
         const nameColor = isSelected ? '#f1c40f' : '#ffffff';
 
         nameText.setText(displayName);
