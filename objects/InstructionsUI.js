@@ -169,12 +169,6 @@ export class InstructionsUI {
         this.backdrop = modal.backdrop;
         this.container = modal.container;
 
-        if (this.backdrop) {
-            this.backdrop.on('pointerup', () => {
-                this.scene.closeInstructions();
-            });
-        }
-
         const contentTop = -PANEL_HEIGHT / 2 + 120;
 
         this.titleText = this.scene.add.text(0, contentTop, '', {

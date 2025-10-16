@@ -7,6 +7,7 @@ import { createMenuUI } from './objects/MenuUI.js';
 import { createSettingsUI } from './objects/SettingsUI.js';
 import { createHeaderUI } from './objects/HeaderUI.js';
 import { InstructionsUI } from './objects/InstructionsUI.js';
+import { BackpackUI } from './objects/BackpackUI.js';
 import { evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
@@ -150,11 +151,15 @@ export class GameScene extends Phaser.Scene {
         if (this.relicUI) {
             this.relicUI.reset();
         }
+        this.refreshBackpackContents();
     }
 
     resetMenuState() {
         if (this.instructionsUI && typeof this.instructionsUI.destroy === 'function') {
             this.instructionsUI.destroy();
+        }
+        if (this.backpackUI && typeof this.backpackUI.destroy === 'function') {
+            this.backpackUI.destroy();
         }
         this.menuButton = null;
         this.menuPanel = null;
@@ -169,6 +174,9 @@ export class GameScene extends Phaser.Scene {
         this.instructionsButton = null;
         this.instructionsUI = null;
         this.isInstructionsOpen = false;
+        this.backpackButton = null;
+        this.backpackUI = null;
+        this.isBackpackOpen = false;
         this.headerContainer = null;
         this.layoutHeaderButtons = null;
     }
@@ -276,6 +284,9 @@ export class GameScene extends Phaser.Scene {
         createMenuUI(this);
         createSettingsUI(this);
         this.instructionsUI = new InstructionsUI(this);
+        this.backpackUI = new BackpackUI(this);
+        this.refreshBackpackContents();
+        this.updateBackpackButtonLabel();
         this.relicUI.createShelf();
 
         this.applyTestingModeStartingResources();
@@ -397,6 +408,7 @@ export class GameScene extends Phaser.Scene {
 
         this.closeSettings();
         this.closeInstructions();
+        this.closeBackpack();
         this.isMenuOpen = true;
         if (this.menuPanel) {
             this.menuPanel.setVisible(true);
@@ -450,6 +462,7 @@ export class GameScene extends Phaser.Scene {
 
         this.closeMenu();
         this.closeInstructions();
+        this.closeBackpack();
         this.isSettingsOpen = true;
         if (this.settingsPanel) {
             this.settingsPanel.setVisible(true);
@@ -505,6 +518,7 @@ export class GameScene extends Phaser.Scene {
 
         this.closeMenu();
         this.closeSettings();
+        this.closeBackpack();
         this.isInstructionsOpen = true;
         this.instructionsUI.open();
         this.updateInstructionsButtonLabel();
@@ -527,6 +541,61 @@ export class GameScene extends Phaser.Scene {
         this.instructionsButton.setText(`${suffix}`);
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
+        }
+    }
+
+    toggleBackpack() {
+        if (!this.backpackUI) {
+            return;
+        }
+
+        if (this.isBackpackOpen) {
+            this.closeBackpack();
+        } else {
+            this.openBackpack();
+        }
+    }
+
+    openBackpack() {
+        if (this.isBackpackOpen || !this.backpackUI) {
+            return;
+        }
+
+        this.closeMenu();
+        this.closeSettings();
+        this.closeInstructions();
+
+        this.isBackpackOpen = true;
+        this.backpackUI.open();
+        this.updateBackpackButtonLabel();
+    }
+
+    closeBackpack() {
+        if (this.backpackUI && this.isBackpackOpen) {
+            this.backpackUI.close();
+        } else if (this.backpackUI) {
+            this.backpackUI.setVisible(false);
+        }
+
+        this.isBackpackOpen = false;
+        this.updateBackpackButtonLabel();
+    }
+
+    updateBackpackButtonLabel() {
+        if (!this.backpackButton) {
+            return;
+        }
+
+        const suffix = this.isBackpackOpen ? '✕' : '🎒';
+        this.backpackButton.setText(`${suffix}`);
+        if (this.layoutHeaderButtons) {
+            this.layoutHeaderButtons();
+        }
+    }
+
+    refreshBackpackContents() {
+        if (this.backpackUI) {
+            this.backpackUI.refreshContent();
         }
     }
 
@@ -915,6 +984,8 @@ export class GameScene extends Phaser.Scene {
             this.relicUI.updateDisplay();
         }
 
+        this.refreshBackpackContents();
+
         return true;
     }
 
@@ -933,6 +1004,7 @@ export class GameScene extends Phaser.Scene {
 
         const blueprint = createDieBlueprint(id, { isUpgraded: !!options.isUpgraded });
         this.customDiceLoadout = [...this.customDiceLoadout, blueprint];
+        this.refreshBackpackContents();
         return true;
     }
 
@@ -959,6 +1031,7 @@ export class GameScene extends Phaser.Scene {
                     }
                 }
             });
+            this.refreshBackpackContents();
         }
 
         return upgraded;
@@ -2500,6 +2573,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     destroyFacilityUI() {
+        this.closeBackpack();
         if (this.activeFacilityUI && typeof this.activeFacilityUI.destroy === 'function') {
             this.activeFacilityUI.destroy();
         }
