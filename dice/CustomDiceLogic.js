@@ -4,12 +4,16 @@ import { callSceneMethod, callSceneManagerMethod } from '../utils/SceneHelpers.j
 export function doesDieActAsWildcardForCombo(die) {
     const blueprint = getBlueprint(die);
     const definition = getCustomDieDefinitionById(blueprint.id);
+    const isUpgraded = !!blueprint.isUpgraded;
     const faceValue = die && typeof die.value === 'number' ? die.value : 0;
 
     switch (definition.id) {
         case 'wild':
-            // Wild die: always acts as a combo wildcard regardless of current face value.
-            return faceValue >= 1;
+            // Wild die: acts as a combo wildcard, but requires FV<=4 until upgraded.
+            if (isUpgraded) {
+                return faceValue >= 1;
+            }
+            return faceValue >= 1 && faceValue <= 4;
         default:
             return false;
     }
