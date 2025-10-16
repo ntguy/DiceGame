@@ -90,6 +90,16 @@ export function createHeaderUI(scene) {
     settingsButton.setData('defaultFontSize', '24px');
     settingsButton.setData('expandedFontSize', '28px');
 
+    const backpackButton = createHeaderButton(scene, {
+        label: '🎒',
+        x: headerWidth - CONSTANTS.UI_MARGIN,
+        origin: { x: 1, y: 0.5 },
+        onClick: () => scene.toggleBackpack(),
+        fontSize: '24px'
+    });
+    backpackButton.setData('defaultFontSize', '24px');
+    backpackButton.setData('expandedFontSize', '28px');
+
     const instructionsButton = createHeaderButton(scene, {
         label: '📘',
         x: headerWidth - CONSTANTS.UI_MARGIN,
@@ -101,22 +111,31 @@ export function createHeaderUI(scene) {
         const menuX = headerWidth - CONSTANTS.UI_MARGIN;
         menuButton.setX(menuX);
         const settingsWidth = settingsButton.getData('buttonWidth');
-        const instructionsWidth = instructionsButton.getData('buttonWidth');
         const settingsX = menuX - settingsWidth - buttonSpacing;
         settingsButton.setX(settingsX);
-        const instructionsX = settingsX - instructionsWidth - buttonSpacing;
+        const backpackWidth = backpackButton.getData('buttonWidth');
+        const instructionsWidth = instructionsButton.getData('buttonWidth');
+        const backpackX = settingsX - backpackWidth - buttonSpacing;
+        backpackButton.setX(backpackX);
+        const instructionsX = backpackX - instructionsWidth - buttonSpacing;
         instructionsButton.setX(instructionsX);
     };
     layoutButtons();
 
     container.add(menuButton);
     container.add(settingsButton);
+    container.add(backpackButton);
     container.add(instructionsButton);
 
     scene.headerContainer = container;
     scene.menuButton = menuButton;
     scene.settingsButton = settingsButton;
+    scene.backpackButton = backpackButton;
     scene.instructionsButton = instructionsButton;
     scene.layoutHeaderButtons = layoutButtons;
     scene.mapTitleText = mapTitleText;
+
+    if (typeof scene.updateBackpackButtonLabel === 'function') {
+        scene.updateBackpackButtonLabel();
+    }
 }

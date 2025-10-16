@@ -6,6 +6,7 @@ import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
 import { createMenuUI } from './objects/MenuUI.js';
 import { createSettingsUI } from './objects/SettingsUI.js';
 import { createHeaderUI } from './objects/HeaderUI.js';
+import { BackpackUI } from './objects/BackpackUI.js';
 import { InstructionsUI } from './objects/InstructionsUI.js';
 import { evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
@@ -156,6 +157,9 @@ export class GameScene extends Phaser.Scene {
         if (this.instructionsUI && typeof this.instructionsUI.destroy === 'function') {
             this.instructionsUI.destroy();
         }
+        if (this.backpackUI && typeof this.backpackUI.destroy === 'function') {
+            this.backpackUI.destroy();
+        }
         this.menuButton = null;
         this.menuPanel = null;
         this.menuCloseButton = null;
@@ -171,6 +175,9 @@ export class GameScene extends Phaser.Scene {
         this.isInstructionsOpen = false;
         this.headerContainer = null;
         this.layoutHeaderButtons = null;
+        this.backpackButton = null;
+        this.backpackUI = null;
+        this.isBackpackOpen = false;
     }
 
     init(data) {
@@ -276,6 +283,7 @@ export class GameScene extends Phaser.Scene {
         createMenuUI(this);
         createSettingsUI(this);
         this.instructionsUI = new InstructionsUI(this);
+        this.backpackUI = new BackpackUI(this);
         this.relicUI.createShelf();
 
         this.applyTestingModeStartingResources();
@@ -397,6 +405,7 @@ export class GameScene extends Phaser.Scene {
 
         this.closeSettings();
         this.closeInstructions();
+        this.closeBackpack();
         this.isMenuOpen = true;
         if (this.menuPanel) {
             this.menuPanel.setVisible(true);
@@ -450,6 +459,7 @@ export class GameScene extends Phaser.Scene {
 
         this.closeMenu();
         this.closeInstructions();
+        this.closeBackpack();
         this.isSettingsOpen = true;
         if (this.settingsPanel) {
             this.settingsPanel.setVisible(true);
@@ -505,6 +515,7 @@ export class GameScene extends Phaser.Scene {
 
         this.closeMenu();
         this.closeSettings();
+        this.closeBackpack();
         this.isInstructionsOpen = true;
         this.instructionsUI.open();
         this.updateInstructionsButtonLabel();
@@ -525,6 +536,59 @@ export class GameScene extends Phaser.Scene {
 
         const suffix = this.isInstructionsOpen ? '✕' : '📘';
         this.instructionsButton.setText(`${suffix}`);
+        if (this.layoutHeaderButtons) {
+            this.layoutHeaderButtons();
+        }
+    }
+
+    toggleBackpack() {
+        if (!this.backpackUI) {
+            return;
+        }
+
+        if (this.isBackpackOpen) {
+            this.closeBackpack();
+        } else {
+            this.openBackpack();
+        }
+    }
+
+    openBackpack() {
+        if (this.isBackpackOpen || !this.backpackUI) {
+            return;
+        }
+
+        this.closeMenu();
+        this.closeSettings();
+        this.closeInstructions();
+        this.isBackpackOpen = true;
+        if (typeof this.backpackUI.open === 'function') {
+            this.backpackUI.open();
+        }
+        this.updateBackpackButtonLabel();
+    }
+
+    closeBackpack() {
+        this.isBackpackOpen = false;
+        if (this.backpackUI && typeof this.backpackUI.close === 'function') {
+            this.backpackUI.close();
+        }
+        this.updateBackpackButtonLabel();
+    }
+
+    updateBackpackButtonLabel() {
+        if (!this.backpackButton) {
+            return;
+        }
+
+        const suffix = this.isBackpackOpen ? '✕' : '🎒';
+        this.backpackButton.setText(`${suffix}`);
+        const targetFontSize = suffix === '✕'
+            ? this.backpackButton.getData('defaultFontSize') || '24px'
+            : this.backpackButton.getData('expandedFontSize')
+                || this.backpackButton.getData('defaultFontSize')
+                || '24px';
+        this.backpackButton.setStyle({ fontSize: targetFontSize });
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }
