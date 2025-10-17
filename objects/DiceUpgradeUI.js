@@ -1,5 +1,5 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
-import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
+import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 500;
@@ -13,6 +13,7 @@ const CHECKBOX_HEIGHT = CHECKBOX_BOX_SIZE + 30;
 const BUTTON_WIDTH = 260;
 const BUTTON_HEIGHT = 58;
 const BUTTON_OFFSET_Y = PANEL_HEIGHT / 2 - 50;
+const UPGRADE_COST_SCHEDULE = [0, 100, 200];
 
 export class DiceUpgradeUI {
     constructor(scene, { dice = [], onUpgrade, onClose } = {}) {
@@ -27,6 +28,7 @@ export class DiceUpgradeUI {
         this.cardEntries = [];
         this.selectedEntries = new Map();
         this.upgradeButton = null;
+        this.currentUpgradeCost = 0;
         this.isDestroyed = false;
 
         this.create();
@@ -46,7 +48,7 @@ export class DiceUpgradeUI {
                 color: '#f1c40f',
                 fontStyle: 'bold'
             },
-            subtitle: 'Select two dice to upgrade.',
+            subtitle: 'Select dice to upgrade. Costs increase with each pick.',
             subtitleStyle: {
                 fontSize: '22px',
                 color: '#f9e79f'
@@ -158,7 +160,7 @@ export class DiceUpgradeUI {
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonText = this.scene.add.text(0, 0, 'Upgrade', {
+        const buttonText = this.scene.add.text(0, 0, 'Select dice', {
             fontSize: '22px',
             color: '#f9e79f',
             fontStyle: 'bold'
@@ -175,16 +177,16 @@ export class DiceUpgradeUI {
         });
 
         buttonBg.on('pointerup', () => {
-            if (!buttonContainer.visible) {
+            if (!buttonContainer.visible || !buttonBg.input || !buttonBg.input.enabled) {
                 return;
             }
 
             const selections = Array.from(this.selectedEntries.values());
-            if (selections.length !== 2) {
+            if (selections.length === 0) {
                 return;
             }
 
-            const upgraded = this.onUpgrade(selections);
+            const upgraded = this.onUpgrade(selections, this.currentUpgradeCost || 0);
             if (upgraded) {
                 if (this.scene.sound && typeof this.scene.sound.play === 'function') {
                     this.scene.sound.play('chimeLong', {
@@ -203,6 +205,16 @@ export class DiceUpgradeUI {
         this.container.add(buttonContainer);
 
         this.upgradeButton = { container: buttonContainer, background: buttonBg, text: buttonText };
+        setRectangleButtonEnabled(buttonBg, false);
+    }
+
+    getUpgradeCostForSelection(count) {
+        if (!Number.isFinite(count) || count <= 0) {
+            return 0;
+        }
+
+        const index = Math.min(count - 1, UPGRADE_COST_SCHEDULE.length - 1);
+        return UPGRADE_COST_SCHEDULE[index];
     }
 
     toggleSelection(uid) {
@@ -216,10 +228,6 @@ export class DiceUpgradeUI {
             }
             this.selectedEntries.delete(uid);
         } else {
-            if (this.selectedEntries.size >= 2) {
-                return;
-            }
-
             const option = this.options.find(opt => opt.uid === uid);
             if (option) {
                 this.selectedEntries.set(uid, option);
@@ -264,6 +272,9 @@ export class DiceUpgradeUI {
         if (checkbox && checkbox.checkmark) {
             checkbox.checkmark.setVisible(isSelected);
         }
+        if (checkbox && checkbox.label) {
+            checkbox.label.setText(isSelected ? 'Selected' : 'Select');
+        }
     }
 
     updateUpgradeButtonState() {
@@ -271,8 +282,35 @@ export class DiceUpgradeUI {
             return;
         }
 
-        const isReady = this.selectedEntries.size === 2;
-        this.upgradeButton.container.setVisible(isReady);
+        const selectionCount = this.selectedEntries.size;
+        const cost = this.getUpgradeCostForSelection(selectionCount);
+        const hasSelection = selectionCount > 0;
+
+        this.currentUpgradeCost = cost;
+
+        const { container, text, background } = this.upgradeButton;
+        container.setVisible(true);
+
+        if (!hasSelection) {
+            text.setText('Select dice');
+            setRectangleButtonEnabled(background, false);
+            return;
+        }
+
+        const sceneCanAfford = this.scene
+            && typeof this.scene.canAfford === 'function'
+            ? this.scene.canAfford(cost)
+            : typeof this.scene.playerGold === 'number'
+                ? this.scene.playerGold >= cost
+                : true;
+
+        if (cost <= 0 || sceneCanAfford) {
+            text.setText(`Upgrade (${cost})`);
+            setRectangleButtonEnabled(background, true);
+        } else {
+            text.setText(`Not enough gold (${cost})`);
+            setRectangleButtonEnabled(background, false);
+        }
     }
 
     destroy() {
