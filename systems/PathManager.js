@@ -6,6 +6,10 @@ const NODE_TYPES = {
     UPGRADE: 'upgrade'
 };
 
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
 const DEFAULT_ENEMY_SEQUENCE = [
     {
         enemyIndex: 0,
@@ -32,7 +36,7 @@ const DEFAULT_ENEMY_SEQUENCE = [
 ];
 
 export class PathManager {
-    constructor({ enemySequence, allowUpgradeNodes = false, upgradeNodeMinEnemyIndex = 1 } = {}, randomSource = Math.random) {
+    constructor({ enemySequence, allowUpgradeNodes = false, upgradeNodeMinEnemyIndex = 1, skipConnectionChance = 0.35, detourConnectionChance = 0.35 } = {}, randomSource = Math.random) {
         this.randomFn = typeof randomSource === 'function' ? randomSource : Math.random;
         this.nodes = [];
         this.nodeMap = new Map();
@@ -46,6 +50,9 @@ export class PathManager {
         this.upgradeNodeMinEnemyIndex = Number.isFinite(upgradeNodeMinEnemyIndex)
             ? Math.max(0, upgradeNodeMinEnemyIndex)
             : 1;
+        this.skipConnectionChance = clamp(skipConnectionChance, 0, 1);
+        this.detourConnectionChance = clamp(detourConnectionChance, 0, 1);
+        this.detourNodeCounter = 0;
 
         this.generatePath();
 
@@ -66,9 +73,10 @@ export class PathManager {
     }
 
     generatePath() {
-        let currentRow = 0;
+        let nextEnemyRow = 0;
 
         this.enemySequence.forEach((enemyData, index) => {
+            const currentRow = nextEnemyRow;
             const enemyId = `enemy-${index}`;
             const enemyNode = {
                 id: enemyId,
@@ -92,31 +100,21 @@ export class PathManager {
 
             const nextEnemyId = `enemy-${index + 1}`;
             const facilityTypes = this.getFacilityTypesForEnemyIndex(index);
-            const branchTypes = [];
-            const pool = facilityTypes.slice();
-            while (branchTypes.length < 2 && pool.length > 0) {
-                const index = Math.floor(this.randomFn() * pool.length);
-                branchTypes.push(pool.splice(index, 1)[0]);
-            }
-            if (branchTypes.length < 2) {
-                const fallbackPool = facilityTypes.slice();
-                while (branchTypes.length < 2 && fallbackPool.length > 0) {
-                    const type = fallbackPool.shift();
-                    if (!branchTypes.includes(type)) {
-                        branchTypes.push(type);
-                    }
-                }
-                while (branchTypes.length < 2) {
-                    branchTypes.push(NODE_TYPES.SHOP);
-                }
-                branchTypes.splice(2);
-            }
-
+            const branchTypes = this.pickFacilityBranchTypes(facilityTypes);
             const branchRow = currentRow + 1;
             const branchColumns = [0, 2];
 
+            const { targets, detourNode, additionalRows } = this.createBranchTargets({
+                index,
+                enemyData,
+                nextEnemyId,
+                branchRow
+            });
+            const branchTargets = this.assignTargetsToBranches(branchTypes.length, targets);
+
             branchTypes.forEach((type, branchIndex) => {
                 const branchId = `${type}-${index}`;
+                const targetId = branchTargets[branchIndex] || nextEnemyId;
                 const branchNode = {
                     id: branchId,
                     type,
@@ -127,7 +125,7 @@ export class PathManager {
                             : type === NODE_TYPES.TOWER
                                 ? 'Tower of Ten'
                                 : 'Upgrade Dice',
-                    connections: [nextEnemyId],
+                    connections: [targetId],
                     row: branchRow,
                     column: branchColumns[branchIndex]
                 };
@@ -136,8 +134,130 @@ export class PathManager {
                 enemyNode.connections.push(branchId);
             });
 
-            currentRow = branchRow + 1;
+            if (detourNode) {
+                this.addNode(detourNode);
+            }
+
+            nextEnemyRow = currentRow + 2 + additionalRows;
         });
+    }
+
+    pickFacilityBranchTypes(facilityTypes) {
+        const branchTypes = [];
+        const pool = Array.isArray(facilityTypes) ? facilityTypes.slice() : [];
+
+        while (branchTypes.length < 2 && pool.length > 0) {
+            const index = Math.floor(this.randomFn() * pool.length);
+            branchTypes.push(pool.splice(index, 1)[0]);
+        }
+
+        if (branchTypes.length < 2) {
+            const fallbackPool = Array.isArray(facilityTypes) ? facilityTypes.slice() : [];
+            while (branchTypes.length < 2 && fallbackPool.length > 0) {
+                const type = fallbackPool.shift();
+                if (!branchTypes.includes(type)) {
+                    branchTypes.push(type);
+                }
+            }
+
+            while (branchTypes.length < 2) {
+                branchTypes.push(NODE_TYPES.SHOP);
+            }
+
+            branchTypes.splice(2);
+        }
+
+        return branchTypes;
+    }
+
+    createBranchTargets({ index, enemyData, nextEnemyId, branchRow }) {
+        const targets = [{ id: nextEnemyId, type: 'direct' }];
+        let detourNode = null;
+        let additionalRows = 0;
+
+        const skipTargetIndex = index + 2;
+        if (skipTargetIndex < this.enemySequence.length && this.randomFn() < this.skipConnectionChance) {
+            targets.push({ id: `enemy-${skipTargetIndex}`, type: 'skip' });
+        }
+
+        const nextEnemyData = this.enemySequence[index + 1];
+        const canCreateDetour = nextEnemyData && !nextEnemyData.isBoss;
+        if (canCreateDetour && this.randomFn() < this.detourConnectionChance) {
+            detourNode = this.createDetourEnemyNode({
+                baseNextEnemyId: nextEnemyId,
+                previousEnemyData: enemyData,
+                nextEnemyData,
+                row: branchRow + 1
+            });
+            targets.push({ id: detourNode.id, type: 'detour' });
+            additionalRows = 1;
+        }
+
+        return { targets, detourNode, additionalRows };
+    }
+
+    assignTargetsToBranches(branchCount, targetOptions) {
+        if (!Array.isArray(targetOptions) || targetOptions.length === 0 || branchCount <= 0) {
+            return [];
+        }
+
+        const options = targetOptions.slice();
+        const directIndex = options.findIndex(option => option.type === 'direct');
+        const selectedTargets = [];
+        let directTarget;
+
+        if (directIndex >= 0) {
+            directTarget = options.splice(directIndex, 1)[0];
+        } else {
+            directTarget = options.shift();
+        }
+
+        selectedTargets.push(directTarget.id);
+
+        for (let i = 1; i < branchCount; i += 1) {
+            if (options.length === 0) {
+                options.push(...targetOptions);
+            }
+            const index = Math.floor(this.randomFn() * options.length);
+            const chosen = options.splice(index, 1)[0] || directTarget;
+            selectedTargets.push(chosen.id);
+        }
+
+        return selectedTargets;
+    }
+
+    createDetourEnemyNode({ baseNextEnemyId, previousEnemyData = {}, nextEnemyData = {}, row }) {
+        const detourId = `${baseNextEnemyId}-detour-${this.detourNodeCounter++}`;
+        const enemyIndex = Number.isFinite(nextEnemyData.enemyIndex)
+            ? nextEnemyData.enemyIndex
+            : (Number.isFinite(previousEnemyData.enemyIndex) ? previousEnemyData.enemyIndex : 0);
+        const rewardGold = this.calculateDetourReward(previousEnemyData.rewardGold, nextEnemyData.rewardGold);
+
+        return {
+            id: detourId,
+            type: NODE_TYPES.ENEMY,
+            label: nextEnemyData.label || 'Battle',
+            enemyIndex,
+            connections: [baseNextEnemyId],
+            row,
+            column: 1,
+            rewardGold,
+            isBoss: false,
+            start: false
+        };
+    }
+
+    calculateDetourReward(previousReward, nextReward) {
+        const values = [previousReward, nextReward]
+            .map(value => (Number.isFinite(value) ? value : null))
+            .filter(value => value !== null);
+
+        if (values.length === 0) {
+            return 0;
+        }
+
+        const total = values.reduce((sum, value) => sum + value, 0);
+        return Math.max(0, Math.round(total / values.length));
     }
 
     addNode(node) {

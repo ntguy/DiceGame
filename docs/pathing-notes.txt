@@ -1,0 +1,12 @@
+Path generation updates
+=======================
+
+The path generator can now produce routes with more variety:
+
+* Facility branches may connect to non-adjacent enemy encounters, allowing the player to skip over an enemy and reach a later fight sooner.
+* Some facility branches can now lead to an optional detour battle before continuing, creating runs with an extra combat encounter.
+* Detour encounters reuse the next scheduled enemy configuration and reward players with gold that averages the surrounding encounters.
+* The path layout automatically adds extra spacing when a detour is inserted so that nodes do not overlap in the UI.
+* Skip and detour behaviour is controlled by `skipConnectionChance` and `detourConnectionChance` constructor options (both default to 0.35) so maps can tune how often the new connections appear.
+
+These changes mean a map run can involve as few as two or as many as four regular battles before the boss, depending on the route the player selects.
