@@ -52,7 +52,7 @@ export class DiceUpgradeUI {
                 color: '#f1c40f',
                 fontStyle: 'bold'
             },
-            subtitle: 'Select dice to upgrade. Costs: 50 → 150 → 300.',
+            subtitle: 'Select dice to upgrade. Costs: 50g → 150g → 300g.',
             subtitleStyle: {
                 fontSize: '22px',
                 color: '#f9e79f'
@@ -157,6 +157,8 @@ export class DiceUpgradeUI {
             this.cardEntries.push(entry);
             this.updateCardEntry(entry);
         });
+
+        this.updateSkipButtonLayout();
     }
 
     createUpgradeButton() {
@@ -214,10 +216,7 @@ export class DiceUpgradeUI {
     }
 
     createSkipButton() {
-        const offsetX = PANEL_WIDTH / 2 - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
-        const offsetY = PANEL_HEIGHT / 2 - SKIP_BUTTON_HEIGHT / 2 - SKIP_BUTTON_MARGIN;
-
-        const buttonContainer = this.scene.add.container(offsetX, offsetY);
+        const buttonContainer = this.scene.add.container(0, 0);
         const buttonBg = this.scene.add.rectangle(0, 0, SKIP_BUTTON_WIDTH, SKIP_BUTTON_HEIGHT, 0x271438, 0.92)
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
@@ -256,6 +255,34 @@ export class DiceUpgradeUI {
 
         this.skipButton = { container: buttonContainer, background: buttonBg, text: buttonText };
         setRectangleButtonEnabled(buttonBg, true);
+        this.updateSkipButtonLayout();
+    }
+
+    getRightmostOptionEdgeX() {
+        if (!Array.isArray(this.cardEntries) || this.cardEntries.length === 0) {
+            return null;
+        }
+
+        return this.cardEntries.reduce((max, entry) => {
+            const edgeX = entry && entry.container ? entry.container.x + CARD_WIDTH / 2 : -Infinity;
+            return Math.max(max, edgeX);
+        }, -Infinity);
+    }
+
+    updateSkipButtonLayout() {
+        if (!this.skipButton || !this.skipButton.container) {
+            return;
+        }
+
+        const rightEdge = this.getRightmostOptionEdgeX();
+        const fallbackX = PANEL_WIDTH / 2 - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
+        const targetX = Number.isFinite(rightEdge) ? rightEdge - SKIP_BUTTON_WIDTH / 2 : fallbackX;
+
+        const upgradeButtonY = this.upgradeButton && this.upgradeButton.container
+            ? this.upgradeButton.container.y
+            : PANEL_HEIGHT / 2 - SKIP_BUTTON_HEIGHT / 2 - SKIP_BUTTON_MARGIN;
+
+        this.skipButton.container.setPosition(targetX, upgradeButtonY);
     }
 
     getUpgradeCostForSelection(count) {
@@ -355,10 +382,10 @@ export class DiceUpgradeUI {
                 : true;
 
         if (cost <= 0 || sceneCanAfford) {
-            text.setText(`Upgrade (${cost})`);
+            text.setText(`Upgrade (${cost}g)`);
             setRectangleButtonEnabled(background, true);
         } else {
-            text.setText(`Not enough gold (${cost})`);
+            text.setText('Not enough gold');
             setRectangleButtonEnabled(background, false);
         }
     }
