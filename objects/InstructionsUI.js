@@ -66,7 +66,7 @@ const PAGES = [
                 keywords: [{ phrase: 'Face Value', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Combo Bonus: rewards rarer patterns — check the menu for exact values.',
+                text: 'Combo Bonus: rewards rarer patterns — check the menu (☰) for exact values.',
                 keywords: [{ phrase: 'Combo Bonus', color: KEYWORD_COLOR }]
             }
         ]
