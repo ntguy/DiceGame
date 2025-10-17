@@ -345,6 +345,25 @@ export class PathManager {
             }
         };
 
+        const pruneNodeConnections = () => {
+            levels.forEach(level => {
+                level.nodes.forEach(node => {
+                    if (!Array.isArray(node.connections)) {
+                        return;
+                    }
+                    if (node.connections.length <= 1) {
+                        return;
+                    }
+                    if (this.randomFn() >= 0.2) {
+                        return;
+                    }
+
+                    const removalIndex = Math.floor(this.randomFn() * node.connections.length);
+                    node.connections.splice(removalIndex, 1);
+                });
+            });
+        };
+
         const nodeCountHistory = [];
         const generateNodeCount = () => {
             let candidate = this.randomFn() < 0.5 ? 2 : 3;
@@ -621,31 +640,27 @@ export class PathManager {
 
                 if (connectCenterToAll) {
                     const leftParents = [topLeft, topMiddle];
-                    const middleParents = [topLeft, topMiddle, topRight];
                     const rightParents = [topRight, topMiddle];
 
                     if (!forceConnect(topLeft, bottomLeft, leftParents)) {
                         ensureConnection(topLeft, bottomLeft.id);
                     }
+
                     if (!forceConnect(topMiddle, bottomLeft, leftParents)) {
                         ensureConnection(topMiddle, bottomLeft.id);
                     }
 
+                    const middleParents = [topLeft, topMiddle, topRight];
                     if (!forceConnect(topMiddle, bottomMiddle, middleParents)) {
                         ensureConnection(topMiddle, bottomMiddle.id);
                     }
-                    if (!forceConnect(topLeft, bottomMiddle, middleParents)) {
-                        ensureConnection(topLeft, bottomMiddle.id);
-                    }
-                    if (!forceConnect(topRight, bottomMiddle, middleParents)) {
-                        ensureConnection(topRight, bottomMiddle.id);
+
+                    if (!forceConnect(topMiddle, bottomRight, rightParents)) {
+                        ensureConnection(topMiddle, bottomRight.id);
                     }
 
                     if (!forceConnect(topRight, bottomRight, rightParents)) {
                         ensureConnection(topRight, bottomRight.id);
-                    }
-                    if (!forceConnect(topMiddle, bottomRight, rightParents)) {
-                        ensureConnection(topMiddle, bottomRight.id);
                     }
                 } else {
                     const leftParents = [topLeft, topMiddle];
@@ -724,6 +739,7 @@ export class PathManager {
         });
 
         resolveAdjacentLocationConflicts();
+        pruneNodeConnections();
 
         levels.forEach(level => {
             level.nodes.forEach(node => {
