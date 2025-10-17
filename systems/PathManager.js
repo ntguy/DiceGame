@@ -71,7 +71,7 @@ export class PathManager {
 
         const LEVEL_COUNT = 7;
         const columnLayouts = {
-            2: [0, 2],
+            2: [0.5, 1.5],
             3: [0, 1, 2]
         };
 
@@ -124,30 +124,48 @@ export class PathManager {
         };
 
         const createLocationNodes = (levelIndex, nodeCount) => {
-            const availableTypes = locationTypesBase.slice();
-            const chosenTypes = [];
+            const typeCounts = new Map();
+            const maxDuplicatesPerType = 2;
 
-            while (chosenTypes.length < nodeCount && availableTypes.length > 0) {
-                const index = Math.floor(this.randomFn() * availableTypes.length);
-                chosenTypes.push(availableTypes.splice(index, 1)[0]);
-            }
+            const chooseLocationType = () => {
+                const pool = locationTypesBase.slice();
+                while (pool.length > 0) {
+                    const index = Math.floor(this.randomFn() * pool.length);
+                    const candidate = pool.splice(index, 1)[0];
+                    const currentCount = typeCounts.get(candidate) || 0;
+                    if (currentCount < maxDuplicatesPerType) {
+                        typeCounts.set(candidate, currentCount + 1);
+                        return candidate;
+                    }
+                }
 
-            while (chosenTypes.length < nodeCount) {
-                const fallbackType = locationTypesBase[chosenTypes.length % locationTypesBase.length];
-                chosenTypes.push(fallbackType);
-            }
+                let fallbackType = locationTypesBase[0];
+                let lowestCount = Number.POSITIVE_INFINITY;
+                locationTypesBase.forEach(type => {
+                    const count = typeCounts.get(type) || 0;
+                    if (count < lowestCount) {
+                        lowestCount = count;
+                        fallbackType = type;
+                    }
+                });
+                typeCounts.set(fallbackType, (typeCounts.get(fallbackType) || 0) + 1);
+                return fallbackType;
+            };
 
             const columns = columnLayouts[nodeCount];
-            return chosenTypes.map((type, nodeIndex) => ({
-                id: `node-${levelIndex}-${nodeIndex}`,
-                type,
-                label: createLabelForType(type),
-                connections: [],
-                row: levelIndex,
-                column: columns[nodeIndex],
-                start: false,
-                isBoss: false
-            }));
+            return Array.from({ length: nodeCount }, (_, nodeIndex) => {
+                const type = chooseLocationType();
+                return {
+                    id: `node-${levelIndex}-${nodeIndex}`,
+                    type,
+                    label: createLabelForType(type),
+                    connections: [],
+                    row: levelIndex,
+                    column: columns ? columns[nodeIndex] : nodeIndex,
+                    start: false,
+                    isBoss: false
+                };
+            });
         };
 
         const ensureConnection = (node, targetId) => {
@@ -160,11 +178,186 @@ export class PathManager {
             }
         };
 
-        const getNodeByColumn = (nodes, column) => nodes.find(node => node.column === column) || null;
-
         const levels = [];
+        let bossNode = null;
 
-        const generateNodeCount = () => (this.randomFn() < 0.5 ? 2 : 3);
+        const findNodeById = targetId => {
+            if (!targetId) {
+                return null;
+            }
+            for (const level of levels) {
+                const found = level.nodes.find(node => node.id === targetId);
+                if (found) {
+                    return found;
+                }
+            }
+            if (bossNode && bossNode.id === targetId) {
+                return bossNode;
+            }
+            return null;
+        };
+
+        const safeEnsureConnection = (parent, child) => {
+            if (!parent || !child) {
+                return false;
+            }
+            if (child.type !== NODE_TYPES.ENEMY) {
+                const existing = (parent.connections || [])
+                    .map(connectionId => findNodeById(connectionId))
+                    .filter(target => target && target.type !== NODE_TYPES.ENEMY && target.id !== child.id);
+                if (existing.some(target => target.type === child.type)) {
+                    return false;
+                }
+            }
+            ensureConnection(parent, child.id);
+            return true;
+        };
+
+        const updateNodeType = (node, newType) => {
+            if (!node) {
+                return;
+            }
+            node.type = newType;
+            node.label = createLabelForType(newType);
+            delete node.enemyIndex;
+            delete node.rewardGold;
+            node.isBoss = false;
+        };
+
+        const adjustChildTypeForParents = (child, parents) => {
+            if (!child || child.type === NODE_TYPES.ENEMY) {
+                return false;
+            }
+            const disallowed = new Set([child.type]);
+            parents.filter(Boolean).forEach(parent => {
+                if (parent.type !== NODE_TYPES.ENEMY) {
+                    disallowed.add(parent.type);
+                }
+                (parent.connections || []).forEach(connectionId => {
+                    if (connectionId === child.id) {
+                        return;
+                    }
+                    const sibling = findNodeById(connectionId);
+                    if (sibling && sibling.type !== NODE_TYPES.ENEMY) {
+                        disallowed.add(sibling.type);
+                    }
+                });
+            });
+
+            const candidates = locationTypesBase.filter(type => !disallowed.has(type));
+            if (candidates.length === 0) {
+                return false;
+            }
+            const newType = candidates[Math.floor(this.randomFn() * candidates.length)];
+            updateNodeType(child, newType);
+            return true;
+        };
+
+        const assignChildToParents = (child, parentCandidates) => {
+            if (!child || !Array.isArray(parentCandidates) || parentCandidates.length === 0) {
+                return;
+            }
+            const parents = parentCandidates.filter(Boolean);
+            if (parents.length === 0) {
+                return;
+            }
+
+            const candidates = parents.slice();
+            if (candidates.length > 1 && this.randomFn() < 0.5) {
+                candidates.reverse();
+            }
+
+            let connectedParents = 0;
+            candidates.forEach((parent, index) => {
+                if (!parent) {
+                    return;
+                }
+                if (safeEnsureConnection(parent, child)) {
+                    connectedParents += 1;
+                    return;
+                }
+                const adjusted = adjustChildTypeForParents(child, parents);
+                if (adjusted && safeEnsureConnection(parent, child)) {
+                    connectedParents += 1;
+                }
+            });
+
+            if (connectedParents === 0) {
+                const fallback = candidates[0];
+                if (fallback) {
+                    ensureConnection(fallback, child.id);
+                }
+                connectedParents = 1;
+            }
+
+        };
+
+        const resolveAdjacentLocationConflicts = () => {
+            for (let levelIndex = 1; levelIndex < LEVEL_COUNT; levelIndex += 1) {
+                const upperLevel = levels[levelIndex - 1];
+                const lowerLevel = levels[levelIndex];
+
+                const parentsByChildId = new Map();
+                upperLevel.nodes.forEach(parent => {
+                    (parent.connections || []).forEach(childId => {
+                        const list = parentsByChildId.get(childId) || [];
+                        list.push(parent);
+                        parentsByChildId.set(childId, list);
+                    });
+                });
+
+                lowerLevel.nodes.forEach(child => {
+                    if (child.type === NODE_TYPES.ENEMY) {
+                        return;
+                    }
+                    const parents = parentsByChildId.get(child.id) || [];
+                    if (parents.length === 0) {
+                        return;
+                    }
+                    const hasConflict = parents.some(parent => parent.type !== NODE_TYPES.ENEMY && parent.type === child.type);
+                    if (!hasConflict) {
+                        return;
+                    }
+
+                    const disallowed = new Set([child.type]);
+                    parents.forEach(parent => {
+                        if (parent.type !== NODE_TYPES.ENEMY) {
+                            disallowed.add(parent.type);
+                        }
+                        (parent.connections || []).forEach(connectionId => {
+                            if (connectionId === child.id) {
+                                return;
+                            }
+                            const sibling = findNodeById(connectionId);
+                            if (sibling && sibling.type !== NODE_TYPES.ENEMY) {
+                                disallowed.add(sibling.type);
+                            }
+                        });
+                    });
+
+                    const candidates = locationTypesBase.filter(type => !disallowed.has(type));
+                    if (candidates.length === 0) {
+                        return;
+                    }
+                    const newType = candidates[Math.floor(this.randomFn() * candidates.length)];
+                    updateNodeType(child, newType);
+                });
+            }
+        };
+
+        const nodeCountHistory = [];
+        const generateNodeCount = () => {
+            let candidate = this.randomFn() < 0.5 ? 2 : 3;
+            if (nodeCountHistory.length >= 2) {
+                const last = nodeCountHistory[nodeCountHistory.length - 1];
+                const previous = nodeCountHistory[nodeCountHistory.length - 2];
+                if (last === previous) {
+                    candidate = last === 2 ? 3 : 2;
+                }
+            }
+            nodeCountHistory.push(candidate);
+            return candidate;
+        };
 
         // Level 0: battle nodes only.
         const firstLevelCount = generateNodeCount();
@@ -192,27 +385,50 @@ export class PathManager {
         if (!levels.slice(1).some(level => level.nodes.length === 3)) {
             const targetIndex = 1 + Math.floor(this.randomFn() * 6);
             const level = levels[targetIndex];
-            const usedTypes = level.nodes.map(node => node.type);
-            const availableTypes = locationTypesBase.filter(type => !usedTypes.includes(type));
-            const newType = availableTypes.length > 0
-                ? availableTypes[Math.floor(this.randomFn() * availableTypes.length)]
-                : locationTypesBase[0];
-            const newNode = {
-                id: `node-${targetIndex}-${level.nodes.length}`,
-                type: newType,
-                label: createLabelForType(newType),
-                connections: [],
-                row: targetIndex,
-                column: 1,
-                start: false,
-                isBoss: false
-            };
-            level.nodes.push(newNode);
+            if (level.nodes.length === 2) {
+                const columns = columnLayouts[3];
+                const sortedNodes = level.nodes.slice().sort((a, b) => a.column - b.column);
+                if (sortedNodes[0]) {
+                    sortedNodes[0].column = columns[0];
+                }
+                if (sortedNodes[1]) {
+                    sortedNodes[1].column = columns[2];
+                }
+                const existingCounts = new Map();
+                level.nodes.forEach(node => {
+                    if (node.type === NODE_TYPES.ENEMY) {
+                        return;
+                    }
+                    existingCounts.set(node.type, (existingCounts.get(node.type) || 0) + 1);
+                });
+                const candidateTypes = locationTypesBase.filter(type => (existingCounts.get(type) || 0) < 2);
+                const newTypePool = candidateTypes.length > 0 ? candidateTypes : locationTypesBase;
+                const newType = newTypePool[Math.floor(this.randomFn() * newTypePool.length)] || locationTypesBase[0];
+                const newNode = {
+                    id: `node-${targetIndex}-${level.nodes.length}`,
+                    type: newType,
+                    label: createLabelForType(newType),
+                    connections: [],
+                    row: targetIndex,
+                    column: columns[1],
+                    start: false,
+                    isBoss: false
+                };
+                level.nodes.push(newNode);
+            }
         }
 
         const candidateLevelIndices = [1, 2, 3, 4, 5, 6];
         let selectedLevelIndices = null;
         const attempts = 200;
+
+        const formsConsecutiveTriple = indices => {
+            if (!Array.isArray(indices) || indices.length < 3) {
+                return false;
+            }
+            const sorted = indices.slice().sort((a, b) => a - b);
+            return sorted[2] - sorted[0] === 2 && sorted[1] - sorted[0] === 1;
+        };
 
         const sampleThreeLevels = () => {
             const pool = candidateLevelIndices.slice();
@@ -230,9 +446,8 @@ export class PathManager {
                 continue;
             }
             const hasThreeNodeLevel = sample.some(index => levels[index].nodes.length === 3);
-            const sorted = sample.slice().sort((a, b) => a - b);
-            const isConsecutiveTriple = sorted[2] - sorted[0] === 2 && sorted[1] - sorted[0] === 1;
-            if (hasThreeNodeLevel && !isConsecutiveTriple) {
+            const earlyBattleCount = sample.filter(index => index >= 1 && index <= 4).length;
+            if (hasThreeNodeLevel && !formsConsecutiveTriple(sample) && earlyBattleCount >= 2) {
                 selectedLevelIndices = sample;
                 break;
             }
@@ -249,11 +464,7 @@ export class PathManager {
                 const index = Math.floor(this.randomFn() * remaining.length);
                 const candidate = remaining.splice(index, 1)[0];
                 const tentative = selectedLevelIndices.concat(candidate);
-                const sorted = tentative.slice().sort((a, b) => a - b);
-                const isConsecutiveTriple = sorted.length === 3
-                    && sorted[2] - sorted[0] === 2
-                    && sorted[1] - sorted[0] === 1;
-                if (tentative.length < 3 || !isConsecutiveTriple) {
+                if ((tentative.length < 3 || !formsConsecutiveTriple(tentative))) {
                     selectedLevelIndices.push(candidate);
                 }
             }
@@ -266,6 +477,41 @@ export class PathManager {
                 }
             }
             selectedLevelIndices = selectedLevelIndices.slice(0, 3);
+            const ensureEarlyCoverage = () => {
+                let earlyCount = selectedLevelIndices.filter(index => index >= 1 && index <= 4).length;
+                const availableEarly = candidateLevelIndices
+                    .filter(index => index >= 1 && index <= 4 && !selectedLevelIndices.includes(index));
+                while (earlyCount < 2 && availableEarly.length > 0) {
+                    const replacementIndex = selectedLevelIndices.findIndex(index => index > 4);
+                    if (replacementIndex === -1) {
+                        break;
+                    }
+                    const newIndex = availableEarly.splice(Math.floor(this.randomFn() * availableEarly.length), 1)[0];
+                    selectedLevelIndices[replacementIndex] = newIndex;
+                    earlyCount = selectedLevelIndices.filter(index => index >= 1 && index <= 4).length;
+                }
+                if (formsConsecutiveTriple(selectedLevelIndices)) {
+                    const available = candidateLevelIndices.filter(index => !selectedLevelIndices.includes(index));
+                    for (let i = 0; i < selectedLevelIndices.length; i += 1) {
+                        const current = selectedLevelIndices[i];
+                        if (current >= 1 && current <= 4 && earlyCount <= 2) {
+                            continue;
+                        }
+                        const alternatives = available.filter(index => index !== current);
+                        while (alternatives.length > 0) {
+                            const idx = Math.floor(this.randomFn() * alternatives.length);
+                            const alternative = alternatives.splice(idx, 1)[0];
+                            const temp = selectedLevelIndices.slice();
+                            temp[i] = alternative;
+                            if (!formsConsecutiveTriple(temp)) {
+                                selectedLevelIndices = temp;
+                                return;
+                            }
+                        }
+                    }
+                }
+            };
+            ensureEarlyCoverage();
         }
 
         const threeNodeLevels = selectedLevelIndices.filter(index => levels[index].nodes.length === 3);
@@ -312,95 +558,63 @@ export class PathManager {
         });
 
         const connectLevels = (upperLevel, lowerLevel) => {
-            const upperCount = upperLevel.nodes.length;
-            const lowerCount = lowerLevel.nodes.length;
+            const upperNodes = upperLevel.nodes.slice().sort((a, b) => a.column - b.column);
+            const lowerNodes = lowerLevel.nodes.slice().sort((a, b) => a.column - b.column);
+            const upperCount = upperNodes.length;
+            const lowerCount = lowerNodes.length;
+
+            if (upperCount === 0 || lowerCount === 0) {
+                return;
+            }
 
             if (upperCount === 2 && lowerCount === 3) {
-                const topLeft = getNodeByColumn(upperLevel.nodes, 0);
-                const topRight = getNodeByColumn(upperLevel.nodes, 2);
-                const bottomLeft = getNodeByColumn(lowerLevel.nodes, 0);
-                const bottomMiddle = getNodeByColumn(lowerLevel.nodes, 1);
-                const bottomRight = getNodeByColumn(lowerLevel.nodes, 2);
-
-                ensureConnection(topLeft, bottomLeft && bottomLeft.id);
-                ensureConnection(topRight, bottomRight && bottomRight.id);
-
-                const roll = this.randomFn();
-                if (roll < 0.5) {
-                    ensureConnection(topLeft, bottomMiddle && bottomMiddle.id);
-                    ensureConnection(topRight, bottomMiddle && bottomMiddle.id);
-                } else if (roll < 0.75) {
-                    ensureConnection(topLeft, bottomMiddle && bottomMiddle.id);
-                } else {
-                    ensureConnection(topRight, bottomMiddle && bottomMiddle.id);
-                }
+                const [topLeft, topRight] = upperNodes;
+                const [bottomLeft, bottomMiddle, bottomRight] = lowerNodes;
+                assignChildToParents(bottomLeft, [topLeft]);
+                assignChildToParents(bottomRight, [topRight]);
+                assignChildToParents(bottomMiddle, [topLeft, topRight]);
             } else if (upperCount === 3 && lowerCount === 2) {
-                const topLeft = getNodeByColumn(upperLevel.nodes, 0);
-                const topMiddle = getNodeByColumn(upperLevel.nodes, 1);
-                const topRight = getNodeByColumn(upperLevel.nodes, 2);
-                const bottomLeft = getNodeByColumn(lowerLevel.nodes, 0);
-                const bottomRight = getNodeByColumn(lowerLevel.nodes, 2);
-
-                ensureConnection(topLeft, bottomLeft && bottomLeft.id);
-                ensureConnection(topRight, bottomRight && bottomRight.id);
-
-                const roll = this.randomFn();
-                if (roll < 0.5) {
-                    ensureConnection(topMiddle, bottomLeft && bottomLeft.id);
-                    ensureConnection(topMiddle, bottomRight && bottomRight.id);
-                } else if (roll < 0.75) {
-                    ensureConnection(topMiddle, bottomLeft && bottomLeft.id);
-                } else {
-                    ensureConnection(topMiddle, bottomRight && bottomRight.id);
-                }
+                const [topLeft, topMiddle, topRight] = upperNodes;
+                const [bottomLeft, bottomRight] = lowerNodes;
+                assignChildToParents(bottomLeft, [topLeft, topMiddle]);
+                assignChildToParents(bottomRight, [topRight, topMiddle]);
             } else if (upperCount === 2 && lowerCount === 2) {
-                const topLeft = getNodeByColumn(upperLevel.nodes, 0);
-                const topRight = getNodeByColumn(upperLevel.nodes, 2);
-                const bottomLeft = getNodeByColumn(lowerLevel.nodes, 0);
-                const bottomRight = getNodeByColumn(lowerLevel.nodes, 2);
-
-                ensureConnection(topLeft, bottomLeft && bottomLeft.id);
-                ensureConnection(topRight, bottomRight && bottomRight.id);
-
-                if (this.randomFn() < 0.5) {
-                    const connectBoth = this.randomFn() < 0.5 ? topLeft : topRight;
-                    ensureConnection(connectBoth, bottomLeft && bottomLeft.id);
-                    ensureConnection(connectBoth, bottomRight && bottomRight.id);
-                }
+                const [topLeft, topRight] = upperNodes;
+                const [bottomLeft, bottomRight] = lowerNodes;
+                assignChildToParents(bottomLeft, [topLeft, topRight]);
+                assignChildToParents(bottomRight, [topRight, topLeft]);
             } else if (upperCount === 3 && lowerCount === 3) {
-                const topLeft = getNodeByColumn(upperLevel.nodes, 0);
-                const topMiddle = getNodeByColumn(upperLevel.nodes, 1);
-                const topRight = getNodeByColumn(upperLevel.nodes, 2);
-                const bottomLeft = getNodeByColumn(lowerLevel.nodes, 0);
-                const bottomMiddle = getNodeByColumn(lowerLevel.nodes, 1);
-                const bottomRight = getNodeByColumn(lowerLevel.nodes, 2);
-
-                ensureConnection(topLeft, bottomLeft && bottomLeft.id);
-                ensureConnection(topMiddle, bottomMiddle && bottomMiddle.id);
-                ensureConnection(topRight, bottomRight && bottomRight.id);
-
-                const roll = this.randomFn();
-                if (roll < 1 / 3) {
-                    ensureConnection(topLeft, bottomMiddle && bottomMiddle.id);
-                } else if (roll < 2 / 3) {
-                    ensureConnection(topMiddle, bottomLeft && bottomLeft.id);
-                    ensureConnection(topMiddle, bottomMiddle && bottomMiddle.id);
-                    ensureConnection(topMiddle, bottomRight && bottomRight.id);
-                } else {
-                    ensureConnection(topRight, bottomMiddle && bottomMiddle.id);
-                }
+                const [topLeft, topMiddle, topRight] = upperNodes;
+                const [bottomLeft, bottomMiddle, bottomRight] = lowerNodes;
+                assignChildToParents(bottomLeft, [topLeft, topMiddle]);
+                assignChildToParents(bottomMiddle, [topMiddle]);
+                assignChildToParents(bottomRight, [topRight, topMiddle]);
             } else {
-                // Fallback: connect each node to the closest nodes based on column values.
-                upperLevel.nodes.forEach(upperNode => {
-                    const sortedLowerNodes = lowerLevel.nodes.slice().sort((a, b) => Math.abs(a.column - upperNode.column) - Math.abs(b.column - upperNode.column));
-                    if (sortedLowerNodes[0]) {
-                        ensureConnection(upperNode, sortedLowerNodes[0].id);
-                    }
-                    if (sortedLowerNodes[1] && this.randomFn() < 0.5) {
-                        ensureConnection(upperNode, sortedLowerNodes[1].id);
-                    }
+                lowerNodes.forEach(child => {
+                    const orderedParents = upperNodes.slice().sort((a, b) => Math.abs(a.column - child.column) - Math.abs(b.column - child.column));
+                    assignChildToParents(child, orderedParents);
                 });
             }
+
+            upperNodes.forEach(parent => {
+                const hasConnection = Array.isArray(parent.connections) && parent.connections.length > 0;
+                if (hasConnection) {
+                    return;
+                }
+                const orderedChildren = lowerNodes.slice().sort((a, b) => Math.abs(a.column - parent.column) - Math.abs(b.column - parent.column));
+                for (const child of orderedChildren) {
+                    if (safeEnsureConnection(parent, child)) {
+                        return;
+                    }
+                    const adjusted = adjustChildTypeForParents(child, [parent]);
+                    if (adjusted && safeEnsureConnection(parent, child)) {
+                        return;
+                    }
+                }
+                if (orderedChildren[0]) {
+                    ensureConnection(parent, orderedChildren[0].id);
+                }
+            });
         };
 
         for (let levelIndex = 0; levelIndex < LEVEL_COUNT - 1; levelIndex += 1) {
@@ -410,7 +624,7 @@ export class PathManager {
         }
 
         // Create the boss node and connect final level nodes to it.
-        const bossNode = {
+        bossNode = {
             id: 'boss-node',
             type: NODE_TYPES.ENEMY,
             label: bossEntry.label || 'Boss',
@@ -427,6 +641,8 @@ export class PathManager {
         finalLevel.nodes.forEach(node => {
             ensureConnection(node, bossNode.id);
         });
+
+        resolveAdjacentLocationConflicts();
 
         levels.forEach(level => {
             level.nodes.forEach(node => {
