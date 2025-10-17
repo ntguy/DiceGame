@@ -25,7 +25,7 @@ const ICONS = {
 const LAYOUT = {
     baseY: 140,
     columnSpacing: 220,
-    rowSpacing: 120
+    rowSpacing: 156
 };
 
 const DRAG_THRESHOLD = 6;
