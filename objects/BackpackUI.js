@@ -512,7 +512,7 @@ export class BackpackUI {
                 };
                 slot.background.setFillStyle(DICE_SLOT_FILL_COLOR, 0.95);
                 slot.background.setStrokeStyle(2, DICE_SLOT_STROKE_COLOR, 0.9);
-                slot.emojiText.setText(slot.data.emoji || '🎲');
+                slot.emojiText.setText(slot.data.emoji || ' ');
                 slot.emojiText.setAlpha(1);
                 const labelText = slot.data.baseName ? `${slot.data.baseName}${slot.data.isUpgraded ? ' +' : ''}` : '';
                 slot.labelText.setText(labelText);

@@ -997,6 +997,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.refreshBackpackContents();
+        this.refreshShopInterface();
 
         return true;
     }
@@ -1026,6 +1027,7 @@ export class GameScene extends Phaser.Scene {
 
         this.refreshBackpackContents();
         this.updateZonePreviewText();
+        this.refreshShopInterface();
 
         return true;
     }
@@ -1081,12 +1083,14 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (this.customDiceLoadout.length >= MAX_CUSTOM_DICE) {
+            this.updateDiceRewardHandState();
             return false;
         }
 
         const blueprint = createDieBlueprint(id, { isUpgraded: !!options.isUpgraded });
         this.customDiceLoadout = [...this.customDiceLoadout, blueprint];
         this.refreshBackpackContents();
+        this.updateDiceRewardHandState();
         return true;
     }
 
@@ -1122,6 +1126,7 @@ export class GameScene extends Phaser.Scene {
     handleCustomDieSelection(id, definition) {
         const added = this.addCustomDieToLoadout(id);
         if (!added) {
+            this.updateDiceRewardHandState();
             return false;
         }
 
@@ -1134,11 +1139,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     presentCustomDieReward() {
-        if (this.customDiceLoadout && this.customDiceLoadout.length >= MAX_CUSTOM_DICE) {
-            this.requestEnterMapStateAfterCombat();
-            return;
-        }
-
         if (this.diceRewardUI) {
             this.diceRewardUI.destroy();
             this.diceRewardUI = null;
@@ -1150,14 +1150,19 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        const capacityState = this.getDiceRewardCapacityState();
         this.diceRewardUI = new DiceRewardUI(this, {
             options,
+            currentCount: capacityState.currentCount,
+            maxCount: capacityState.maxCount,
             onSelect: (id, definition) => this.handleCustomDieSelection(id, definition),
+            onSkip: () => true,
             onClose: () => {
                 this.diceRewardUI = null;
                 this.requestEnterMapStateAfterCombat();
             }
         });
+        this.updateDiceRewardHandState();
     }
 
     applyPendingLocks() {
@@ -1580,8 +1585,29 @@ export class GameScene extends Phaser.Scene {
         this.replaceDiceWithStandard({ uid: removedBlueprint.uid, blueprint: removedBlueprint });
 
         this.updateZonePreviewText();
+        this.updateDiceRewardHandState();
 
         return true;
+    }
+
+    getDiceRewardCapacityState() {
+        const loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        return {
+            currentCount: loadout.length,
+            maxCount: MAX_CUSTOM_DICE
+        };
+    }
+
+    updateDiceRewardHandState() {
+        if (!this.diceRewardUI) {
+            return;
+        }
+
+        const capacity = this.getDiceRewardCapacityState();
+        this.diceRewardUI.updateCapacityState({
+            currentCount: capacity.currentCount,
+            maxCount: capacity.maxCount
+        });
     }
 
     getDiceInPlay() {
@@ -2458,6 +2484,7 @@ export class GameScene extends Phaser.Scene {
 
         this.activeFacilityUI = new ShopUI(this, {
             relics: this.getRelicShopState(),
+            capacity: this.getRelicCapacityState(),
             onPurchase: relicId => this.handleShopPurchase(relicId),
             onClose: () => this.closeShop()
         });
@@ -2564,7 +2591,6 @@ export class GameScene extends Phaser.Scene {
     handleShopPurchase(relicId) {
         const relic = this.attemptPurchaseRelic(relicId);
         if (relic) {
-            this.updateShopSelectionAfterPurchase(relicId);
             this.refreshShopInterface();
             return true;
         }
@@ -2573,17 +2599,16 @@ export class GameScene extends Phaser.Scene {
 
     refreshShopInterface() {
         if (this.activeFacilityUI instanceof ShopUI) {
-            this.activeFacilityUI.updateRelics(this.getRelicShopState());
+            this.activeFacilityUI.updateRelics(
+                this.getRelicShopState(),
+                this.getRelicCapacityState()
+            );
         }
     }
 
     getRelicShopState() {
         if (!Array.isArray(this.currentShopRelics)) {
-            this.currentShopRelics = this.rollShopRelics(SHOP_RELIC_COUNT);
-        }
-
-        if (!Array.isArray(this.currentShopRelics) || this.currentShopRelics.length === 0) {
-            return [];
+            this.currentShopRelics = [];
         }
 
         return this.currentShopRelics.map(relic => ({
@@ -2592,8 +2617,19 @@ export class GameScene extends Phaser.Scene {
             description: relic.description,
             icon: relic.icon,
             cost: relic.cost,
-            canAfford: this.playerGold >= relic.cost
+            canAfford: this.playerGold >= relic.cost,
+            owned: this.ownedRelicIds.has(relic.id)
         }));
+    }
+
+    getRelicCapacityState() {
+        const currentCount = this.ownedRelicIds instanceof Set
+            ? this.ownedRelicIds.size
+            : (Array.isArray(this.relics) ? this.relics.length : 0);
+        return {
+            currentCount,
+            maxCount: CONSTANTS.RELIC_MAX_SLOTS
+        };
     }
 
     rollShopRelics(count = SHOP_RELIC_COUNT) {
@@ -2611,14 +2647,6 @@ export class GameScene extends Phaser.Scene {
 
     getUnownedRelics() {
         return this.relicCatalog.filter(relic => !this.ownedRelicIds.has(relic.id));
-    }
-
-    updateShopSelectionAfterPurchase(purchasedId) {
-        if (!Array.isArray(this.currentShopRelics)) {
-            return;
-        }
-
-        this.currentShopRelics = this.currentShopRelics.filter(relic => relic.id !== purchasedId);
     }
 
     closeShop() {
@@ -3059,11 +3087,7 @@ export class GameScene extends Phaser.Scene {
 
         this.enemyManager.clearCurrentEnemy();
         this.prepareNextEnemyMove();
-        if (this.customDiceLoadout && this.customDiceLoadout.length < MAX_CUSTOM_DICE) {
-            this.presentCustomDieReward();
-        } else {
-            this.requestEnterMapStateAfterCombat();
-        }
+        this.presentCustomDieReward();
     }
 
     handleAllEnemiesDefeated() {
@@ -3298,7 +3322,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        const statusText = this.testingModeEnabled ? 'Testing Mode: On 🧪' : 'Testing Mode: Off';
+        const statusText = this.testingModeEnabled ? 'Testing Mode: On' : 'Testing Mode: Off';
         this.testingModeButton.setText(statusText);
     }
 
