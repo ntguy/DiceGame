@@ -997,6 +997,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.refreshBackpackContents();
+        this.refreshShopInterface();
 
         return true;
     }
@@ -1026,6 +1027,7 @@ export class GameScene extends Phaser.Scene {
 
         this.refreshBackpackContents();
         this.updateZonePreviewText();
+        this.refreshShopInterface();
 
         return true;
     }
@@ -1081,12 +1083,14 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (this.customDiceLoadout.length >= MAX_CUSTOM_DICE) {
+            this.updateDiceRewardHandState();
             return false;
         }
 
         const blueprint = createDieBlueprint(id, { isUpgraded: !!options.isUpgraded });
         this.customDiceLoadout = [...this.customDiceLoadout, blueprint];
         this.refreshBackpackContents();
+        this.updateDiceRewardHandState();
         return true;
     }
 
@@ -1122,6 +1126,7 @@ export class GameScene extends Phaser.Scene {
     handleCustomDieSelection(id, definition) {
         const added = this.addCustomDieToLoadout(id);
         if (!added) {
+            this.updateDiceRewardHandState();
             return false;
         }
 
@@ -1134,11 +1139,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     presentCustomDieReward() {
-        if (this.customDiceLoadout && this.customDiceLoadout.length >= MAX_CUSTOM_DICE) {
-            this.requestEnterMapStateAfterCombat();
-            return;
-        }
-
         if (this.diceRewardUI) {
             this.diceRewardUI.destroy();
             this.diceRewardUI = null;
@@ -1150,14 +1150,19 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        const capacityState = this.getDiceRewardCapacityState();
         this.diceRewardUI = new DiceRewardUI(this, {
             options,
+            currentCount: capacityState.currentCount,
+            maxCount: capacityState.maxCount,
             onSelect: (id, definition) => this.handleCustomDieSelection(id, definition),
+            onSkip: () => true,
             onClose: () => {
                 this.diceRewardUI = null;
                 this.requestEnterMapStateAfterCombat();
             }
         });
+        this.updateDiceRewardHandState();
     }
 
     applyPendingLocks() {
@@ -1580,8 +1585,29 @@ export class GameScene extends Phaser.Scene {
         this.replaceDiceWithStandard({ uid: removedBlueprint.uid, blueprint: removedBlueprint });
 
         this.updateZonePreviewText();
+        this.updateDiceRewardHandState();
 
         return true;
+    }
+
+    getDiceRewardCapacityState() {
+        const loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        return {
+            currentCount: loadout.length,
+            maxCount: MAX_CUSTOM_DICE
+        };
+    }
+
+    updateDiceRewardHandState() {
+        if (!this.diceRewardUI) {
+            return;
+        }
+
+        const capacity = this.getDiceRewardCapacityState();
+        this.diceRewardUI.updateCapacityState({
+            currentCount: capacity.currentCount,
+            maxCount: capacity.maxCount
+        });
     }
 
     getDiceInPlay() {
@@ -2455,9 +2481,11 @@ export class GameScene extends Phaser.Scene {
 
         this.destroyFacilityUI();
         this.currentShopRelics = this.rollShopRelics(SHOP_RELIC_COUNT);
+        this.ensureShopRelicsFilled();
 
         this.activeFacilityUI = new ShopUI(this, {
             relics: this.getRelicShopState(),
+            capacity: this.getRelicCapacityState(),
             onPurchase: relicId => this.handleShopPurchase(relicId),
             onClose: () => this.closeShop()
         });
@@ -2573,18 +2601,19 @@ export class GameScene extends Phaser.Scene {
 
     refreshShopInterface() {
         if (this.activeFacilityUI instanceof ShopUI) {
-            this.activeFacilityUI.updateRelics(this.getRelicShopState());
+            this.activeFacilityUI.updateRelics(
+                this.getRelicShopState(),
+                this.getRelicCapacityState()
+            );
         }
     }
 
     getRelicShopState() {
         if (!Array.isArray(this.currentShopRelics)) {
-            this.currentShopRelics = this.rollShopRelics(SHOP_RELIC_COUNT);
+            this.currentShopRelics = [];
         }
 
-        if (!Array.isArray(this.currentShopRelics) || this.currentShopRelics.length === 0) {
-            return [];
-        }
+        this.ensureShopRelicsFilled();
 
         return this.currentShopRelics.map(relic => ({
             id: relic.id,
@@ -2594,6 +2623,16 @@ export class GameScene extends Phaser.Scene {
             cost: relic.cost,
             canAfford: this.playerGold >= relic.cost
         }));
+    }
+
+    getRelicCapacityState() {
+        const currentCount = this.ownedRelicIds instanceof Set
+            ? this.ownedRelicIds.size
+            : (Array.isArray(this.relics) ? this.relics.length : 0);
+        return {
+            currentCount,
+            maxCount: CONSTANTS.RELIC_MAX_SLOTS
+        };
     }
 
     rollShopRelics(count = SHOP_RELIC_COUNT) {
@@ -2609,6 +2648,22 @@ export class GameScene extends Phaser.Scene {
         return selections;
     }
 
+    ensureShopRelicsFilled() {
+        if (!Array.isArray(this.currentShopRelics)) {
+            this.currentShopRelics = [];
+        }
+
+        const existingIds = new Set(this.currentShopRelics.map(relic => relic && relic.id));
+        const available = this.getUnownedRelics().filter(relic => relic && !existingIds.has(relic.id));
+
+        while (this.currentShopRelics.length < SHOP_RELIC_COUNT && available.length > 0) {
+            const index = Phaser.Math.Between(0, available.length - 1);
+            const nextRelic = available.splice(index, 1)[0];
+            this.currentShopRelics.push(nextRelic);
+            existingIds.add(nextRelic.id);
+        }
+    }
+
     getUnownedRelics() {
         return this.relicCatalog.filter(relic => !this.ownedRelicIds.has(relic.id));
     }
@@ -2619,6 +2674,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.currentShopRelics = this.currentShopRelics.filter(relic => relic.id !== purchasedId);
+        this.ensureShopRelicsFilled();
     }
 
     closeShop() {
