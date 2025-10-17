@@ -557,6 +557,30 @@ export class PathManager {
             convertLevelNodesToBattles(levelIndex, Math.min(count, levels[levelIndex].nodes.length));
         });
 
+        const forceConnect = (parent, child, parentsForAdjustment = null) => {
+            if (!parent || !child) {
+                return false;
+            }
+
+            let parentList = Array.isArray(parentsForAdjustment)
+                ? parentsForAdjustment.filter(Boolean)
+                : [];
+
+            if (parentList.length === 0) {
+                parentList = [parent];
+            }
+
+            if (safeEnsureConnection(parent, child)) {
+                return true;
+            }
+
+            if (adjustChildTypeForParents(child, parentList) && safeEnsureConnection(parent, child)) {
+                return true;
+            }
+
+            return false;
+        };
+
         const connectLevels = (upperLevel, lowerLevel) => {
             const upperNodes = upperLevel.nodes.slice().sort((a, b) => a.column - b.column);
             const lowerNodes = lowerLevel.nodes.slice().sort((a, b) => a.column - b.column);
@@ -581,14 +605,71 @@ export class PathManager {
             } else if (upperCount === 2 && lowerCount === 2) {
                 const [topLeft, topRight] = upperNodes;
                 const [bottomLeft, bottomRight] = lowerNodes;
-                assignChildToParents(bottomLeft, [topLeft, topRight]);
-                assignChildToParents(bottomRight, [topRight, topLeft]);
+                const parentSet = [topLeft, topRight];
+
+                if (!forceConnect(topLeft, bottomLeft, parentSet)) {
+                    ensureConnection(topLeft, bottomLeft.id);
+                }
+
+                if (!forceConnect(topRight, bottomRight, parentSet)) {
+                    ensureConnection(topRight, bottomRight.id);
+                }
             } else if (upperCount === 3 && lowerCount === 3) {
                 const [topLeft, topMiddle, topRight] = upperNodes;
                 const [bottomLeft, bottomMiddle, bottomRight] = lowerNodes;
-                assignChildToParents(bottomLeft, [topLeft, topMiddle]);
-                assignChildToParents(bottomMiddle, [topMiddle]);
-                assignChildToParents(bottomRight, [topRight, topMiddle]);
+                const connectCenterToAll = this.randomFn() < 0.5;
+
+                if (connectCenterToAll) {
+                    const leftParents = [topLeft, topMiddle];
+                    const middleParents = [topLeft, topMiddle, topRight];
+                    const rightParents = [topRight, topMiddle];
+
+                    if (!forceConnect(topLeft, bottomLeft, leftParents)) {
+                        ensureConnection(topLeft, bottomLeft.id);
+                    }
+                    if (!forceConnect(topMiddle, bottomLeft, leftParents)) {
+                        ensureConnection(topMiddle, bottomLeft.id);
+                    }
+
+                    if (!forceConnect(topMiddle, bottomMiddle, middleParents)) {
+                        ensureConnection(topMiddle, bottomMiddle.id);
+                    }
+                    if (!forceConnect(topLeft, bottomMiddle, middleParents)) {
+                        ensureConnection(topLeft, bottomMiddle.id);
+                    }
+                    if (!forceConnect(topRight, bottomMiddle, middleParents)) {
+                        ensureConnection(topRight, bottomMiddle.id);
+                    }
+
+                    if (!forceConnect(topRight, bottomRight, rightParents)) {
+                        ensureConnection(topRight, bottomRight.id);
+                    }
+                    if (!forceConnect(topMiddle, bottomRight, rightParents)) {
+                        ensureConnection(topMiddle, bottomRight.id);
+                    }
+                } else {
+                    const leftParents = [topLeft, topMiddle];
+                    const middleParents = [topLeft, topMiddle, topRight];
+                    const rightParents = [topRight, topMiddle];
+
+                    if (!forceConnect(topLeft, bottomLeft, leftParents)) {
+                        ensureConnection(topLeft, bottomLeft.id);
+                    }
+
+                    if (!forceConnect(topMiddle, bottomMiddle, middleParents)) {
+                        ensureConnection(topMiddle, bottomMiddle.id);
+                    }
+                    if (!forceConnect(topLeft, bottomMiddle, middleParents)) {
+                        ensureConnection(topLeft, bottomMiddle.id);
+                    }
+                    if (!forceConnect(topRight, bottomMiddle, middleParents)) {
+                        ensureConnection(topRight, bottomMiddle.id);
+                    }
+
+                    if (!forceConnect(topRight, bottomRight, rightParents)) {
+                        ensureConnection(topRight, bottomRight.id);
+                    }
+                }
             } else {
                 lowerNodes.forEach(child => {
                     const orderedParents = upperNodes.slice().sort((a, b) => Math.abs(a.column - child.column) - Math.abs(b.column - child.column));
