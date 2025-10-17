@@ -52,12 +52,20 @@ export const MAP_CONFIGS = [
         id: 'map-1',
         displayName: 'Map 1: Molten Forge',
         createEnemies: mapOneEnemyFactories,
-        enemySequence: DEFAULT_PATH_ENEMY_SEQUENCE
+        enemySequence: DEFAULT_PATH_ENEMY_SEQUENCE,
+        pathOptions: {
+            minRegularEnemies: 2,
+            maxRegularEnemies: 4
+        }
     },
     {
         id: 'map-2',
         displayName: 'Map 2: Iron Bastion',
         createEnemies: mapTwoEnemyFactories,
-        enemySequence: mapTwoEnemySequence
+        enemySequence: mapTwoEnemySequence,
+        pathOptions: {
+            minRegularEnemies: 3,
+            maxRegularEnemies: 3
+        }
     }
 ];

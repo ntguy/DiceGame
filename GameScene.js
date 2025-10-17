@@ -368,7 +368,9 @@ export class GameScene extends Phaser.Scene {
         if (!mapLoaded) {
             this.pathManager = new PathManager({
                 allowUpgradeNodes: true,
-                upgradeNodeMinEnemyIndex: 1
+                upgradeNodeMinEnemyIndex: 1,
+                minRegularEnemies: 2,
+                maxRegularEnemies: 4
             });
             this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
             this.updateEnemyHealthUI();
@@ -1924,10 +1926,18 @@ export class GameScene extends Phaser.Scene {
             ? config.enemySequence.map(entry => ({ ...entry }))
             : undefined;
 
-        this.pathManager = new PathManager({
-            enemySequence,
+        const basePathOptions = {
             allowUpgradeNodes: true,
             upgradeNodeMinEnemyIndex: 1
+        };
+        const mapPathOptions = config && typeof config.pathOptions === 'object'
+            ? { ...config.pathOptions }
+            : {};
+
+        this.pathManager = new PathManager({
+            ...basePathOptions,
+            ...mapPathOptions,
+            enemySequence
         });
         this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
         this.currentPathNodeId = null;

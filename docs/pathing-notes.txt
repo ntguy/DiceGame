@@ -1,0 +1,40 @@
+Pathing Strategy Updates
+========================
+
+Overview
+--------
+This update expands the procedural map pathing so that each run can involve a
+variable number of regular battles and more meaningful route decisions. Players
+can now encounter as few as two or as many as four regular encounters (before
+the boss) on most maps, and branch choices can change the facilities that
+appear in future nodes.
+
+Key Changes
+-----------
+* Regular battle counts can vary per map. The default Molten Forge map rolls a
+  battle count between two and four fights before the boss, while Iron Bastion
+  keeps the original three-battle structure.
+* The path graph can temporarily split into left/right branches. Choosing one
+  branch can lock in unique facility offerings (shop, infirmary, tower, etc.)
+  until the branches merge again before the boss.
+* Facility pools still respect upgrade unlock rules but now randomise per
+  branch, so skipping a shop might grant access to an infirmary later—or vice
+  versa.
+
+Implementation Notes
+--------------------
+* `systems/PathManager.js` now constructs the enemy sequence with optional
+  battle-count variance and generates branch-aware graphs capped at two
+  simultaneous paths. Facility nodes route to branch-specific future enemies so
+  earlier decisions affect later options.
+* Map configurations can supply `pathOptions` to clamp the regular fight range
+  per map.
+* `GameScene` forwards `pathOptions` when creating the `PathManager`, ensuring
+  each map uses its own branching behaviour.
+
+Usage
+-----
+* Adjust the default range by editing `pathOptions` in `maps/MapConfigs.js` or
+  when instantiating `PathManager` manually.
+* Because branches always merge before the boss, the finale remains a single
+  encounter, keeping difficulty tuning manageable.
