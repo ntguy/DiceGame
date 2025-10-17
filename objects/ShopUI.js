@@ -3,7 +3,7 @@ import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { CONSTANTS } from '../config.js';
 
 const PANEL_WIDTH = 880;
-const PANEL_HEIGHT = 480;
+const PANEL_HEIGHT = 540;
 const CARD_WIDTH = 250;
 const CARD_HEIGHT = 260;
 const CARD_GAP = 24;
@@ -105,11 +105,23 @@ export class ShopUI {
                 color: '#f9e79f'
             }).setOrigin(0.5);
 
-            if (capacityFull) {
-                buttonText.setText('Max Relics');
-                buttonBg.setFillStyle(0x2c173a, 0.6);
-                buttonText.setAlpha(0.6);
+            const isOwned = relic.owned;
+
+            const disableButton = (label, alpha = 0.6) => {
+                buttonText.setText(label);
+                buttonBg.setFillStyle(0x2c173a, alpha);
+                buttonText.setAlpha(alpha);
                 buttonBg.disableInteractive();
+            };
+
+            if (isOwned) {
+                disableButton('Owned');
+                cardBg.setAlpha(0.9);
+                icon.setAlpha(0.9);
+                nameText.setAlpha(0.9);
+                descText.setAlpha(0.9);
+            } else if (capacityFull) {
+                disableButton('Max Relics');
             } else if (!relic.canAfford) {
                 buttonText.setText('Not enough gold');
                 buttonBg.setFillStyle(0x2c173a, 0.6);
@@ -139,7 +151,7 @@ export class ShopUI {
                 });
             }
 
-            if (!capacityFull && relic.canAfford) {
+            if (!capacityFull && relic.canAfford && !isOwned) {
                 buttonText.setAlpha(1);
             }
 
@@ -172,7 +184,7 @@ export class ShopUI {
     }
 
     createCapacityMessage() {
-        const messageY = PANEL_HEIGHT / 2 - 120;
+        const messageY = PANEL_HEIGHT / 2 - 90;
         const text = this.scene.add.text(0, messageY, 'Discard a relic from your pack to make space.', {
             fontSize: '18px',
             color: '#f9e79f'
@@ -191,7 +203,7 @@ export class ShopUI {
     }
 
     createLeaveButton() {
-        const leaveY = PANEL_HEIGHT / 2 - 58;
+        const leaveY = PANEL_HEIGHT / 2 - 40;
         const leaveBg = this.scene.add.rectangle(0, leaveY, PANEL_WIDTH - 160, 58, 0x2d1b3d, 0.92)
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });

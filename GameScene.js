@@ -2481,7 +2481,6 @@ export class GameScene extends Phaser.Scene {
 
         this.destroyFacilityUI();
         this.currentShopRelics = this.rollShopRelics(SHOP_RELIC_COUNT);
-        this.ensureShopRelicsFilled();
 
         this.activeFacilityUI = new ShopUI(this, {
             relics: this.getRelicShopState(),
@@ -2592,7 +2591,6 @@ export class GameScene extends Phaser.Scene {
     handleShopPurchase(relicId) {
         const relic = this.attemptPurchaseRelic(relicId);
         if (relic) {
-            this.updateShopSelectionAfterPurchase(relicId);
             this.refreshShopInterface();
             return true;
         }
@@ -2613,15 +2611,14 @@ export class GameScene extends Phaser.Scene {
             this.currentShopRelics = [];
         }
 
-        this.ensureShopRelicsFilled();
-
         return this.currentShopRelics.map(relic => ({
             id: relic.id,
             name: relic.name,
             description: relic.description,
             icon: relic.icon,
             cost: relic.cost,
-            canAfford: this.playerGold >= relic.cost
+            canAfford: this.playerGold >= relic.cost,
+            owned: this.ownedRelicIds.has(relic.id)
         }));
     }
 
@@ -2648,33 +2645,8 @@ export class GameScene extends Phaser.Scene {
         return selections;
     }
 
-    ensureShopRelicsFilled() {
-        if (!Array.isArray(this.currentShopRelics)) {
-            this.currentShopRelics = [];
-        }
-
-        const existingIds = new Set(this.currentShopRelics.map(relic => relic && relic.id));
-        const available = this.getUnownedRelics().filter(relic => relic && !existingIds.has(relic.id));
-
-        while (this.currentShopRelics.length < SHOP_RELIC_COUNT && available.length > 0) {
-            const index = Phaser.Math.Between(0, available.length - 1);
-            const nextRelic = available.splice(index, 1)[0];
-            this.currentShopRelics.push(nextRelic);
-            existingIds.add(nextRelic.id);
-        }
-    }
-
     getUnownedRelics() {
         return this.relicCatalog.filter(relic => !this.ownedRelicIds.has(relic.id));
-    }
-
-    updateShopSelectionAfterPurchase(purchasedId) {
-        if (!Array.isArray(this.currentShopRelics)) {
-            return;
-        }
-
-        this.currentShopRelics = this.currentShopRelics.filter(relic => relic.id !== purchasedId);
-        this.ensureShopRelicsFilled();
     }
 
     closeShop() {
@@ -3115,11 +3087,7 @@ export class GameScene extends Phaser.Scene {
 
         this.enemyManager.clearCurrentEnemy();
         this.prepareNextEnemyMove();
-        if (this.customDiceLoadout && this.customDiceLoadout.length < MAX_CUSTOM_DICE) {
-            this.presentCustomDieReward();
-        } else {
-            this.requestEnterMapStateAfterCombat();
-        }
+        this.presentCustomDieReward();
     }
 
     handleAllEnemiesDefeated() {
