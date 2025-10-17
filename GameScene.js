@@ -2556,26 +2556,26 @@ export class GameScene extends Phaser.Scene {
         this.destroyFacilityUI();
 
         const options = this.getUpgradeableDiceOptions(3);
-        if (options.length < 2) {
-            const message = options.length === 0
-                ? 'No dice available to upgrade.'
-                : 'Not enough dice to upgrade.';
-            if (message) {
-                this.showNodeMessage(message, '#f9e79f');
-            }
+        if (options.length === 0) {
+            this.showNodeMessage('All dice are already upgraded.', '#f9e79f');
             this.completeFacilityNode();
             return;
         }
 
         this.activeFacilityUI = new DiceUpgradeUI(this, {
             dice: options,
-            onUpgrade: selections => this.handleDiceUpgradeSelection(selections),
+            onUpgrade: (selections, cost) => this.handleDiceUpgradeSelection(selections, cost),
             onClose: () => this.completeFacilityNode()
         });
     }
 
-    handleDiceUpgradeSelection(selections = []) {
-        if (!Array.isArray(selections) || selections.length !== 2) {
+    handleDiceUpgradeSelection(selections = [], cost = 0) {
+        if (!Array.isArray(selections) || selections.length === 0) {
+            return false;
+        }
+
+        const totalCost = Number(cost) || 0;
+        if (totalCost > 0 && !this.canAfford(totalCost)) {
             return false;
         }
 
@@ -2605,11 +2605,22 @@ export class GameScene extends Phaser.Scene {
             return false;
         }
 
+        if (totalCost > 0) {
+            const spent = this.spendGold(totalCost);
+            if (spent !== totalCost) {
+                return false;
+            }
+        }
+
         let message = '';
-        if (upgradedNames.length === 2) {
-            message = `Upgraded ${upgradedNames[0]} & ${upgradedNames[1]}`;
-        } else if (upgradedNames.length === 1) {
+        if (upgradedNames.length === 1) {
             message = `Upgraded ${upgradedNames[0]}`;
+        } else if (upgradedNames.length === 2) {
+            message = `Upgraded ${upgradedNames[0]} & ${upgradedNames[1]}`;
+        } else if (upgradedNames.length > 2) {
+            const last = upgradedNames[upgradedNames.length - 1];
+            const rest = upgradedNames.slice(0, -1).join(', ');
+            message = `Upgraded ${rest} & ${last}`;
         } else {
             message = `Upgraded ${upgradedCount} dice`;
         }

@@ -1,5 +1,5 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
-import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
+import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 500;
@@ -13,6 +13,10 @@ const CHECKBOX_HEIGHT = CHECKBOX_BOX_SIZE + 30;
 const BUTTON_WIDTH = 260;
 const BUTTON_HEIGHT = 58;
 const BUTTON_OFFSET_Y = PANEL_HEIGHT / 2 - 50;
+const SKIP_BUTTON_WIDTH = 160;
+const SKIP_BUTTON_HEIGHT = 54;
+const SKIP_BUTTON_MARGIN = 36;
+const UPGRADE_COST_SCHEDULE = [50, 150, 300];
 
 export class DiceUpgradeUI {
     constructor(scene, { dice = [], onUpgrade, onClose } = {}) {
@@ -27,6 +31,8 @@ export class DiceUpgradeUI {
         this.cardEntries = [];
         this.selectedEntries = new Map();
         this.upgradeButton = null;
+        this.skipButton = null;
+        this.currentUpgradeCost = 0;
         this.isDestroyed = false;
 
         this.create();
@@ -46,7 +52,7 @@ export class DiceUpgradeUI {
                 color: '#f1c40f',
                 fontStyle: 'bold'
             },
-            subtitle: 'Select two dice to upgrade.',
+            subtitle: 'Select dice to upgrade. Costs: 50g → 150g → 300g.',
             subtitleStyle: {
                 fontSize: '22px',
                 color: '#f9e79f'
@@ -59,6 +65,7 @@ export class DiceUpgradeUI {
 
         this.renderOptions();
         this.createUpgradeButton();
+        this.createSkipButton();
         this.updateUpgradeButtonState();
     }
 
@@ -150,6 +157,8 @@ export class DiceUpgradeUI {
             this.cardEntries.push(entry);
             this.updateCardEntry(entry);
         });
+
+        this.updateSkipButtonLayout();
     }
 
     createUpgradeButton() {
@@ -158,7 +167,7 @@ export class DiceUpgradeUI {
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonText = this.scene.add.text(0, 0, 'Upgrade', {
+        const buttonText = this.scene.add.text(0, 0, 'Select dice', {
             fontSize: '22px',
             color: '#f9e79f',
             fontStyle: 'bold'
@@ -175,16 +184,16 @@ export class DiceUpgradeUI {
         });
 
         buttonBg.on('pointerup', () => {
-            if (!buttonContainer.visible) {
+            if (!buttonContainer.visible || !buttonBg.input || !buttonBg.input.enabled) {
                 return;
             }
 
             const selections = Array.from(this.selectedEntries.values());
-            if (selections.length !== 2) {
+            if (selections.length === 0) {
                 return;
             }
 
-            const upgraded = this.onUpgrade(selections);
+            const upgraded = this.onUpgrade(selections, this.currentUpgradeCost || 0);
             if (upgraded) {
                 if (this.scene.sound && typeof this.scene.sound.play === 'function') {
                     this.scene.sound.play('chimeLong', {
@@ -203,6 +212,86 @@ export class DiceUpgradeUI {
         this.container.add(buttonContainer);
 
         this.upgradeButton = { container: buttonContainer, background: buttonBg, text: buttonText };
+        setRectangleButtonEnabled(buttonBg, false);
+    }
+
+    createSkipButton() {
+        const buttonContainer = this.scene.add.container(0, 0);
+        const buttonBg = this.scene.add.rectangle(0, 0, SKIP_BUTTON_WIDTH, SKIP_BUTTON_HEIGHT, 0x271438, 0.92)
+            .setStrokeStyle(2, 0xf1c40f, 0.85)
+            .setInteractive({ useHandCursor: true });
+
+        const buttonText = this.scene.add.text(0, 0, 'Skip', {
+            fontSize: '20px',
+            color: '#f9e79f',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        applyRectangleButtonStyle(buttonBg, {
+            baseColor: 0x271438,
+            baseAlpha: 0.92,
+            hoverBlend: 0.18,
+            pressBlend: 0.32,
+            disabledBlend: 0.5,
+            enabledAlpha: 1,
+            disabledAlpha: 0.45
+        });
+
+        buttonBg.on('pointerup', () => {
+            if (!buttonContainer.visible || !buttonBg.input || !buttonBg.input.enabled) {
+                return;
+            }
+
+            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
+                this.scene.sound.play('tock', { volume: 0.5 });
+            }
+
+            this.destroy();
+            this.onClose();
+        });
+
+        buttonContainer.add([buttonBg, buttonText]);
+        this.container.add(buttonContainer);
+
+        this.skipButton = { container: buttonContainer, background: buttonBg, text: buttonText };
+        setRectangleButtonEnabled(buttonBg, true);
+        this.updateSkipButtonLayout();
+    }
+
+    getRightmostOptionEdgeX() {
+        if (!Array.isArray(this.cardEntries) || this.cardEntries.length === 0) {
+            return null;
+        }
+
+        return this.cardEntries.reduce((max, entry) => {
+            const edgeX = entry && entry.container ? entry.container.x + CARD_WIDTH / 2 : -Infinity;
+            return Math.max(max, edgeX);
+        }, -Infinity);
+    }
+
+    updateSkipButtonLayout() {
+        if (!this.skipButton || !this.skipButton.container) {
+            return;
+        }
+
+        const rightEdge = this.getRightmostOptionEdgeX();
+        const fallbackX = PANEL_WIDTH / 2 - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
+        const targetX = Number.isFinite(rightEdge) ? rightEdge - SKIP_BUTTON_WIDTH / 2 : fallbackX;
+
+        const upgradeButtonY = this.upgradeButton && this.upgradeButton.container
+            ? this.upgradeButton.container.y
+            : PANEL_HEIGHT / 2 - SKIP_BUTTON_HEIGHT / 2 - SKIP_BUTTON_MARGIN;
+
+        this.skipButton.container.setPosition(targetX, upgradeButtonY);
+    }
+
+    getUpgradeCostForSelection(count) {
+        if (!Number.isFinite(count) || count <= 0) {
+            return 0;
+        }
+
+        const index = Math.min(count - 1, UPGRADE_COST_SCHEDULE.length - 1);
+        return UPGRADE_COST_SCHEDULE[index];
     }
 
     toggleSelection(uid) {
@@ -216,10 +305,6 @@ export class DiceUpgradeUI {
             }
             this.selectedEntries.delete(uid);
         } else {
-            if (this.selectedEntries.size >= 2) {
-                return;
-            }
-
             const option = this.options.find(opt => opt.uid === uid);
             if (option) {
                 this.selectedEntries.set(uid, option);
@@ -264,6 +349,9 @@ export class DiceUpgradeUI {
         if (checkbox && checkbox.checkmark) {
             checkbox.checkmark.setVisible(isSelected);
         }
+        if (checkbox && checkbox.label) {
+            checkbox.label.setText(isSelected ? 'Selected' : 'Select');
+        }
     }
 
     updateUpgradeButtonState() {
@@ -271,8 +359,35 @@ export class DiceUpgradeUI {
             return;
         }
 
-        const isReady = this.selectedEntries.size === 2;
-        this.upgradeButton.container.setVisible(isReady);
+        const selectionCount = this.selectedEntries.size;
+        const cost = this.getUpgradeCostForSelection(selectionCount);
+        const hasSelection = selectionCount > 0;
+
+        this.currentUpgradeCost = cost;
+
+        const { container, text, background } = this.upgradeButton;
+        container.setVisible(true);
+
+        if (!hasSelection) {
+            text.setText('Select dice');
+            setRectangleButtonEnabled(background, false);
+            return;
+        }
+
+        const sceneCanAfford = this.scene
+            && typeof this.scene.canAfford === 'function'
+            ? this.scene.canAfford(cost)
+            : typeof this.scene.playerGold === 'number'
+                ? this.scene.playerGold >= cost
+                : true;
+
+        if (cost <= 0 || sceneCanAfford) {
+            text.setText(`Upgrade (${cost}g)`);
+            setRectangleButtonEnabled(background, true);
+        } else {
+            text.setText('Not enough gold');
+            setRectangleButtonEnabled(background, false);
+        }
     }
 
     destroy() {
@@ -293,6 +408,11 @@ export class DiceUpgradeUI {
             this.upgradeButton.container.destroy(true);
         }
         this.upgradeButton = null;
+
+        if (this.skipButton && this.skipButton.container) {
+            this.skipButton.container.destroy(true);
+        }
+        this.skipButton = null;
 
         if (this.backdrop) {
             this.backdrop.destroy();
