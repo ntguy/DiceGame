@@ -138,6 +138,36 @@ export class GameScene extends Phaser.Scene {
 
         this.mapTitleText = null;
         this.isFirstCombatTurn = false;
+        this.modalInputLockCount = 0;
+    }
+
+    acquireModalInputLock() {
+        if (!this.input) {
+            return;
+        }
+
+        if (!Number.isFinite(this.modalInputLockCount)) {
+            this.modalInputLockCount = 0;
+        }
+
+        this.modalInputLockCount += 1;
+        this.input.setTopOnly(true);
+    }
+
+    releaseModalInputLock() {
+        if (!this.input) {
+            return;
+        }
+
+        if (!Number.isFinite(this.modalInputLockCount)) {
+            this.modalInputLockCount = 0;
+        }
+
+        this.modalInputLockCount = Math.max(0, this.modalInputLockCount - 1);
+
+        if (this.modalInputLockCount === 0) {
+            this.input.setTopOnly(false);
+        }
     }
 
     resetRelicState() {

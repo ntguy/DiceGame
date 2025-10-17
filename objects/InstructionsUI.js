@@ -294,7 +294,13 @@ export class InstructionsUI {
             return;
         }
         this.setVisible(true);
-        this.scene.input.setTopOnly(true);
+        if (this.scene) {
+            if (typeof this.scene.acquireModalInputLock === 'function') {
+                this.scene.acquireModalInputLock();
+            } else if (this.scene.input) {
+                this.scene.input.setTopOnly(true);
+            }
+        }
     }
 
     close() {
@@ -302,7 +308,13 @@ export class InstructionsUI {
             return;
         }
         this.setVisible(false);
-        this.scene.input.setTopOnly(false);
+        if (this.scene) {
+            if (typeof this.scene.releaseModalInputLock === 'function') {
+                this.scene.releaseModalInputLock();
+            } else if (this.scene.input) {
+                this.scene.input.setTopOnly(false);
+            }
+        }
     }
 
     setPage(index) {
@@ -338,6 +350,14 @@ export class InstructionsUI {
     }
 
     destroy() {
+        if (this.isVisible && this.scene) {
+            if (typeof this.scene.releaseModalInputLock === 'function') {
+                this.scene.releaseModalInputLock();
+            } else if (this.scene.input) {
+                this.scene.input.setTopOnly(false);
+            }
+        }
+
         if (this.closeButton) {
             if (this.closeButton.background) {
                 this.closeButton.background.destroy();
