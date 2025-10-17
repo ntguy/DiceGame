@@ -346,20 +346,54 @@ export class PathManager {
         };
 
         const pruneNodeConnections = () => {
+            const incomingCounts = new Map();
+            const registerIncoming = targetId => {
+                if (!targetId) {
+                    return;
+                }
+                const current = incomingCounts.get(targetId) || 0;
+                incomingCounts.set(targetId, current + 1);
+            };
+
             levels.forEach(level => {
                 level.nodes.forEach(node => {
                     if (!Array.isArray(node.connections)) {
                         return;
                     }
+                    node.connections.forEach(registerIncoming);
+                });
+            });
+
+            if (bossNode && Array.isArray(bossNode.connections)) {
+                bossNode.connections.forEach(registerIncoming);
+            }
+
+            levels.forEach(level => {
+                level.nodes.forEach(node => {
+                    if (!Array.isArray(node.connections)) {
+                        return;
+                    }
+
                     if (node.connections.length <= 1) {
                         return;
                     }
+
                     if (this.randomFn() >= 0.2) {
                         return;
                     }
 
-                    const removalIndex = Math.floor(this.randomFn() * node.connections.length);
-                    node.connections.splice(removalIndex, 1);
+                    const removable = node.connections
+                        .map((childId, index) => ({ childId, index }))
+                        .filter(({ childId }) => (incomingCounts.get(childId) || 0) > 1);
+
+                    if (removable.length === 0) {
+                        return;
+                    }
+
+                    const choice = removable[Math.floor(this.randomFn() * removable.length)];
+                    node.connections.splice(choice.index, 1);
+                    const remaining = Math.max((incomingCounts.get(choice.childId) || 1) - 1, 0);
+                    incomingCounts.set(choice.childId, remaining);
                 });
             });
         };
