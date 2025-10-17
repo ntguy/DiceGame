@@ -279,7 +279,7 @@ export class DiceRewardUI {
         const messageY = PANEL_HEIGHT / 2 - 60;
         const skipX = PANEL_WIDTH / 2 - 140;
 
-        const capacityText = this.scene.add.text(-PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack to make space.', {
+        const capacityText = this.scene.add.text(-PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack (🎒) to make space.', {
             fontSize: '18px',
             color: '#f9e79f'
         }).setOrigin(0, 0.5);

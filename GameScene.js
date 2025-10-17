@@ -3322,7 +3322,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        const statusText = this.testingModeEnabled ? 'Testing Mode: On 🧪' : 'Testing Mode: Off';
+        const statusText = this.testingModeEnabled ? 'Testing Mode: On' : 'Testing Mode: Off';
         this.testingModeButton.setText(statusText);
     }
 
