@@ -430,11 +430,28 @@ export class BackpackUI {
 
     open() {
         this.refreshContent();
+
+        if (!this.isVisible && this.scene) {
+            if (typeof this.scene.acquireModalInputLock === 'function') {
+                this.scene.acquireModalInputLock();
+            } else if (this.scene.input) {
+                this.scene.input.setTopOnly(true);
+            }
+        }
+
         this.setVisible(true);
         this.isVisible = true;
     }
 
     close() {
+        if (this.isVisible && this.scene) {
+            if (typeof this.scene.releaseModalInputLock === 'function') {
+                this.scene.releaseModalInputLock();
+            } else if (this.scene.input) {
+                this.scene.input.setTopOnly(false);
+            }
+        }
+
         this.setVisible(false);
         this.isVisible = false;
         this.clearSelection();
@@ -794,6 +811,14 @@ export class BackpackUI {
     }
 
     destroy() {
+        if (this.isVisible && this.scene) {
+            if (typeof this.scene.releaseModalInputLock === 'function') {
+                this.scene.releaseModalInputLock();
+            } else if (this.scene.input) {
+                this.scene.input.setTopOnly(false);
+            }
+        }
+
         destroyModal(this.modal);
         this.modal = null;
         this.backdrop = null;
