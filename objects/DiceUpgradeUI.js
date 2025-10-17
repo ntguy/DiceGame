@@ -13,7 +13,10 @@ const CHECKBOX_HEIGHT = CHECKBOX_BOX_SIZE + 30;
 const BUTTON_WIDTH = 260;
 const BUTTON_HEIGHT = 58;
 const BUTTON_OFFSET_Y = PANEL_HEIGHT / 2 - 50;
-const UPGRADE_COST_SCHEDULE = [0, 100, 200];
+const SKIP_BUTTON_WIDTH = 160;
+const SKIP_BUTTON_HEIGHT = 54;
+const SKIP_BUTTON_MARGIN = 36;
+const UPGRADE_COST_SCHEDULE = [50, 150, 300];
 
 export class DiceUpgradeUI {
     constructor(scene, { dice = [], onUpgrade, onClose } = {}) {
@@ -28,6 +31,7 @@ export class DiceUpgradeUI {
         this.cardEntries = [];
         this.selectedEntries = new Map();
         this.upgradeButton = null;
+        this.skipButton = null;
         this.currentUpgradeCost = 0;
         this.isDestroyed = false;
 
@@ -48,7 +52,7 @@ export class DiceUpgradeUI {
                 color: '#f1c40f',
                 fontStyle: 'bold'
             },
-            subtitle: 'Select dice to upgrade. Costs increase with each pick.',
+            subtitle: 'Select dice to upgrade. Costs: 50 → 150 → 300.',
             subtitleStyle: {
                 fontSize: '22px',
                 color: '#f9e79f'
@@ -61,6 +65,7 @@ export class DiceUpgradeUI {
 
         this.renderOptions();
         this.createUpgradeButton();
+        this.createSkipButton();
         this.updateUpgradeButtonState();
     }
 
@@ -208,6 +213,51 @@ export class DiceUpgradeUI {
         setRectangleButtonEnabled(buttonBg, false);
     }
 
+    createSkipButton() {
+        const offsetX = PANEL_WIDTH / 2 - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
+        const offsetY = PANEL_HEIGHT / 2 - SKIP_BUTTON_HEIGHT / 2 - SKIP_BUTTON_MARGIN;
+
+        const buttonContainer = this.scene.add.container(offsetX, offsetY);
+        const buttonBg = this.scene.add.rectangle(0, 0, SKIP_BUTTON_WIDTH, SKIP_BUTTON_HEIGHT, 0x271438, 0.92)
+            .setStrokeStyle(2, 0xf1c40f, 0.85)
+            .setInteractive({ useHandCursor: true });
+
+        const buttonText = this.scene.add.text(0, 0, 'Skip', {
+            fontSize: '20px',
+            color: '#f9e79f',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        applyRectangleButtonStyle(buttonBg, {
+            baseColor: 0x271438,
+            baseAlpha: 0.92,
+            hoverBlend: 0.18,
+            pressBlend: 0.32,
+            disabledBlend: 0.5,
+            enabledAlpha: 1,
+            disabledAlpha: 0.45
+        });
+
+        buttonBg.on('pointerup', () => {
+            if (!buttonContainer.visible || !buttonBg.input || !buttonBg.input.enabled) {
+                return;
+            }
+
+            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
+                this.scene.sound.play('tock', { volume: 0.5 });
+            }
+
+            this.destroy();
+            this.onClose();
+        });
+
+        buttonContainer.add([buttonBg, buttonText]);
+        this.container.add(buttonContainer);
+
+        this.skipButton = { container: buttonContainer, background: buttonBg, text: buttonText };
+        setRectangleButtonEnabled(buttonBg, true);
+    }
+
     getUpgradeCostForSelection(count) {
         if (!Number.isFinite(count) || count <= 0) {
             return 0;
@@ -331,6 +381,11 @@ export class DiceUpgradeUI {
             this.upgradeButton.container.destroy(true);
         }
         this.upgradeButton = null;
+
+        if (this.skipButton && this.skipButton.container) {
+            this.skipButton.container.destroy(true);
+        }
+        this.skipButton = null;
 
         if (this.backdrop) {
             this.backdrop.destroy();
