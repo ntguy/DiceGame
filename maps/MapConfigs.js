@@ -59,6 +59,6 @@ export const MAP_CONFIGS = [
         displayName: 'Map 2: Iron Bastion',
         createEnemies: mapTwoEnemyFactories,
         enemySequence: mapTwoEnemySequence,
-        pathTextureKey: 'path_ladder_clean'
+        pathTextureKey: 'path_ladder_metal'
     }
 ];
