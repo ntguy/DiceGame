@@ -96,13 +96,15 @@ export const MAP_CONFIGS = [
         id: 'map-1',
         displayName: 'Map 1: Molten Forge',
         createEnemies: mapOneEnemyFactories,
-        createEnemySequence: () => createMapOneEnemySequence()
+        createEnemySequence: () => createMapOneEnemySequence(),
+        wallTextureKey: 'wall'
     },
     {
         id: 'map-2',
         displayName: 'Map 2: Iron Bastion',
         createEnemies: mapTwoEnemyFactories,
         enemySequence: mapTwoEnemySequence,
-        pathTextureKey: 'path_ladder_metal'
+        pathTextureKey: 'path_ladder_metal',
+        wallTextureKey: 'wall2'
     }
 ];
