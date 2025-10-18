@@ -1945,9 +1945,17 @@ export class GameScene extends Phaser.Scene {
             this.pathUI = null;
         }
 
-        const enemySequence = config && Array.isArray(config.enemySequence)
-            ? config.enemySequence.map(entry => ({ ...entry }))
-            : undefined;
+        let enemySequence;
+        if (config) {
+            if (Array.isArray(config.enemySequence)) {
+                enemySequence = config.enemySequence.map(entry => ({ ...entry }));
+            } else if (typeof config.createEnemySequence === 'function') {
+                const generatedSequence = config.createEnemySequence();
+                if (Array.isArray(generatedSequence)) {
+                    enemySequence = generatedSequence.map(entry => ({ ...entry }));
+                }
+            }
+        }
 
         const connectionTextureKey = this.getPathTextureKeyForConfig(config);
 
@@ -2048,6 +2056,27 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
+        let totalDamageThisTurn = 0;
+        const notifyEnemyDamageTaken = (amount, { source } = {}) => {
+            if (!enemy || amount <= 0) {
+                return;
+            }
+
+            const previousTotal = totalDamageThisTurn;
+            totalDamageThisTurn += amount;
+
+            if (typeof enemy.onPlayerDamageDealt === 'function') {
+                enemy.onPlayerDamageDealt({
+                    amount,
+                    source: source || 'attack',
+                    totalDamage: totalDamageThisTurn,
+                    previousTotal,
+                    scene: this,
+                    enemyManager: this.enemyManager
+                });
+            }
+        };
+
         this.enemyManager.primeUpcomingDefenses();
         this.executeZoneEffects(attackResult ? attackResult.preResolutionEffects : null, 'attack', { attackResult, defendResult });
 
@@ -2058,11 +2087,18 @@ export class GameScene extends Phaser.Scene {
                 this.handleEnemyDefeat();
                 return;
             }
+            if (burnResolution.damageDealt > 0) {
+                notifyEnemyDamageTaken(burnResolution.damageDealt, { source: 'burn' });
+            }
         }
 
         const attackResolution = this.enemyManager.applyPlayerAttack(effectiveAttackScore, {
             applyBlockbuster: this.hasBlockbusterRelic
         });
+
+        if (attackResolution && attackResolution.damageDealt > 0) {
+            notifyEnemyDamageTaken(attackResolution.damageDealt, { source: 'attack' });
+        }
 
         if (attackResolution && attackResolution.halvedBlock > 0) {
             this.refreshEnemyIntentText();
@@ -2502,7 +2538,12 @@ export class GameScene extends Phaser.Scene {
         this.resetGameState({ destroyDice: true });
         this.resetEnemyBurn();
         this.setMapMode(false);
-        const enemy = this.enemyManager.startEnemyEncounter(node.enemyIndex);
+        let enemyIndex = node ? node.enemyIndex : -1;
+        if (!Number.isFinite(enemyIndex) || enemyIndex < 0) {
+            enemyIndex = 0;
+        }
+
+        const enemy = this.enemyManager.startEnemyEncounter(enemyIndex);
         if (enemy) {
             if (typeof enemy.onEncounterStart === 'function') {
                 enemy.onEncounterStart();
