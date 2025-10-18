@@ -97,6 +97,8 @@ export class GameScene extends Phaser.Scene {
         this.pendingLockCount = 0;
         this.weakenedDice = new Set();
         this.pendingWeakenCount = 0;
+        this.nullifiedDice = new Set();
+        this.pendingNullifyCount = 0;
         this.gameOverManager = null;
         this.muteButton = null;
         this.isMuted = false;
@@ -135,6 +137,8 @@ export class GameScene extends Phaser.Scene {
         this.pendingLockCount = 0;
         this.weakenedDice = new Set();
         this.pendingWeakenCount = 0;
+        this.nullifiedDice = new Set();
+        this.pendingNullifyCount = 0;
 
         this.mapTitleText = null;
         this.isFirstCombatTurn = false;
@@ -277,6 +281,8 @@ export class GameScene extends Phaser.Scene {
         this.pendingLockCount = 0;
         this.weakenedDice = new Set();
         this.pendingWeakenCount = 0;
+        this.nullifiedDice = new Set();
+        this.pendingNullifyCount = 0;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerBlockValue = 0;
@@ -933,6 +939,7 @@ export class GameScene extends Phaser.Scene {
         if (isFirstRoll) {
             this.applyPendingLocks();
             this.applyPendingWeaken();
+            this.applyPendingNullify();
         }
 
 
@@ -1255,6 +1262,32 @@ export class GameScene extends Phaser.Scene {
         this.updateZonePreviewText();
     }
 
+    applyPendingNullify() {
+        if (this.pendingNullifyCount <= 0 || this.dice.length === 0) {
+            return;
+        }
+
+        const availableDice = this.dice.filter(die => die && !this.nullifiedDice.has(die));
+        if (availableDice.length === 0) {
+            return;
+        }
+
+        const nullifyToApply = Math.min(this.pendingNullifyCount, availableDice.length);
+        let remaining = nullifyToApply;
+        const candidates = [...availableDice];
+
+        while (remaining > 0 && candidates.length > 0) {
+            const index = Phaser.Math.Between(0, candidates.length - 1);
+            const die = candidates.splice(index, 1)[0];
+            if (this.nullifyDie(die)) {
+                remaining--;
+            }
+        }
+
+        this.pendingNullifyCount = Math.max(0, this.pendingNullifyCount - nullifyToApply);
+        this.updateZonePreviewText();
+    }
+
     lockDie(die) {
         if (!die || die.isLocked) {
             return false;
@@ -1280,6 +1313,27 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.weakenedDice.add(die);
+        return true;
+    }
+
+    nullifyDie(die) {
+        if (!die || this.nullifiedDice.has(die)) {
+            return false;
+        }
+
+        if (typeof die.setNullified === 'function') {
+            die.setNullified(true);
+        } else {
+            die.isNullified = true;
+            if (typeof die.updateVisualState === 'function') {
+                die.updateVisualState();
+            }
+            if (typeof die.updateFaceValueHighlight === 'function') {
+                die.updateFaceValueHighlight();
+            }
+        }
+
+        this.nullifiedDice.add(die);
         return true;
     }
 
@@ -1333,6 +1387,43 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + count);
+    }
+
+    clearDieNullify(die) {
+        if (!die || !this.nullifiedDice.has(die)) {
+            return;
+        }
+
+        const canUpdateVisuals = die && die.active && die.scene && die.scene.sys && die.scene.sys.isActive();
+
+        if (typeof die.setNullified === 'function' && canUpdateVisuals) {
+            die.setNullified(false);
+        } else {
+            die.isNullified = false;
+            if (typeof die.updateVisualState === 'function' && canUpdateVisuals) {
+                die.updateVisualState();
+            }
+            if (typeof die.updateFaceValueHighlight === 'function' && canUpdateVisuals) {
+                die.updateFaceValueHighlight();
+            }
+        }
+
+        this.nullifiedDice.delete(die);
+    }
+
+    clearAllNullifiedDice() {
+        const dice = Array.from(this.nullifiedDice);
+        dice.forEach(die => this.clearDieNullify(die));
+        this.nullifiedDice.clear();
+        this.updateZonePreviewText();
+    }
+
+    queueEnemyNullify(count) {
+        if (!count || count <= 0) {
+            return;
+        }
+
+        this.pendingNullifyCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingNullifyCount + count);
     }
 
     sortDice() {
@@ -1413,6 +1504,9 @@ export class GameScene extends Phaser.Scene {
         const weakenedToCarryOver = Array.from(this.weakenedDice).filter(die =>
             this.defendDice.includes(die) || this.attackDice.includes(die)
         ).length;
+        const nullifiedToCarryOver = Array.from(this.nullifiedDice).filter(die =>
+            this.defendDice.includes(die) || this.attackDice.includes(die)
+        ).length;
 
         const diceToResolve = this.getDiceInPlay();
         const finishResolution = () => {
@@ -1422,8 +1516,12 @@ export class GameScene extends Phaser.Scene {
             if (weakenedToCarryOver > 0) {
                 this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + weakenedToCarryOver);
             }
+            if (nullifiedToCarryOver > 0) {
+                this.pendingNullifyCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingNullifyCount + nullifiedToCarryOver);
+            }
             this.lockedDice.clear();
             this.clearAllWeakenedDice();
+            this.clearAllNullifiedDice();
             if (this.rollCarryoverEnabled) {
                 this.prepperCarryoverRolls = Math.max(0, Math.floor(this.rollsRemaining));
             } else {
@@ -2273,6 +2371,8 @@ export class GameScene extends Phaser.Scene {
                 this.queueEnemyLocks(action.count || 1);
             } else if (action.type === 'weaken') {
                 this.queueEnemyWeaken(action.count || 1);
+            } else if (action.type === 'nullify') {
+                this.queueEnemyNullify(action.count || 1);
             } else if (action.type === 'burn') {
                 this.applyPlayerBurn(action.value);
             }
@@ -2533,6 +2633,8 @@ export class GameScene extends Phaser.Scene {
         this.lockedDice.clear();
         this.pendingWeakenCount = 0;
         this.weakenedDice.clear();
+        this.pendingNullifyCount = 0;
+        this.nullifiedDice.clear();
         this.isFirstCombatTurn = true;
         this.prepperCarryoverRolls = 0;
         this.resetGameState({ destroyDice: true });
@@ -3234,6 +3336,7 @@ export class GameScene extends Phaser.Scene {
 
     resetGameState({ destroyDice = true } = {}) {
         this.clearAllWeakenedDice();
+        this.clearAllNullifiedDice();
         if (destroyDice) {
             this.getDiceInPlay().forEach(d => d.destroy());
         }

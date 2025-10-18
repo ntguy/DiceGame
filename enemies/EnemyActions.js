@@ -4,3 +4,4 @@ export const healAction = (value) => ({ type: 'heal', value });
 export const burnAction = (value) => ({ type: 'burn', value });
 export const lockAction = (count = 1) => ({ type: 'lock', count });
 export const weakenAction = (count = 1) => ({ type: 'weaken', count });
+export const nullifyAction = (count = 1) => ({ type: 'nullify', count });

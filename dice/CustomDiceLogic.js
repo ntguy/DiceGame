@@ -1,7 +1,16 @@
 import { createDieBlueprint, getCustomDieDefinitionById } from './CustomDiceDefinitions.js';
 import { callSceneMethod, callSceneManagerMethod } from '../utils/SceneHelpers.js';
 
+const STANDARD_BLUEPRINT = (() => {
+    const blueprint = createDieBlueprint('standard');
+    return { ...blueprint, uid: `${blueprint.uid}-nullify` };
+})();
+
 export function doesDieActAsWildcardForCombo(die) {
+    if (die && die.isNullified) {
+        return false;
+    }
+
     const blueprint = getBlueprint(die);
     const definition = getCustomDieDefinitionById(blueprint.id);
     const isUpgraded = !!blueprint.isUpgraded;
@@ -20,10 +29,13 @@ export function doesDieActAsWildcardForCombo(die) {
 }
 
 function getBlueprint(die) {
+    if (die && die.isNullified) {
+        return STANDARD_BLUEPRINT;
+    }
     if (die && die.dieBlueprint) {
         return die.dieBlueprint;
     }
-    return createDieBlueprint('standard');
+    return STANDARD_BLUEPRINT;
 }
 
 export function getDieEmoji(dieOrId) {
@@ -40,6 +52,10 @@ export function getDieEmoji(dieOrId) {
 
 export function doesDieFaceValueTriggerRule(die, { zone } = {}) {
     if (!die) {
+        return false;
+    }
+
+    if (die.isNullified) {
         return false;
     }
 
@@ -67,6 +83,9 @@ export function doesDieFaceValueTriggerRule(die, { zone } = {}) {
 }
 
 export function getDieAllowedZones(dieOrBlueprint) {
+    if (dieOrBlueprint && dieOrBlueprint.isNullified) {
+        return ['attack', 'defend'];
+    }
     const id = typeof dieOrBlueprint === 'string'
         ? dieOrBlueprint
         : (dieOrBlueprint && dieOrBlueprint.id);
@@ -78,12 +97,18 @@ export function isZoneAllowedForDie(die, zone) {
     if (!zone) {
         return true;
     }
+    if (die && die.isNullified) {
+        return true;
+    }
     const blueprint = getBlueprint(die);
     const allowedZones = getDieAllowedZones(blueprint);
     return allowedZones.includes(zone);
 }
 
 export function rollCustomDieValue(scene, die) {
+    if (die && die.isNullified) {
+        return Phaser.Math.Between(1, 6);
+    }
     const blueprint = getBlueprint(die);
     const definition = getCustomDieDefinitionById(blueprint.id);
     const isUpgraded = !!blueprint.isUpgraded;
@@ -117,6 +142,10 @@ export function rollCustomDieValue(scene, die) {
 }
 
 function getBaseFaceContribution({ die, zone, comboType }) {
+    if (die && die.isNullified) {
+        const baseFace = typeof die.value === 'number' ? die.value : 0;
+        return baseFace;
+    }
     const blueprint = getBlueprint(die);
     const definition = getCustomDieDefinitionById(blueprint.id);
     const isUpgraded = !!blueprint.isUpgraded;
@@ -141,6 +170,9 @@ function getBaseFaceContribution({ die, zone, comboType }) {
 }
 
 function getComboBonusModifier({ die, zone, comboType }) {
+    if (die && die.isNullified) {
+        return 0;
+    }
     const blueprint = getBlueprint(die);
     const definition = getCustomDieDefinitionById(blueprint.id);
     const isUpgraded = !!blueprint.isUpgraded;
@@ -162,6 +194,9 @@ function getComboBonusModifier({ die, zone, comboType }) {
 }
 
 function getPreResolutionEffects({ die, zone }) {
+    if (die && die.isNullified) {
+        return [];
+    }
     const blueprint = getBlueprint(die);
     const definition = getCustomDieDefinitionById(blueprint.id);
     const isUpgraded = !!blueprint.isUpgraded;
@@ -199,6 +234,9 @@ function getPreResolutionEffects({ die, zone }) {
 }
 
 function getPostResolutionEffects({ die, zone }) {
+    if (die && die.isNullified) {
+        return [];
+    }
     const blueprint = getBlueprint(die);
     const definition = getCustomDieDefinitionById(blueprint.id);
     const isUpgraded = !!blueprint.isUpgraded;

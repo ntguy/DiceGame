@@ -7,6 +7,7 @@ import { WallopEnemy } from '../enemies/Wallop.js';
 import { WeakenerEnemy } from '../enemies/Weakener.js';
 import { StraightArrowEnemy } from '../enemies/StraightArrow.js';
 import { LockdownEnemy } from '../enemies/Lockdown.js';
+import { LeechEnemy } from '../enemies/Leech.js';
 
 const mapOneEnemyFactories = () => [
     new SlapperEnemy(),
@@ -91,6 +92,50 @@ const mapTwoEnemySequence = [
     }
 ];
 
+const mapThreeEnemyFactories = () => [
+    new LeechEnemy(),
+    new WallopEnemy(),
+    new WeakenerEnemy(),
+    new StraightArrowEnemy(),
+    new InfernoEnemy(),
+    new LockdownEnemy()
+];
+
+const mapThreeEnemySequence = [
+    {
+        enemyIndex: 0,
+        rewardGold: 90,
+        label: 'Battle',
+        start: true
+    },
+    {
+        enemyIndex: 1,
+        rewardGold: 130,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 2,
+        rewardGold: 170,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 3,
+        rewardGold: 210,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 4,
+        rewardGold: 260,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 5,
+        rewardGold: 320,
+        label: 'Boss',
+        isBoss: true
+    }
+];
+
 export const MAP_CONFIGS = [
     {
         id: 'map-1',
@@ -104,5 +149,12 @@ export const MAP_CONFIGS = [
         createEnemies: mapTwoEnemyFactories,
         enemySequence: mapTwoEnemySequence,
         pathTextureKey: 'path_ladder_metal'
+    },
+    {
+        id: 'map-3',
+        displayName: 'Map 3: Sanguine Depths',
+        createEnemies: mapThreeEnemyFactories,
+        enemySequence: mapThreeEnemySequence,
+        pathTextureKey: 'path_ladder_clean'
     }
 ];

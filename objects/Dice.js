@@ -44,6 +44,7 @@ export function createDie(scene, slotIndex, blueprint) {
     container.pips = [];
     container.isLocked = false;
     container.isWeakened = false;
+    container.isNullified = false;
     container.displayValue = container.value;
     container.displayPipColor = 0xffffff;
     container.isFaceValueHighlighted = false;
@@ -119,6 +120,17 @@ export function createDie(scene, slotIndex, blueprint) {
         this.updateVisualState();
     };
 
+    container.setNullified = function(isNullified) {
+        this.isNullified = !!isNullified;
+        if (typeof this.hideWildBaseValueOverlay === 'function' && this.isNullified) {
+            this.hideWildBaseValueOverlay();
+        }
+        this.updateVisualState();
+        if (typeof this.updateFaceValueHighlight === 'function') {
+            this.updateFaceValueHighlight();
+        }
+    };
+
     container.updateVisualState = function() {
         if (this.isLocked) {
             this.bg.fillColor = 0x5b2c6f;
@@ -128,6 +140,9 @@ export function createDie(scene, slotIndex, blueprint) {
             this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
         }
         this.setAlpha(this.isWeakened ? 0.5 : 1);
+        if (this.emojiText) {
+            this.emojiText.setAlpha(this.isNullified ? 0.35 : 1);
+        }
     };
 
     const initialValue = rollCustomDieValue(scene, container);
