@@ -267,6 +267,8 @@ export class GameScene extends Phaser.Scene {
         this.load.audio('towerOfTenWin', './audio/ToT-win.mp3');
         this.load.audio('towerOfTenBust', './audio/ToT-lose.mp3');
         this.load.image('path_ladder', './sprites/Ladder-rotting.png');
+        this.load.image('path_ladder_clean', './sprites/Ladder-clean.png');
+        this.load.image('path_ladder_metal', './sprites/Ladder-metal.png');
     }
     
     create() {
@@ -371,7 +373,12 @@ export class GameScene extends Phaser.Scene {
                 allowUpgradeNodes: true,
                 upgradeNodeMinEnemyIndex: 1
             });
-            this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
+            this.pathUI = new PathUI(
+                this,
+                this.pathManager,
+                node => this.handlePathNodeSelection(node),
+                { connectionTextureKey: this.getPathTextureKeyForConfig(null) }
+            );
             this.updateEnemyHealthUI();
             this.prepareNextEnemyMove();
         }
@@ -1898,6 +1905,23 @@ export class GameScene extends Phaser.Scene {
         this.enterMapState();
     }
 
+    getPathTextureKeyForConfig(config) {
+        const defaultKey = 'path_ladder';
+
+        if (!config || !config.pathTextureKey) {
+            return defaultKey;
+        }
+
+        const textureKey = config.pathTextureKey;
+        const textures = this.textures;
+
+        if (textures && typeof textures.exists === 'function' && textures.exists(textureKey)) {
+            return textureKey;
+        }
+
+        return defaultKey;
+    }
+
     loadMap(mapIndex = 0) {
         if (!Array.isArray(this.maps) || mapIndex < 0 || mapIndex >= this.maps.length) {
             return false;
@@ -1925,12 +1949,19 @@ export class GameScene extends Phaser.Scene {
             ? config.enemySequence.map(entry => ({ ...entry }))
             : undefined;
 
+        const connectionTextureKey = this.getPathTextureKeyForConfig(config);
+
         this.pathManager = new PathManager({
             enemySequence,
             allowUpgradeNodes: true,
             upgradeNodeMinEnemyIndex: 1
         });
-        this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
+        this.pathUI = new PathUI(
+            this,
+            this.pathManager,
+            node => this.handlePathNodeSelection(node),
+            { connectionTextureKey }
+        );
         this.currentPathNodeId = null;
 
         if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
