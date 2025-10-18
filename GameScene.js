@@ -269,6 +269,7 @@ export class GameScene extends Phaser.Scene {
         this.load.image('path_ladder', './sprites/Ladder-rotting.png');
         this.load.image('path_ladder_clean', './sprites/Ladder-clean.png');
         this.load.image('path_ladder_metal', './sprites/Ladder-metal.png');
+        this.load.image('path_background', './sprites/Background.png');
         this.load.image('wall', './sprites/Wall.png');
         this.load.image('wall2', './sprites/Wall2.png');
     }
@@ -381,7 +382,8 @@ export class GameScene extends Phaser.Scene {
                 node => this.handlePathNodeSelection(node),
                 {
                     connectionTextureKey: this.getPathTextureKeyForConfig(null),
-                    wallTextureKey: this.getWallTextureKeyForConfig(null)
+                    wallTextureKey: this.getWallTextureKeyForConfig(null),
+                    backgroundTextureKey: this.getBackgroundTextureKeyForConfig(null)
                 }
             );
             this.updateEnemyHealthUI();
@@ -1951,6 +1953,30 @@ export class GameScene extends Phaser.Scene {
         return null;
     }
 
+    getBackgroundTextureKeyForConfig(config) {
+        const textures = this.textures;
+        const defaultKey = 'path_background';
+        const candidates = [];
+
+        if (config && config.backgroundTextureKey) {
+            candidates.push(config.backgroundTextureKey);
+        }
+
+        candidates.push(defaultKey);
+
+        for (const key of candidates) {
+            if (!key) {
+                continue;
+            }
+
+            if (textures && typeof textures.exists === 'function' && textures.exists(key)) {
+                return key;
+            }
+        }
+
+        return null;
+    }
+
     loadMap(mapIndex = 0) {
         if (!Array.isArray(this.maps) || mapIndex < 0 || mapIndex >= this.maps.length) {
             return false;
@@ -1988,6 +2014,7 @@ export class GameScene extends Phaser.Scene {
 
         const connectionTextureKey = this.getPathTextureKeyForConfig(config);
         const wallTextureKey = this.getWallTextureKeyForConfig(config);
+        const backgroundTextureKey = this.getBackgroundTextureKeyForConfig(config);
 
         this.pathManager = new PathManager({
             enemySequence,
@@ -2000,7 +2027,8 @@ export class GameScene extends Phaser.Scene {
             node => this.handlePathNodeSelection(node),
             {
                 connectionTextureKey,
-                wallTextureKey
+                wallTextureKey,
+                backgroundTextureKey
             }
         );
         this.currentPathNodeId = null;
