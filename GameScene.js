@@ -139,6 +139,7 @@ export class GameScene extends Phaser.Scene {
         this.mapTitleText = null;
         this.isFirstCombatTurn = false;
         this.modalInputLockCount = 0;
+        this.completedMapBattles = 0;
     }
 
     acquireModalInputLock() {
@@ -1929,6 +1930,7 @@ export class GameScene extends Phaser.Scene {
             allowUpgradeNodes: true,
             upgradeNodeMinEnemyIndex: 1
         });
+        this.completedMapBattles = 0;
         this.pathUI = new PathUI(this, this.pathManager, node => this.handlePathNodeSelection(node));
         this.currentPathNodeId = null;
 
@@ -2498,7 +2500,36 @@ export class GameScene extends Phaser.Scene {
         this.resetGameState({ destroyDice: true });
         this.resetEnemyBurn();
         this.setMapMode(false);
-        const enemy = this.enemyManager.startEnemyEncounter(node.enemyIndex);
+        let enemyIndex = node ? node.enemyIndex : -1;
+        if (
+            node
+            && this.currentMapConfig
+            && this.currentMapConfig.id === 'map-1'
+            && enemyIndex === 3
+            && this.completedMapBattles < 3
+        ) {
+            enemyIndex = Math.min(this.completedMapBattles, 2);
+            node.enemyIndex = enemyIndex;
+
+            const sequence = Array.isArray(this.currentMapConfig.enemySequence)
+                ? this.currentMapConfig.enemySequence
+                : null;
+            const fallbackEntry = sequence && sequence[enemyIndex] ? sequence[enemyIndex] : null;
+            if (fallbackEntry) {
+                if (typeof fallbackEntry.rewardGold === 'number') {
+                    node.rewardGold = fallbackEntry.rewardGold;
+                }
+                if (fallbackEntry.label) {
+                    node.label = fallbackEntry.label;
+                }
+            }
+        }
+
+        if (!Number.isFinite(enemyIndex) || enemyIndex < 0) {
+            enemyIndex = 0;
+        }
+
+        const enemy = this.enemyManager.startEnemyEncounter(enemyIndex);
         if (enemy) {
             if (typeof enemy.onEncounterStart === 'function') {
                 enemy.onEncounterStart();
@@ -3149,6 +3180,14 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.currentPathNodeId = null;
+
+        if (
+            defeatedNode
+            && defeatedNode.type === PATH_NODE_TYPES.ENEMY
+            && !defeatedNode.isBoss
+        ) {
+            this.completedMapBattles = Math.max(0, (this.completedMapBattles || 0) + 1);
+        }
 
         if (this.pathUI) {
             this.pathUI.updateState();
