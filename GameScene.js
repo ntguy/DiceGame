@@ -2016,6 +2016,27 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
+        let totalDamageThisTurn = 0;
+        const notifyEnemyDamageTaken = (amount, { source } = {}) => {
+            if (!enemy || amount <= 0) {
+                return;
+            }
+
+            const previousTotal = totalDamageThisTurn;
+            totalDamageThisTurn += amount;
+
+            if (typeof enemy.onPlayerDamageDealt === 'function') {
+                enemy.onPlayerDamageDealt({
+                    amount,
+                    source: source || 'attack',
+                    totalDamage: totalDamageThisTurn,
+                    previousTotal,
+                    scene: this,
+                    enemyManager: this.enemyManager
+                });
+            }
+        };
+
         this.enemyManager.primeUpcomingDefenses();
         this.executeZoneEffects(attackResult ? attackResult.preResolutionEffects : null, 'attack', { attackResult, defendResult });
 
@@ -2026,11 +2047,18 @@ export class GameScene extends Phaser.Scene {
                 this.handleEnemyDefeat();
                 return;
             }
+            if (burnResolution.damageDealt > 0) {
+                notifyEnemyDamageTaken(burnResolution.damageDealt, { source: 'burn' });
+            }
         }
 
         const attackResolution = this.enemyManager.applyPlayerAttack(effectiveAttackScore, {
             applyBlockbuster: this.hasBlockbusterRelic
         });
+
+        if (attackResolution && attackResolution.damageDealt > 0) {
+            notifyEnemyDamageTaken(attackResolution.damageDealt, { source: 'attack' });
+        }
 
         if (attackResolution && attackResolution.halvedBlock > 0) {
             this.refreshEnemyIntentText();

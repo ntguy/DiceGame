@@ -1,9 +1,9 @@
 import { SlapperEnemy } from '../enemies/Slapper.js';
 import { HotfixEnemy } from '../enemies/Hotfix.js';
 import { LockjawEnemy } from '../enemies/Lockjaw.js';
+import { CounterlockEnemy } from '../enemies/Counterlock.js';
 import { InfernoEnemy } from '../enemies/Inferno.js';
 import { WallopEnemy } from '../enemies/Wallop.js';
-import { DEFAULT_PATH_ENEMY_SEQUENCE } from '../systems/PathManager.js';
 import { WeakenerEnemy } from '../enemies/Weakener.js';
 import { StraightArrowEnemy } from '../enemies/StraightArrow.js';
 import { LockdownEnemy } from '../enemies/Lockdown.js';
@@ -12,7 +12,38 @@ const mapOneEnemyFactories = () => [
     new SlapperEnemy(),
     new HotfixEnemy(),
     new LockjawEnemy(),
+    new CounterlockEnemy(),
     new InfernoEnemy()
+];
+
+const mapOneEnemySequence = [
+    {
+        enemyIndex: 0,
+        rewardGold: 50,
+        label: 'Battle',
+        start: true
+    },
+    {
+        enemyIndex: 1,
+        rewardGold: 70,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 2,
+        rewardGold: 100,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 3,
+        rewardGold: 120,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 4,
+        rewardGold: 150,
+        label: 'Boss',
+        isBoss: true
+    }
 ];
 
 const mapTwoEnemyFactories = () => [
@@ -52,7 +83,7 @@ export const MAP_CONFIGS = [
         id: 'map-1',
         displayName: 'Map 1: Molten Forge',
         createEnemies: mapOneEnemyFactories,
-        enemySequence: DEFAULT_PATH_ENEMY_SEQUENCE
+        enemySequence: mapOneEnemySequence
     },
     {
         id: 'map-2',
