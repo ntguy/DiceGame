@@ -266,6 +266,7 @@ export class GameScene extends Phaser.Scene {
         this.load.audio('towerOfTenEnter', './audio/ToT-enter.mp3');
         this.load.audio('towerOfTenWin', './audio/ToT-win.mp3');
         this.load.audio('towerOfTenBust', './audio/ToT-lose.mp3');
+        this.load.image('path_ladder', './sprites/Ladder-rotting.png');
     }
     
     create() {

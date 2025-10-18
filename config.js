@@ -37,5 +37,9 @@ export const config = {
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     backgroundColor: "#222",
-    scene: [GameScene]
+    scene: [GameScene],
+    render: {
+        pixelArt: true,
+        antialias: false
+    }
 };
