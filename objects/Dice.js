@@ -141,7 +141,7 @@ export function createDie(scene, slotIndex, blueprint) {
         }
         this.setAlpha(this.isWeakened ? 0.5 : 1);
         if (this.emojiText) {
-            this.emojiText.setAlpha(this.isNullified ? 0.25 : 1);
+            this.emojiText.setAlpha(this.isNullified ? 0.2 : 1);
         }
     };
 
