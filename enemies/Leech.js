@@ -43,6 +43,14 @@ export class LeechEnemy extends BaseEnemy {
     }
 
     getStatusDescription() {
-        return `Status: Nullifies ${this.nullifyCount} dice next cycle (max ${MAX_NULLIFY_COUNT}).`;
+        return 'Status: Nullify 1 Die per turn';
+    }
+
+    onTurnFinished({ scene }) {
+        if (!scene || typeof scene.queueEnemyNullify !== 'function') {
+            return;
+        }
+
+        scene.queueEnemyNullify(1);
     }
 }

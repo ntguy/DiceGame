@@ -2386,6 +2386,17 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        if (enemy && typeof enemy.onTurnFinished === 'function' && !this.enemyManager.isCurrentEnemyDefeated()) {
+            enemy.onTurnFinished({
+                scene: this,
+                enemyManager: this.enemyManager
+            });
+        }
+
+        if (this.isGameOver) {
+            return;
+        }
+
         this.playerBlockValue = 0;
 
         if (!this.enemyManager.isCurrentEnemyDefeated()) {
