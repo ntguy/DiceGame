@@ -250,7 +250,7 @@ export class PathUI {
                     segment.setOrigin(0.5, 0.5);
                     segment.setDepth(19);
                     segment.setRotation(angle);
-                    segment.setRoundPixels(true);
+                    segment.setPosition(Math.round(segment.x), Math.round(segment.y));
 
                     this.connectionSpriteContainer.add(segment);
                     this.connectionSprites.push(segment);
