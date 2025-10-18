@@ -90,7 +90,7 @@ export class PathManager {
                 isBoss: true
             };
 
-        let battleCursor = 0;
+        let battleStageCursor = 0;
 
         const createLabelForType = type => {
             switch (type) {
@@ -107,20 +107,45 @@ export class PathManager {
             }
         };
 
-        const assignBattleData = (node, { isStart = false } = {}) => {
-            const enemyData = enemyEntries.length > 0
-                ? enemyEntries[Math.min(battleCursor, enemyEntries.length - 1)]
-                : null;
+        const getBattleEntryForStage = () => {
+            if (enemyEntries.length > 0) {
+                return enemyEntries[Math.min(battleStageCursor, enemyEntries.length - 1)];
+            }
 
-            node.type = NODE_TYPES.ENEMY;
-            node.label = (enemyData && enemyData.label) || 'Battle';
-            node.enemyIndex = enemyData ? enemyData.enemyIndex : battleCursor;
-            node.rewardGold = enemyData ? enemyData.rewardGold : 50;
-            node.isBoss = false;
-            node.start = !!isStart;
-            node.connections = Array.isArray(node.connections) ? node.connections : [];
+            return {
+                enemyIndex: battleStageCursor,
+                rewardGold: 50,
+                label: 'Battle'
+            };
+        };
 
-            battleCursor += 1;
+        const assignBattleDataToNodes = (nodes, { isStart = false } = {}) => {
+            const targetNodes = Array.isArray(nodes) ? nodes.filter(Boolean) : [];
+
+            if (targetNodes.length === 0) {
+                return;
+            }
+
+            const enemyData = getBattleEntryForStage();
+            const enemyIndex = Number.isFinite(enemyData?.enemyIndex)
+                ? enemyData.enemyIndex
+                : battleStageCursor;
+            const rewardGold = Number.isFinite(enemyData?.rewardGold)
+                ? enemyData.rewardGold
+                : 50;
+            const label = enemyData?.label || 'Battle';
+
+            targetNodes.forEach(node => {
+                node.type = NODE_TYPES.ENEMY;
+                node.label = label;
+                node.enemyIndex = enemyIndex;
+                node.rewardGold = rewardGold;
+                node.isBoss = false;
+                node.start = node.start === true || isStart;
+                node.connections = Array.isArray(node.connections) ? node.connections : [];
+            });
+
+            battleStageCursor += 1;
         };
 
         const createLocationNodes = (levelIndex, nodeCount) => {
@@ -424,7 +449,7 @@ export class PathManager {
             isBoss: false
         }));
 
-        firstLevelNodes.forEach(node => assignBattleData(node, { isStart: true }));
+        assignBattleDataToNodes(firstLevelNodes, { isStart: true });
         levels.push({ nodes: firstLevelNodes, row: 0 });
 
         // Levels 1-6: start as location nodes.
@@ -595,10 +620,10 @@ export class PathManager {
             }
             const level = levels[levelIndex];
             const indices = chooseNodeIndices(level, count);
-            indices.forEach(nodeIndex => {
-                const node = level.nodes[nodeIndex];
-                assignBattleData(node, { isStart: false });
-            });
+            const nodesToConvert = indices
+                .map(nodeIndex => level.nodes[nodeIndex])
+                .filter(Boolean);
+            assignBattleDataToNodes(nodesToConvert, { isStart: false });
         };
 
         // Primary three-node level gets two battle nodes.
