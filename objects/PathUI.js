@@ -46,10 +46,11 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect) {
+    constructor(scene, pathManager, onSelect, { connectionTextureKey } = {}) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
+        this.connectionTextureKey = connectionTextureKey || 'path_ladder';
 
         this.container = scene.add.container(0, 0);
         this.container.setDepth(20);
@@ -184,7 +185,8 @@ export class PathUI {
 
         this.clearConnectionSprites();
 
-        const ladderTexture = this.scene.textures && this.scene.textures.get('path_ladder');
+        const textureKey = this.connectionTextureKey || 'path_ladder';
+        const ladderTexture = this.scene.textures && this.scene.textures.get(textureKey);
         const sourceImage = ladderTexture && ladderTexture.getSourceImage ? ladderTexture.getSourceImage() : null;
 
         if (!sourceImage) {
@@ -246,7 +248,7 @@ export class PathUI {
                 const addSegmentAtOffset = offset => {
                     const x = fromPos.x + unitX * offset;
                     const y = fromPos.y + unitY * offset;
-                    const segment = this.scene.add.image(x, y, 'path_ladder');
+                    const segment = this.scene.add.image(x, y, textureKey);
                     segment.setOrigin(0.5, 0.5);
                     segment.setDepth(19);
                     segment.setRotation(angle);
