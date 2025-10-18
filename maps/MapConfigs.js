@@ -16,35 +16,47 @@ const mapOneEnemyFactories = () => [
     new InfernoEnemy()
 ];
 
-const mapOneEnemySequence = [
-    {
-        enemyIndex: 0,
-        rewardGold: 50,
-        label: 'Battle',
-        start: true
-    },
-    {
-        enemyIndex: 1,
-        rewardGold: 70,
-        label: 'Battle'
-    },
-    {
-        enemyIndex: 2,
-        rewardGold: 100,
-        label: 'Battle'
-    },
-    {
-        enemyIndex: 3,
+const createMapOneEnemySequence = (randomSource = Math.random) => {
+    const randomFn = typeof randomSource === 'function' ? randomSource : Math.random;
+    const lockjawIndex = 2;
+    const counterlockIndex = 3;
+    const thirdEnemyIndex = randomFn() < 0.5 ? lockjawIndex : counterlockIndex;
+    const fourthEnemyIndex = thirdEnemyIndex === lockjawIndex ? counterlockIndex : lockjawIndex;
+
+    const sequence = [
+        {
+            enemyIndex: 0,
+            rewardGold: 50,
+            label: 'Battle',
+            start: true
+        },
+        {
+            enemyIndex: 1,
+            rewardGold: 70,
+            label: 'Battle'
+        },
+        {
+            enemyIndex: thirdEnemyIndex,
+            rewardGold: 100,
+            label: 'Battle'
+        }
+    ];
+
+    sequence.push({
+        enemyIndex: fourthEnemyIndex,
         rewardGold: 120,
         label: 'Battle'
-    },
-    {
+    });
+
+    sequence.push({
         enemyIndex: 4,
         rewardGold: 150,
         label: 'Boss',
         isBoss: true
-    }
-];
+    });
+
+    return sequence;
+};
 
 const mapTwoEnemyFactories = () => [
     new WallopEnemy(),
@@ -83,7 +95,7 @@ export const MAP_CONFIGS = [
         id: 'map-1',
         displayName: 'Map 1: Molten Forge',
         createEnemies: mapOneEnemyFactories,
-        enemySequence: mapOneEnemySequence
+        createEnemySequence: () => createMapOneEnemySequence()
     },
     {
         id: 'map-2',
