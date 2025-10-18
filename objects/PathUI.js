@@ -207,6 +207,7 @@ export class PathUI {
         }
 
         const ladderHeight = Math.max(1, sourceImage.height || 1);
+        const halfHeight = ladderHeight / 2;
         const processed = new Set();
         const nodes = this.pathManager.getNodes();
 
@@ -237,24 +238,41 @@ export class PathUI {
                     return;
                 }
 
-                const angle = Math.atan2(dy, dx) - Math.PI / 2;
+                const angle = Phaser.Math.Angle.Between(fromPos.x, fromPos.y, toPos.x, toPos.y) - Math.PI / 2;
                 const step = ladderHeight;
-                const segments = Math.max(1, Math.ceil(distance / step));
                 const unitX = dx / distance;
                 const unitY = dy / distance;
 
-                for (let i = 0; i < segments; i += 1) {
-                    const offset = i * step;
+                const addSegmentAtOffset = offset => {
                     const x = fromPos.x + unitX * offset;
                     const y = fromPos.y + unitY * offset;
-
                     const segment = this.scene.add.image(x, y, 'path_ladder');
-                    segment.setOrigin(0.5, 0);
+                    segment.setOrigin(0.5, 0.5);
                     segment.setDepth(19);
                     segment.setRotation(angle);
+                    segment.setRoundPixels(true);
 
                     this.connectionSpriteContainer.add(segment);
                     this.connectionSprites.push(segment);
+                };
+
+                if (distance <= ladderHeight) {
+                    addSegmentAtOffset(distance / 2);
+                    return;
+                }
+
+                const firstOffset = halfHeight;
+                const lastOffset = distance - halfHeight;
+                let offset = firstOffset;
+
+                while (offset <= lastOffset) {
+                    addSegmentAtOffset(offset);
+                    offset += step;
+                }
+
+                const previousOffset = offset - step;
+                if (lastOffset - previousOffset > 1e-3) {
+                    addSegmentAtOffset(lastOffset);
                 }
             });
         });
