@@ -57,6 +57,10 @@ export class PathUI {
         this.connectionGraphics = scene.add.graphics();
         this.connectionGraphics.setDepth(19);
 
+        this.connectionSpriteContainer = scene.add.container(0, 0);
+        this.connectionSpriteContainer.setDepth(19);
+        this.connectionSprites = [];
+
         this.nodeRefs = new Map();
         this.isActive = false;
         this.isDragging = false;
@@ -177,9 +181,35 @@ export class PathUI {
 
     drawConnections() {
         this.connectionGraphics.clear();
-        this.connectionGraphics.lineStyle(3, 0xffffff, 0.12);
 
+        this.clearConnectionSprites();
+
+        const ladderTexture = this.scene.textures && this.scene.textures.get('path_ladder');
+        const sourceImage = ladderTexture && ladderTexture.getSourceImage ? ladderTexture.getSourceImage() : null;
+
+        if (!sourceImage) {
+            // Fallback: draw simple lines if the texture is unavailable.
+            this.connectionGraphics.lineStyle(3, 0xffffff, 0.12);
+
+            const nodes = this.pathManager.getNodes();
+            nodes.forEach(node => {
+                const fromPos = this.getNodePosition(node);
+                (node.connections || []).forEach(connectionId => {
+                    const target = this.pathManager.getNode(connectionId);
+                    if (!target) {
+                        return;
+                    }
+                    const toPos = this.getNodePosition(target);
+                    this.connectionGraphics.lineBetween(fromPos.x, fromPos.y, toPos.x, toPos.y);
+                });
+            });
+            return;
+        }
+
+        const ladderHeight = Math.max(1, sourceImage.height || 1);
+        const processed = new Set();
         const nodes = this.pathManager.getNodes();
+
         nodes.forEach(node => {
             const fromPos = this.getNodePosition(node);
             (node.connections || []).forEach(connectionId => {
@@ -187,10 +217,60 @@ export class PathUI {
                 if (!target) {
                     return;
                 }
+
+                const keyParts = [node.id, connectionId];
+                if (keyParts.every(part => typeof part !== 'undefined')) {
+                    keyParts.sort();
+                    const key = keyParts.join('::');
+                    if (processed.has(key)) {
+                        return;
+                    }
+                    processed.add(key);
+                }
+
                 const toPos = this.getNodePosition(target);
-                this.connectionGraphics.lineBetween(fromPos.x, fromPos.y, toPos.x, toPos.y);
+                const dx = toPos.x - fromPos.x;
+                const dy = toPos.y - fromPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance === 0) {
+                    return;
+                }
+
+                const angle = Math.atan2(dy, dx) - Math.PI / 2;
+                const step = ladderHeight;
+                const segments = Math.max(1, Math.ceil(distance / step));
+                const unitX = dx / distance;
+                const unitY = dy / distance;
+
+                for (let i = 0; i < segments; i += 1) {
+                    const offset = i * step;
+                    const x = fromPos.x + unitX * offset;
+                    const y = fromPos.y + unitY * offset;
+
+                    const segment = this.scene.add.image(x, y, 'path_ladder');
+                    segment.setOrigin(0.5, 0);
+                    segment.setDepth(19);
+                    segment.setRotation(angle);
+
+                    this.connectionSpriteContainer.add(segment);
+                    this.connectionSprites.push(segment);
+                }
             });
         });
+    }
+
+    clearConnectionSprites() {
+        if (!Array.isArray(this.connectionSprites)) {
+            return;
+        }
+
+        this.connectionSprites.forEach(sprite => {
+            if (sprite && typeof sprite.destroy === 'function') {
+                sprite.destroy();
+            }
+        });
+        this.connectionSprites.length = 0;
     }
 
     isTestingModeActive() {
@@ -271,6 +351,9 @@ export class PathUI {
         this.applyScroll();
         this.container.setVisible(true);
         this.connectionGraphics.setVisible(true);
+        if (this.connectionSpriteContainer) {
+            this.connectionSpriteContainer.setVisible(true);
+        }
     }
 
     hide() {
@@ -279,6 +362,9 @@ export class PathUI {
         this.dragPointerId = null;
         this.container.setVisible(false);
         this.connectionGraphics.setVisible(false);
+        if (this.connectionSpriteContainer) {
+            this.connectionSpriteContainer.setVisible(false);
+        }
     }
 
     setupInputHandlers() {
@@ -345,6 +431,9 @@ export class PathUI {
     applyScroll() {
         this.container.y = this.scrollY;
         this.connectionGraphics.y = this.scrollY;
+        if (this.connectionSpriteContainer) {
+            this.connectionSpriteContainer.y = this.scrollY;
+        }
     }
 
     updateScrollBounds() {
@@ -390,6 +479,13 @@ export class PathUI {
         if (this.scene && this.scene.events) {
             this.scene.events.off('shutdown', this.destroy, this);
             this.scene.events.off('destroy', this.destroy, this);
+        }
+
+        this.clearConnectionSprites();
+
+        if (this.connectionSpriteContainer) {
+            this.connectionSpriteContainer.destroy(true);
+            this.connectionSpriteContainer = null;
         }
 
         if (this.connectionGraphics) {
