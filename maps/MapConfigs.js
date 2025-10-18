@@ -37,14 +37,14 @@ const createMapOneEnemySequence = (randomSource = Math.random) => {
         },
         {
             enemyIndex: thirdEnemyIndex,
-            rewardGold: 100,
+            rewardGold: 90,
             label: 'Battle'
         }
     ];
 
     sequence.push({
         enemyIndex: fourthEnemyIndex,
-        rewardGold: 120,
+        rewardGold: 100,
         label: 'Battle'
     });
 
@@ -62,13 +62,14 @@ const mapTwoEnemyFactories = () => [
     new WallopEnemy(),
     new WeakenerEnemy(),
     new StraightArrowEnemy(),
+    new InfernoEnemy(), // placeholder until new enemy idea
     new LockdownEnemy()
 ];
 
 const mapTwoEnemySequence = [
     {
         enemyIndex: 0,
-        rewardGold: 80,
+        rewardGold: 70,
         label: 'Battle',
         start: true
     },
@@ -79,12 +80,12 @@ const mapTwoEnemySequence = [
     },
     {
         enemyIndex: 2,
-        rewardGold: 140,
+        rewardGold: 130,
         label: 'Battle'
     },
     {
         enemyIndex: 3,
-        rewardGold: 220,
+        rewardGold: 200,
         label: 'Boss',
         isBoss: true
     }
