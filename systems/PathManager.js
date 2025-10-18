@@ -614,6 +614,8 @@ export class PathManager {
             return chosen;
         };
 
+        const pendingBattleAssignments = [];
+
         const convertLevelNodesToBattles = (levelIndex, count) => {
             if (count <= 0) {
                 return;
@@ -623,7 +625,10 @@ export class PathManager {
             const nodesToConvert = indices
                 .map(nodeIndex => level.nodes[nodeIndex])
                 .filter(Boolean);
-            assignBattleDataToNodes(nodesToConvert, { isStart: false });
+            if (nodesToConvert.length === 0) {
+                return;
+            }
+            pendingBattleAssignments.push({ levelIndex, nodes: nodesToConvert });
         };
 
         // Primary three-node level gets two battle nodes.
@@ -634,6 +639,12 @@ export class PathManager {
             const count = battleReplacementCounts[idx] || 1;
             convertLevelNodesToBattles(levelIndex, Math.min(count, levels[levelIndex].nodes.length));
         });
+
+        pendingBattleAssignments
+            .sort((a, b) => a.levelIndex - b.levelIndex)
+            .forEach(({ nodes }) => {
+                assignBattleDataToNodes(nodes, { isStart: false });
+            });
 
         const forceConnect = (parent, child, parentsForAdjustment = null) => {
             if (!parent || !child) {
