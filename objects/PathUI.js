@@ -41,8 +41,8 @@ const PATH_DEPTHS = {
 const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
 const BOTTOM_MARGIN = 80;
-const WHEEL_SCROLL_MULTIPLIER = 1;
-const SCROLL_INPUT_MULTIPLIER = 1;
+const WHEEL_SCROLL_MULTIPLIER = 0.5;
+const SCROLL_INPUT_MULTIPLIER = 0.5;
 const OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER = 0.25;
 const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 
@@ -330,7 +330,7 @@ export class PathUI {
                 let tileFrameKey = null;
 
                 if (texture && typeof texture.has === 'function' && typeof texture.add === 'function') {
-                    const croppedHeight = Math.max(1, Math.floor(sourceHeight / 2));
+                    const croppedHeight = Math.max(1, Math.floor(sourceHeight * 0.45));
                     const frameKey = `${key}_topHalf`;
                     if (!texture.has(frameKey)) {
                         texture.add(frameKey, 0, 0, 0, sourceWidth, croppedHeight);
@@ -372,7 +372,7 @@ export class PathUI {
             const minOffset = viewportHeight * 0.12;
             const maxOffset = viewportHeight * 0.45;
             const verticalOffset = lerp(minOffset, maxOffset, progress);
-            const spriteY = spanTop + spriteHeight / 2 + verticalOffset;
+            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100;
             const sprite = this.scene.add.image(baseX, spriteY, key);
             sprite.setOrigin(0.5, 0.5);
             sprite.setScale(defaultScale);
