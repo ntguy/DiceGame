@@ -852,7 +852,7 @@ export class PathUI {
                 if (layer.isTileSprite && typeof layer.sprite.setTilePosition === 'function') {
                     const baseTileX = Number.isFinite(layer.baseTileX) ? layer.baseTileX : 0;
                     const baseTileY = Number.isFinite(layer.baseTileY) ? layer.baseTileY : 0;
-                    const tileOffset = baseTileY + this.scrollY * factor;
+                    const tileOffset = baseTileY - this.scrollY * factor;
                     layer.sprite.setTilePosition(baseTileX, tileOffset);
                     const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
                     layer.sprite.y = Math.round(baseY);
