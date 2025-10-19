@@ -93,7 +93,7 @@ export function createDie(scene, slotIndex, blueprint) {
     container.add(emojiText);
     container.emojiText = emojiText;
 
-    const upgradePlusText = scene.add.text(0, emojiY + 4, '+', {
+    const upgradePlusText = scene.add.text(0, emojiY, '+', {
         fontSize: '20px',
         fontStyle: 'bold',
         color: '#f1c40f',
@@ -116,10 +116,9 @@ export function createDie(scene, slotIndex, blueprint) {
                 const emojiHalfWidth = (this.emojiText && this.emojiText.displayWidth) ? this.emojiText.displayWidth / 2 : 0;
                 const emojiX = this.emojiText ? this.emojiText.x : 0;
                 const emojiYPosition = this.emojiText ? this.emojiText.y : emojiY;
-                const padding = 6;
                 this.upgradePlusText.setVisible(true);
-                this.upgradePlusText.setX(emojiX + emojiHalfWidth + padding);
-                this.upgradePlusText.setY(emojiYPosition + 4);
+                this.upgradePlusText.setX(emojiX + emojiHalfWidth);
+                this.upgradePlusText.setY(emojiYPosition);
             } else {
                 this.upgradePlusText.setVisible(false);
             }
