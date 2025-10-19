@@ -31,6 +31,7 @@ const LAYOUT = {
 const PATH_TEXTURE_SCALE = 1.5;
 const GENERAL_TEXTURE_SCALE = 2;
 const PATH_DEPTHS = {
+    outsideBackground: -5,
     background: 5,
     walls: -1, // grr healthbar
     connections: 7,
@@ -55,14 +56,20 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey } = {}) {
+    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys } = {}) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
         this.connectionTextureKey = connectionTextureKey || 'path_ladder';
         this.wallTextureKey = wallTextureKey || null;
         this.backgroundTextureKey = backgroundTextureKey || 'path_background';
+        this.outsideBackgroundLayerKeys = Array.isArray(outsideBackgroundLayerKeys)
+            ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
+            : [];
 
+        this.outsideBackgroundContainer = scene.add.container(0, 0);
+        this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
+        this.outsideBackgroundLayers = [];
         this.backgroundContainer = scene.add.container(0, 0);
         this.backgroundContainer.setDepth(PATH_DEPTHS.background);
         this.backgroundSprite = null;
@@ -162,6 +169,23 @@ export class PathUI {
         }
     }
 
+    clearOutsideBackgroundSprites() {
+        if (Array.isArray(this.outsideBackgroundLayers)) {
+            this.outsideBackgroundLayers.forEach(layer => {
+                const sprite = layer && layer.sprite ? layer.sprite : null;
+                if (sprite && typeof sprite.destroy === 'function') {
+                    sprite.destroy();
+                }
+            });
+        }
+
+        this.outsideBackgroundLayers = [];
+
+        if (this.outsideBackgroundContainer && typeof this.outsideBackgroundContainer.removeAll === 'function') {
+            this.outsideBackgroundContainer.removeAll(false);
+        }
+    }
+
     createWalls() {
         if (!this.wallContainer) {
             return;
@@ -169,6 +193,7 @@ export class PathUI {
 
         this.clearWallSprites();
         this.clearBackgroundSprite();
+        this.clearOutsideBackgroundSprites();
 
         const texture = this.getWallTexture();
         if (!texture || typeof texture.getSourceImage !== 'function') {
@@ -213,6 +238,8 @@ export class PathUI {
         const height = Math.max(1, bottom - top);
         const centerY = (top + bottom) / 2;
 
+        this.createOutsideBackgroundSprites({ centerY });
+
         const backgroundTexture = this.getBackgroundTexture();
         if (backgroundTexture && this.backgroundContainer) {
             const backgroundWidth = Math.max(1, rightX - leftX - wallWidth);
@@ -241,6 +268,56 @@ export class PathUI {
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
             this.wallContainer.add(sprite);
             this.wallSprites.push(sprite);
+        });
+    }
+
+    createOutsideBackgroundSprites({ centerY }) {
+        if (!this.outsideBackgroundContainer) {
+            return;
+        }
+
+        this.clearOutsideBackgroundSprites();
+
+        if (!Array.isArray(this.outsideBackgroundLayerKeys) || this.outsideBackgroundLayerKeys.length === 0) {
+            return;
+        }
+
+        const textures = this.scene && this.scene.textures;
+        const count = this.outsideBackgroundLayerKeys.length;
+        const minFactor = 0.15;
+        const maxFactor = 1;
+        const defaultScale = 2;
+        const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
+        const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const lerp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Linear === 'function'
+            ? Phaser.Math.Linear
+            : (start, end, t) => start + (end - start) * t;
+
+        this.outsideBackgroundLayerKeys.forEach((key, index) => {
+            if (!key || !textures || typeof textures.exists !== 'function' || !textures.exists(key)) {
+                return;
+            }
+
+            const sprite = this.scene.add.image(baseX, Number.isFinite(centerY) ? centerY : defaultY, key);
+            sprite.setOrigin(0.5, 0.5);
+            sprite.setScale(defaultScale);
+            sprite.setScrollFactor(0);
+            sprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
+            sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
+
+            this.outsideBackgroundContainer.add(sprite);
+
+            const t = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
+            const scrollFactor = count > 1 ? lerp(minFactor, maxFactor, t) : maxFactor;
+
+            this.outsideBackgroundLayers.push({
+                sprite,
+                baseY: sprite.y,
+                scrollFactor
+            });
         });
     }
 
@@ -695,6 +772,18 @@ export class PathUI {
         if (this.wallContainer) {
             this.wallContainer.y = this.scrollY;
         }
+        if (Array.isArray(this.outsideBackgroundLayers) && this.outsideBackgroundLayers.length > 0) {
+            this.outsideBackgroundLayers.forEach(layer => {
+                if (!layer || !layer.sprite) {
+                    return;
+                }
+
+                const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
+                const factor = Number.isFinite(layer.scrollFactor) ? layer.scrollFactor : 1;
+                const newY = baseY + this.scrollY * factor;
+                layer.sprite.y = Math.round(newY);
+            });
+        }
     }
 
     updateScrollBounds() {
@@ -745,7 +834,12 @@ export class PathUI {
         this.clearConnectionSprites();
         this.clearWallSprites();
         this.clearBackgroundSprite();
+        this.clearOutsideBackgroundSprites();
 
+        if (this.outsideBackgroundContainer) {
+            this.outsideBackgroundContainer.destroy(true);
+            this.outsideBackgroundContainer = null;
+        }
         if (this.backgroundContainer) {
             this.backgroundContainer.destroy(true);
             this.backgroundContainer = null;
