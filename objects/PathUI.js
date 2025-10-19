@@ -403,6 +403,16 @@ export class PathUI {
                 const unitX = dx / distance;
                 const unitY = dy / distance;
 
+                const fromRow = Number.isFinite(node?.row) ? node.row : 0;
+                const toRow = Number.isFinite(target?.row) ? target.row : 0;
+                let downwardNodeId = null;
+
+                if (toRow > fromRow && target?.id) {
+                    downwardNodeId = target.id;
+                } else if (fromRow > toRow && node?.id) {
+                    downwardNodeId = node.id;
+                }
+
                 const addSegmentAtOffset = offset => {
                     const x = fromPos.x + unitX * offset;
                     const y = fromPos.y + unitY * offset;
@@ -414,7 +424,12 @@ export class PathUI {
                     segment.setPosition(Math.round(segment.x), Math.round(segment.y));
 
                     this.connectionSpriteContainer.add(segment);
-                    this.connectionSprites.push(segment);
+                    this.connectionSprites.push({
+                        sprite: segment,
+                        nodeAId: node?.id || null,
+                        nodeBId: target?.id || null,
+                        downwardNodeId
+                    });
                 };
 
                 if (distance <= step) {
@@ -435,6 +450,10 @@ export class PathUI {
                 }
             });
         });
+
+        const availableIds = new Set(this.pathManager.getAvailableNodeIds());
+        const testingMode = this.isTestingModeActive();
+        this.updateConnectionSpriteAlphas(availableIds, testingMode);
     }
 
     clearConnectionSprites() {
@@ -442,7 +461,8 @@ export class PathUI {
             return;
         }
 
-        this.connectionSprites.forEach(sprite => {
+        this.connectionSprites.forEach(entry => {
+            const sprite = entry && entry.sprite ? entry.sprite : entry;
             if (sprite && typeof sprite.destroy === 'function') {
                 sprite.destroy();
             }
@@ -518,6 +538,52 @@ export class PathUI {
                 cube.setInteractive({ useHandCursor: true });
             } else {
                 cube.disableInteractive();
+            }
+        });
+
+        this.updateConnectionSpriteAlphas(availableIds, testingMode);
+    }
+
+    updateConnectionSpriteAlphas(availableIds, testingMode) {
+        if (!Array.isArray(this.connectionSprites) || this.connectionSprites.length === 0) {
+            return;
+        }
+
+        const availableSet = availableIds instanceof Set
+            ? availableIds
+            : new Set(Array.isArray(availableIds) ? availableIds : []);
+        const isTesting = typeof testingMode === 'boolean'
+            ? testingMode
+            : this.isTestingModeActive();
+        const currentNodeId = typeof this.pathManager?.getCurrentNodeId === 'function'
+            ? this.pathManager.getCurrentNodeId()
+            : null;
+        const isNodeCompletedFn = typeof this.pathManager?.isNodeCompleted === 'function'
+            ? nodeId => this.pathManager.isNodeCompleted(nodeId)
+            : () => false;
+
+        this.connectionSprites.forEach(entry => {
+            if (!entry || !entry.sprite || typeof entry.sprite.setAlpha !== 'function') {
+                return;
+            }
+
+            const { sprite, downwardNodeId } = entry;
+
+            if (!downwardNodeId) {
+                sprite.setAlpha(1);
+                return;
+            }
+
+            const isSelectable = isTesting
+                ? this.nodeRefs.has(downwardNodeId)
+                : availableSet.has(downwardNodeId);
+            const isCompleted = isNodeCompletedFn(downwardNodeId);
+            const isCurrent = currentNodeId === downwardNodeId;
+
+            if (isSelectable || isCompleted || isCurrent) {
+                sprite.setAlpha(1);
+            } else {
+                sprite.setAlpha(0.5);
             }
         });
     }
