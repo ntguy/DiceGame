@@ -3,7 +3,7 @@ import { attackAction, defendAction, healAction } from './EnemyActions.js';
 
 const DAMAGE_LOCK_THRESHOLD = 20;
 const LOCK_COUNT = 2;
-const BASE_HEAL_AMOUNT = 5;
+const BASE_HEAL_AMOUNT = 0;
 const HEAL_INCREMENT = 5;
 
 export class CounterlockEnemy extends BaseEnemy {
@@ -22,9 +22,8 @@ export class CounterlockEnemy extends BaseEnemy {
                 key: 'counterlock_recover',
                 label: () => `Guarded Recovery: Heal ${this.healAmount} + Defend 5`,
                 createActions: () => {
-                    const heal = this.healAmount;
                     this.healAmount += HEAL_INCREMENT;
-                    return [healAction(heal), defendAction(5)];
+                    return [healAction(this.healAmount), defendAction(5)];
                 }
             },
             {

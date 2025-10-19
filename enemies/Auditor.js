@@ -1,7 +1,7 @@
 import { BaseEnemy } from './BaseEnemy.js';
 import { attackAction, burnAction, defendAction, lockAction } from './EnemyActions.js';
 
-const INITIAL_BURN_DEFEND_VALUE = 4;
+const INITIAL_BURN_DEFEND_VALUE = 0;
 
 export class AuditorEnemy extends BaseEnemy {
     constructor() {
@@ -30,9 +30,8 @@ export class AuditorEnemy extends BaseEnemy {
                 key: 'auditor_burn_defend',
                 label: () => `Burn ${this.burnDefendValue} + Defend ${this.burnDefendValue}`,
                 createActions: () => {
-                    const value = this.burnDefendValue;
                     this.burnDefendValue += 4;
-                    return [burnAction(value), defendAction(value)];
+                    return [burnAction(this.burnDefendValue), defendAction(this.burnDefendValue)];
                 }
             },
             {
