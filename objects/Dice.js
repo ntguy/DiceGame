@@ -93,9 +93,35 @@ export function createDie(scene, slotIndex, blueprint) {
     container.add(emojiText);
     container.emojiText = emojiText;
 
+    const upgradePlusText = scene.add.text(0, emojiY, '+', {
+        fontSize: '20px',
+        fontStyle: 'bold',
+        color: '#f1c40f',
+        stroke: '#000000',
+        strokeThickness: 3,
+    }).setOrigin(0, 0);
+    upgradePlusText.setVisible(false);
+    container.add(upgradePlusText);
+    container.upgradePlusText = upgradePlusText;
+
     container.updateEmoji = function() {
         if (this.emojiText) {
             this.emojiText.setText(getDieEmoji(this));
+        }
+
+        if (this.upgradePlusText) {
+            const hasEmoji = this.emojiText && this.emojiText.text && this.emojiText.text.trim().length > 0;
+            const isUpgraded = !!(this.dieBlueprint && this.dieBlueprint.isUpgraded);
+            if (isUpgraded && hasEmoji) {
+                const emojiHalfWidth = (this.emojiText && this.emojiText.displayWidth) ? this.emojiText.displayWidth / 2 : 0;
+                const emojiX = this.emojiText ? this.emojiText.x : 0;
+                const emojiYPosition = this.emojiText ? this.emojiText.y : emojiY;
+                this.upgradePlusText.setVisible(true);
+                this.upgradePlusText.setX(emojiX + emojiHalfWidth);
+                this.upgradePlusText.setY(emojiYPosition);
+            } else {
+                this.upgradePlusText.setVisible(false);
+            }
         }
     };
 
@@ -142,6 +168,9 @@ export function createDie(scene, slotIndex, blueprint) {
         this.setAlpha(this.isWeakened ? 0.5 : 1);
         if (this.emojiText) {
             this.emojiText.setAlpha(this.isNullified ? 0.2 : 1);
+        }
+        if (this.upgradePlusText) {
+            this.upgradePlusText.setAlpha(this.isNullified ? 0.2 : 1);
         }
     };
 
