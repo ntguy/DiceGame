@@ -141,6 +141,8 @@ export class GameScene extends Phaser.Scene {
         this.pendingNullifyCount = 0;
 
         this.mapTitleText = null;
+        this.mapSkipButton = null;
+        this.isMapViewActive = false;
         this.isFirstCombatTurn = false;
         this.modalInputLockCount = 0;
     }
@@ -2139,6 +2141,8 @@ export class GameScene extends Phaser.Scene {
         this.updateEnemyHealthUI();
         this.prepareNextEnemyMove();
 
+        this.updateMapSkipButtonState();
+
         return true;
     }
 
@@ -2174,7 +2178,23 @@ export class GameScene extends Phaser.Scene {
         if (loaded && nextConfig && nextConfig.displayName) {
             this.showNodeMessage(`Entering ${nextConfig.displayName}`, '#ffffff');
         }
+        if (loaded) {
+            this.updateMapSkipButtonState();
+        }
         return loaded;
+    }
+
+    handleMapSkipButtonPress() {
+        if (!this.testingModeEnabled || !this.isMapViewActive) {
+            return;
+        }
+
+        const advanced = this.advanceToNextMapIfAvailable();
+        if (advanced) {
+            this.enterMapState();
+        } else {
+            this.updateMapSkipButtonState();
+        }
     }
 
     processTurnOutcome({ attackScore, defendScore, attackResult, defendResult }) {
@@ -3454,7 +3474,24 @@ export class GameScene extends Phaser.Scene {
         this.updateZonePreviewText();
     }
 
+    updateMapSkipButtonState() {
+        if (!this.mapSkipButton) {
+            return;
+        }
+
+        const hasNextMap = this.hasNextMap();
+        const shouldShow = this.testingModeEnabled && this.isMapViewActive && hasNextMap;
+
+        this.mapSkipButton.setVisible(shouldShow);
+        setTextButtonEnabled(this.mapSkipButton, shouldShow);
+
+        if (typeof this.layoutHeaderButtons === 'function') {
+            this.layoutHeaderButtons();
+        }
+    }
+
     setMapMode(isMapView) {
+        this.isMapViewActive = !!isMapView;
         const showCombatUI = !isMapView;
         const setVisibility = (obj, visible) => {
             if (obj && typeof obj.setVisible === 'function') {
@@ -3539,6 +3576,8 @@ export class GameScene extends Phaser.Scene {
                 }
             });
         }
+
+        this.updateMapSkipButtonState();
     }
     
     updateRollButtonState() {
@@ -3604,6 +3643,8 @@ export class GameScene extends Phaser.Scene {
             }
             this.updateEnemyHealthUI();
         }
+
+        this.updateMapSkipButtonState();
     }
 
     updateTestingModeButtonState() {
