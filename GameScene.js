@@ -99,6 +99,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
+        this.temporarilyDestroyedDice = [];
         this.gameOverManager = null;
         this.muteButton = null;
         this.isMuted = false;
@@ -1516,6 +1517,7 @@ export class GameScene extends Phaser.Scene {
         ).length;
 
         const diceToResolve = this.getDiceInPlay();
+        this.applyEnemyComboDestruction({ attackResult, defendResult });
         const finishResolution = () => {
             if (locksToCarryOver > 0) {
                 this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + locksToCarryOver);
@@ -1599,7 +1601,7 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
-        const blueprints = loadout.map(entry => ({
+        let blueprints = loadout.map(entry => ({
             id: entry.id,
             isUpgraded: !!entry.isUpgraded,
             uid: entry.uid
@@ -1609,7 +1611,163 @@ export class GameScene extends Phaser.Scene {
             blueprints.push(createDieBlueprint('standard'));
         }
 
-        return blueprints.slice(0, CONSTANTS.DICE_PER_SET).map(entry => ({ ...entry }));
+        blueprints = blueprints.slice(0, CONSTANTS.DICE_PER_SET);
+
+        return this.applyTemporaryDestructionToBlueprints(blueprints);
+    }
+
+    applyTemporaryDestructionToBlueprints(blueprints = []) {
+        const list = Array.isArray(blueprints)
+            ? blueprints.map(entry => ({ ...entry }))
+            : [];
+
+        if (!Array.isArray(this.temporarilyDestroyedDice) || this.temporarilyDestroyedDice.length === 0) {
+            return list;
+        }
+
+        const workingBlueprints = [...list];
+        const remainingEntries = [];
+
+        this.temporarilyDestroyedDice.forEach(entry => {
+            if (!entry || entry.turnsRemaining <= 0) {
+                return;
+            }
+
+            const entryUid = entry.uid || (entry.blueprint && entry.blueprint.uid);
+            const entryId = entry.blueprint ? entry.blueprint.id : null;
+            const entryUpgrade = entry.blueprint ? !!entry.blueprint.isUpgraded : false;
+
+            const matchIndex = workingBlueprints.findIndex(candidate => {
+                if (!candidate) {
+                    return false;
+                }
+
+                if (entryUid && candidate.uid) {
+                    return candidate.uid === entryUid;
+                }
+
+                const candidateId = candidate.id;
+                const candidateUpgrade = !!candidate.isUpgraded;
+                return candidateId === entryId && candidateUpgrade === entryUpgrade;
+            });
+
+            entry.turnsRemaining = Math.max(0, (entry.turnsRemaining || 0) - 1);
+
+            if (matchIndex !== -1) {
+                workingBlueprints.splice(matchIndex, 1);
+            }
+
+            if (entry.turnsRemaining > 0 && (matchIndex !== -1 || entryUid)) {
+                remainingEntries.push(entry);
+            }
+        });
+
+        this.temporarilyDestroyedDice = remainingEntries;
+
+        return workingBlueprints;
+    }
+
+    queueDiceDestructionForTurn(diceList = []) {
+        if (!Array.isArray(diceList) || diceList.length === 0) {
+            return;
+        }
+
+        if (!Array.isArray(this.temporarilyDestroyedDice)) {
+            this.temporarilyDestroyedDice = [];
+        }
+
+        const existingByUid = new Map();
+        this.temporarilyDestroyedDice.forEach(entry => {
+            if (entry && entry.uid) {
+                existingByUid.set(entry.uid, entry);
+            }
+        });
+
+        diceList.forEach(die => {
+            if (!die || !die.dieBlueprint) {
+                return;
+            }
+
+            const blueprint = { ...die.dieBlueprint };
+            const uid = blueprint.uid;
+
+            if (uid && existingByUid.has(uid)) {
+                const stored = existingByUid.get(uid);
+                stored.turnsRemaining = 1;
+                stored.blueprint = blueprint;
+                return;
+            }
+
+            this.temporarilyDestroyedDice.push({
+                uid: uid || null,
+                blueprint,
+                turnsRemaining: 1
+            });
+
+            if (uid) {
+                existingByUid.set(uid, this.temporarilyDestroyedDice[this.temporarilyDestroyedDice.length - 1]);
+            }
+        });
+    }
+
+    applyEnemyComboDestruction({ attackResult, defendResult } = {}) {
+        if (!this.enemyManager) {
+            return;
+        }
+
+        const enemy = this.enemyManager.getCurrentEnemy();
+        if (!enemy || typeof enemy.shouldDestroyDiceOutsideCombo !== 'function') {
+            return;
+        }
+
+        const shouldDestroy = enemy.shouldDestroyDiceOutsideCombo({
+            scene: this,
+            attackResult,
+            defendResult
+        });
+
+        if (!shouldDestroy) {
+            return;
+        }
+
+        const diceToDestroy = new Set();
+
+        if (Array.isArray(this.dice)) {
+            this.dice.forEach(die => {
+                if (die) {
+                    diceToDestroy.add(die);
+                }
+            });
+        }
+
+        if (defendResult && defendResult.comboType === 'No combo' && Array.isArray(this.defendDice)) {
+            this.defendDice.forEach(die => {
+                if (die) {
+                    diceToDestroy.add(die);
+                }
+            });
+        }
+
+        if (attackResult && attackResult.comboType === 'No combo' && Array.isArray(this.attackDice)) {
+            this.attackDice.forEach(die => {
+                if (die) {
+                    diceToDestroy.add(die);
+                }
+            });
+        }
+
+        if (diceToDestroy.size === 0) {
+            return;
+        }
+
+        this.queueDiceDestructionForTurn(Array.from(diceToDestroy));
+
+        if (typeof enemy.onDiceDestroyedOutsideCombo === 'function') {
+            enemy.onDiceDestroyedOutsideCombo({
+                scene: this,
+                destroyedCount: diceToDestroy.size
+            });
+        }
     }
 
     refreshActiveDiceVisuals() {
@@ -3411,6 +3569,7 @@ export class GameScene extends Phaser.Scene {
         this.clearAllNullifiedDice();
         if (destroyDice) {
             this.getDiceInPlay().forEach(d => d.destroy());
+            this.temporarilyDestroyedDice = [];
         }
         this.dice = [];
         this.defendDice = [];
