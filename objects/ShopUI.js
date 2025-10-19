@@ -189,7 +189,7 @@ export class ShopUI {
             fontSize: '18px',
             color: '#f9e79f'
         }).setOrigin(0.5);
-        text.setVisible(this.isRelicCapacityFull());
+        text.setVisible(this.isRelicCapacityFull() && this.hasUnpurchasedRelics());
         this.container.add(text);
         this.capacityText = text;
     }
@@ -199,7 +199,15 @@ export class ShopUI {
             return;
         }
 
-        this.capacityText.setVisible(this.isRelicCapacityFull());
+        this.capacityText.setVisible(this.isRelicCapacityFull() && this.hasUnpurchasedRelics());
+    }
+
+    hasUnpurchasedRelics() {
+        if (!Array.isArray(this.relics)) {
+            return false;
+        }
+
+        return this.relics.some(relic => relic && !relic.owned);
     }
 
     createLeaveButton() {
