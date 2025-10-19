@@ -296,6 +296,7 @@ export class PathUI {
             ? top
             : (Number.isFinite(centerY) ? centerY - spanHeight / 2 : defaultY - spanHeight / 2);
         const coverageHeight = Math.max(spanHeight, sceneHeight) + sceneHeight;
+        const viewportHeight = Number.isFinite(sceneHeight) && sceneHeight > 0 ? sceneHeight : spanHeight;
 
         const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
             ? Phaser.Math.Clamp
@@ -320,7 +321,27 @@ export class PathUI {
                 const width = sourceWidth * defaultScale;
                 const tileHeight = Math.max(coverageHeight, sourceHeight * defaultScale);
                 const tileY = spanTop + tileHeight / 2;
-                const tileSprite = this.scene.add.tileSprite(baseX, tileY, width, tileHeight, key);
+                let tileFrameKey = null;
+
+                if (texture && typeof texture.has === 'function' && typeof texture.add === 'function') {
+                    const croppedHeight = Math.max(1, Math.floor(sourceHeight / 2));
+                    const frameKey = `${key}_topHalf`;
+                    if (!texture.has(frameKey)) {
+                        texture.add(frameKey, 0, 0, 0, sourceWidth, croppedHeight);
+                    }
+                    if (texture.has(frameKey)) {
+                        tileFrameKey = frameKey;
+                    }
+                }
+
+                const tileSprite = this.scene.add.tileSprite(
+                    baseX,
+                    tileY,
+                    width,
+                    tileHeight,
+                    key,
+                    tileFrameKey || undefined
+                );
                 tileSprite.setOrigin(0.5, 0.5);
                 tileSprite.setTileScale(defaultScale, defaultScale);
                 tileSprite.setScrollFactor(0);
@@ -341,7 +362,11 @@ export class PathUI {
             }
 
             const spriteHeight = sourceHeight * defaultScale;
-            const spriteY = spanTop + spriteHeight / 2;
+            const progress = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
+            const minOffset = viewportHeight * 0.12;
+            const maxOffset = viewportHeight * 0.45;
+            const verticalOffset = lerp(minOffset, maxOffset, progress);
+            const spriteY = spanTop + spriteHeight / 2 + verticalOffset;
             const sprite = this.scene.add.image(baseX, spriteY, key);
             sprite.setOrigin(0.5, 0.5);
             sprite.setScale(defaultScale);
