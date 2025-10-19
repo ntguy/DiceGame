@@ -8,6 +8,7 @@ import { WeakenerEnemy } from '../enemies/Weakener.js';
 import { StraightArrowEnemy } from '../enemies/StraightArrow.js';
 import { LockdownEnemy } from '../enemies/Lockdown.js';
 import { LeechEnemy } from '../enemies/Leech.js';
+import { AuditorEnemy } from '../enemies/Auditor.js';
 
 const mapOneEnemyFactories = () => [
     new SlapperEnemy(),
@@ -62,8 +63,7 @@ const createMapOneEnemySequence = (randomSource = Math.random) => {
 const mapTwoEnemyFactories = () => [
     new WallopEnemy(),
     new WeakenerEnemy(),
-    new StraightArrowEnemy(),
-    new InfernoEnemy(), // placeholder until new enemy idea
+    new AuditorEnemy(),
     new LockdownEnemy()
 ];
 
@@ -81,12 +81,12 @@ const mapTwoEnemySequence = [
     },
     {
         enemyIndex: 2,
-        rewardGold: 130,
+        rewardGold: 140,
         label: 'Battle'
     },
     {
         enemyIndex: 3,
-        rewardGold: 200,
+        rewardGold: 220,
         label: 'Boss',
         isBoss: true
     }
