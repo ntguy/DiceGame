@@ -37,8 +37,8 @@ export class AuditorEnemy extends BaseEnemy {
             },
             {
                 key: 'auditor_lock_defend',
-                label: 'Lock 2 Dice + Defend 10',
-                actions: [lockAction(2), defendAction(10)]
+                label: 'Lock 1 Die + Defend 10',
+                actions: [lockAction(1), defendAction(10)]
             },
             {
                 key: 'auditor_attack',

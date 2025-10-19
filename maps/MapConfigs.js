@@ -63,7 +63,8 @@ const createMapOneEnemySequence = (randomSource = Math.random) => {
 const mapTwoEnemyFactories = () => [
     new WallopEnemy(),
     new WeakenerEnemy(),
-    new AuditorEnemy(),
+    new StraightArrowEnemy(),
+    new InfernoEnemy(), // placeholder
     new LockdownEnemy()
 ];
 
@@ -94,11 +95,10 @@ const mapTwoEnemySequence = [
 
 const mapThreeEnemyFactories = () => [
     new LeechEnemy(),
-    new WallopEnemy(),
-    new WeakenerEnemy(),
-    new StraightArrowEnemy(),
-    new InfernoEnemy(),
-    new LockdownEnemy()
+    new AuditorEnemy(),
+    new InfernoEnemy(), // placeholder
+    new LockdownEnemy(), // placeholder
+    new LockdownEnemy() // placeholder
 ];
 
 const mapThreeEnemySequence = [
