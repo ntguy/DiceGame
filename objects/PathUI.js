@@ -41,8 +41,10 @@ const PATH_DEPTHS = {
 const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
 const BOTTOM_MARGIN = 80;
-const WHEEL_SCROLL_MULTIPLIER = 0.5;
-const SCROLL_INPUT_MULTIPLIER = 0.5;
+const WHEEL_SCROLL_MULTIPLIER = 1;
+const SCROLL_INPUT_MULTIPLIER = 1;
+const OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER = 0.25;
+const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
@@ -311,7 +313,11 @@ export class PathUI {
             }
 
             const t = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
-            const scrollFactor = count > 1 ? lerp(minFactor, maxFactor, t) : maxFactor;
+            const baseScrollFactor = count > 1 ? lerp(minFactor, maxFactor, t) : maxFactor;
+            const slowdownMultiplier = index === 0
+                ? OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER * FARTHEST_OUTSIDE_LAYER_MULTIPLIER
+                : OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER;
+            const scrollFactor = baseScrollFactor * slowdownMultiplier;
             const texture = textures.get(key);
             const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
             const sourceWidth = source && source.width ? source.width : sceneHeight || 1;
