@@ -581,9 +581,9 @@ export class PathUI {
             const isCurrent = currentNodeId === downwardNodeId;
 
             if (isSelectable || isCompleted || isCurrent) {
-                sprite.setAlpha(1);
+                sprite.setAlpha(0.9);
             } else {
-                sprite.setAlpha(0.5);
+                sprite.setAlpha(0.3);
             }
         });
     }
