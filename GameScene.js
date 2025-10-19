@@ -22,7 +22,7 @@ import { BeefyRelic } from './relics/BeefyRelic.js';
 import { FamilyRelic } from './relics/FamilyRelic.js';
 import { ReRollWithItRelic } from './relics/ReRollWithItRelic.js';
 import { WildOneRelic } from './relics/WildOneRelic.js';
-import { UnlockedAndLoadedRelic } from './relics/UnlockedAndLoadedRelic.js';
+import { StraightSudsRelic } from './relics/StraightSudsRelic.js';
 import { RainRelic } from './relics/RainRelic.js';
 import { PrepperRelic } from './relics/PrepperRelic.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
@@ -188,7 +188,7 @@ export class GameScene extends Phaser.Scene {
         this.rerollDefensePerDie = 0;
         this.rerollDefenseBonus = 0;
         this.hasWildOneRelic = false;
-        this.unlocksOnLongStraights = false;
+        this.cleanseCursesOnLongStraights = false;
         this.hasRainRelic = false;
         this.playerBurnReductionPerTurn = 0;
         this.rollCarryoverEnabled = false;
@@ -311,7 +311,7 @@ export class GameScene extends Phaser.Scene {
             new FamilyRelic(),
             new ReRollWithItRelic(),
             new WildOneRelic(),
-            new UnlockedAndLoadedRelic(),
+            new StraightSudsRelic(),
             new RainRelic(),
             new PrepperRelic()
         ];
@@ -1109,7 +1109,7 @@ export class GameScene extends Phaser.Scene {
                 this.refreshActiveDiceVisuals();
                 break;
             case 'unlocked-and-loaded':
-                this.unlocksOnLongStraights = false;
+                this.cleanseCursesOnLongStraights = false;
                 break;
             case 'blockbuster':
                 this.hasBlockbusterRelic = false;
@@ -1357,6 +1357,12 @@ export class GameScene extends Phaser.Scene {
         this.lockedDice.clear();
     }
 
+    cleanseAllDiceCurses() {
+        this.unlockAllDice();
+        this.clearAllWeakenedDice();
+        this.clearAllNullifiedDice();
+    }
+
     queueEnemyLocks(count) {
         if (!count || count <= 0) {
             return;
@@ -1498,11 +1504,11 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
-        if (this.unlocksOnLongStraights) {
-            // Unlocked and Loaded relic: trigger unlocks on long straights.
-            const unlockCombos = ['Straight Penta', 'Straight Sex'];
-            if (unlockCombos.includes(defendResult.comboType) || unlockCombos.includes(attackResult.comboType)) {
-                this.unlockAllDice();
+        if (this.cleanseCursesOnLongStraights) {
+            // Straight Suds relic: trigger curse cleansing on long straights.
+            const cleanseCombos = ['Straight Penta', 'Straight Sex'];
+            if (cleanseCombos.includes(defendResult.comboType) || cleanseCombos.includes(attackResult.comboType)) {
+                this.cleanseAllDiceCurses();
             }
         }
 
