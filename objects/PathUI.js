@@ -46,11 +46,20 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect, { connectionTextureKey } = {}) {
+    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey } = {}) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
         this.connectionTextureKey = connectionTextureKey || 'path_ladder';
+        this.wallTextureKey = wallTextureKey || null;
+        this.backgroundTextureKey = backgroundTextureKey || 'path_background';
+
+        this.backgroundContainer = scene.add.container(0, 0);
+        this.backgroundContainer.setDepth(17);
+        this.backgroundSprite = null;
+        this.wallContainer = scene.add.container(0, 0);
+        this.wallContainer.setDepth(18);
+        this.wallSprites = [];
 
         this.container = scene.add.container(0, 0);
         this.container.setDepth(20);
@@ -76,6 +85,7 @@ export class PathUI {
         this.isDestroyed = false;
 
         this.createNodes();
+        this.createWalls();
         this.drawConnections();
         this.updateScrollBounds();
         this.applyScroll();
@@ -85,6 +95,141 @@ export class PathUI {
             this.scene.events.once('destroy', this.destroy, this);
         }
         this.hide();
+    }
+
+    getWallTexture() {
+        if (!this.wallTextureKey) {
+            return null;
+        }
+
+        const textures = this.scene && this.scene.textures;
+        if (!textures || typeof textures.exists !== 'function' || !textures.exists(this.wallTextureKey)) {
+            return null;
+        }
+
+        return textures.get(this.wallTextureKey);
+    }
+
+    getBackgroundTexture() {
+        if (!this.backgroundTextureKey) {
+            return null;
+        }
+
+        const textures = this.scene && this.scene.textures;
+        if (!textures || typeof textures.exists !== 'function' || !textures.exists(this.backgroundTextureKey)) {
+            return null;
+        }
+
+        return textures.get(this.backgroundTextureKey);
+    }
+
+    clearWallSprites() {
+        if (!Array.isArray(this.wallSprites)) {
+            return;
+        }
+
+        this.wallSprites.forEach(sprite => {
+            if (sprite && typeof sprite.destroy === 'function') {
+                sprite.destroy();
+            }
+        });
+
+        this.wallSprites.length = 0;
+
+        if (this.wallContainer && typeof this.wallContainer.removeAll === 'function') {
+            this.wallContainer.removeAll(false);
+        }
+    }
+
+    clearBackgroundSprite() {
+        if (this.backgroundSprite && typeof this.backgroundSprite.destroy === 'function') {
+            this.backgroundSprite.destroy();
+        }
+
+        this.backgroundSprite = null;
+
+        if (this.backgroundContainer && typeof this.backgroundContainer.removeAll === 'function') {
+            this.backgroundContainer.removeAll(false);
+        }
+    }
+
+    createWalls() {
+        if (!this.wallContainer) {
+            return;
+        }
+
+        this.clearWallSprites();
+        this.clearBackgroundSprite();
+
+        const texture = this.getWallTexture();
+        if (!texture || typeof texture.getSourceImage !== 'function') {
+            return;
+        }
+
+        const sourceImage = texture.getSourceImage();
+        if (!sourceImage) {
+            return;
+        }
+
+        const nodes = this.pathManager.getNodes();
+        if (!Array.isArray(nodes) || nodes.length === 0) {
+            return;
+        }
+
+        let minX = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        nodes.forEach(node => {
+            const { x } = this.getNodePosition(node);
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+        });
+
+        if (!Number.isFinite(minX) || !Number.isFinite(maxX)) {
+            return;
+        }
+
+        const wallWidth = Math.max(1, sourceImage.width || 1);
+        const wallHalfWidth = wallWidth / 2;
+        const nodeHalfWidth = 28;
+        const lateralPadding = 30;
+        const offset = nodeHalfWidth + wallHalfWidth + lateralPadding;
+        const leftX = minX - offset;
+        const rightX = maxX + offset;
+
+        const minContentY = Number.isFinite(this.minContentY) ? this.minContentY : 0;
+        const maxContentY = Number.isFinite(this.maxContentY) ? this.maxContentY : 0;
+        const top = minContentY - TOP_MARGIN;
+        const bottom = maxContentY + BOTTOM_MARGIN;
+        const height = Math.max(1, bottom - top);
+        const centerY = (top + bottom) / 2;
+
+        const backgroundTexture = this.getBackgroundTexture();
+        if (backgroundTexture && this.backgroundContainer) {
+            const backgroundWidth = Math.max(1, rightX - leftX - wallWidth);
+            if (backgroundWidth > 0) {
+                const backgroundSprite = this.scene.add.tileSprite(
+                    (leftX + rightX) / 2,
+                    centerY,
+                    backgroundWidth,
+                    height,
+                    this.backgroundTextureKey
+                );
+                backgroundSprite.setOrigin(0.5, 0.5);
+                backgroundSprite.setDepth(17);
+                backgroundSprite.setPosition(Math.round(backgroundSprite.x), Math.round(backgroundSprite.y));
+                this.backgroundContainer.add(backgroundSprite);
+                this.backgroundSprite = backgroundSprite;
+            }
+        }
+
+        [leftX, rightX].forEach(x => {
+            const sprite = this.scene.add.tileSprite(x, centerY, wallWidth, height, this.wallTextureKey);
+            sprite.setOrigin(0.5, 0.5);
+            sprite.setDepth(18);
+            sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
+            this.wallContainer.add(sprite);
+            this.wallSprites.push(sprite);
+        });
     }
 
     getNodePosition(node) {
@@ -369,6 +514,12 @@ export class PathUI {
         this.isActive = true;
         this.updateScrollBounds();
         this.applyScroll();
+        if (this.backgroundContainer) {
+            this.backgroundContainer.setVisible(true);
+        }
+        if (this.wallContainer) {
+            this.wallContainer.setVisible(true);
+        }
         this.container.setVisible(true);
         this.connectionGraphics.setVisible(true);
         if (this.connectionSpriteContainer) {
@@ -380,6 +531,12 @@ export class PathUI {
         this.isActive = false;
         this.isDragging = false;
         this.dragPointerId = null;
+        if (this.backgroundContainer) {
+            this.backgroundContainer.setVisible(false);
+        }
+        if (this.wallContainer) {
+            this.wallContainer.setVisible(false);
+        }
         this.container.setVisible(false);
         this.connectionGraphics.setVisible(false);
         if (this.connectionSpriteContainer) {
@@ -454,6 +611,12 @@ export class PathUI {
         if (this.connectionSpriteContainer) {
             this.connectionSpriteContainer.y = this.scrollY;
         }
+        if (this.backgroundContainer) {
+            this.backgroundContainer.y = this.scrollY;
+        }
+        if (this.wallContainer) {
+            this.wallContainer.y = this.scrollY;
+        }
     }
 
     updateScrollBounds() {
@@ -502,6 +665,17 @@ export class PathUI {
         }
 
         this.clearConnectionSprites();
+        this.clearWallSprites();
+        this.clearBackgroundSprite();
+
+        if (this.backgroundContainer) {
+            this.backgroundContainer.destroy(true);
+            this.backgroundContainer = null;
+        }
+        if (this.wallContainer) {
+            this.wallContainer.destroy(true);
+            this.wallContainer = null;
+        }
 
         if (this.connectionSpriteContainer) {
             this.connectionSpriteContainer.destroy(true);
