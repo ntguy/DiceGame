@@ -42,6 +42,7 @@ const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
 const BOTTOM_MARGIN = 80;
 const WHEEL_SCROLL_MULTIPLIER = 0.5;
+const SCROLL_INPUT_MULTIPLIER = 0.5;
 
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
@@ -238,7 +239,7 @@ export class PathUI {
         const height = Math.max(1, bottom - top);
         const centerY = (top + bottom) / 2;
 
-        this.createOutsideBackgroundSprites({ centerY });
+        this.createOutsideBackgroundSprites({ top, bottom, height, centerY });
 
         const backgroundTexture = this.getBackgroundTexture();
         if (backgroundTexture && this.backgroundContainer) {
@@ -271,7 +272,7 @@ export class PathUI {
         });
     }
 
-    createOutsideBackgroundSprites({ centerY }) {
+    createOutsideBackgroundSprites({ top, bottom, height, centerY }) {
         if (!this.outsideBackgroundContainer) {
             return;
         }
@@ -289,6 +290,13 @@ export class PathUI {
         const defaultScale = 2;
         const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
         const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
+        const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
+        const spanHeight = Number.isFinite(height) ? height : sceneHeight;
+        const spanTop = Number.isFinite(top)
+            ? top
+            : (Number.isFinite(centerY) ? centerY - spanHeight / 2 : defaultY - spanHeight / 2);
+        const coverageHeight = Math.max(spanHeight, sceneHeight) + sceneHeight;
+
         const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
             ? Phaser.Math.Clamp
             : (value, min, max) => Math.min(Math.max(value, min), max);
@@ -301,7 +309,40 @@ export class PathUI {
                 return;
             }
 
-            const sprite = this.scene.add.image(baseX, Number.isFinite(centerY) ? centerY : defaultY, key);
+            const t = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
+            const scrollFactor = count > 1 ? lerp(minFactor, maxFactor, t) : maxFactor;
+            const texture = textures.get(key);
+            const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
+            const sourceWidth = source && source.width ? source.width : sceneHeight || 1;
+            const sourceHeight = source && source.height ? source.height : sceneHeight || 1;
+
+            if (index === 0) {
+                const width = sourceWidth * defaultScale;
+                const tileHeight = Math.max(coverageHeight, sourceHeight * defaultScale);
+                const tileY = spanTop + tileHeight / 2;
+                const tileSprite = this.scene.add.tileSprite(baseX, tileY, width, tileHeight, key);
+                tileSprite.setOrigin(0.5, 0.5);
+                tileSprite.setTileScale(defaultScale, defaultScale);
+                tileSprite.setScrollFactor(0);
+                tileSprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
+                tileSprite.setPosition(Math.round(tileSprite.x), Math.round(tileSprite.y));
+
+                this.outsideBackgroundContainer.add(tileSprite);
+
+                this.outsideBackgroundLayers.push({
+                    sprite: tileSprite,
+                    baseY: tileSprite.y,
+                    baseTileX: tileSprite.tilePositionX || 0,
+                    baseTileY: tileSprite.tilePositionY || 0,
+                    scrollFactor,
+                    isTileSprite: true
+                });
+                return;
+            }
+
+            const spriteHeight = sourceHeight * defaultScale;
+            const spriteY = spanTop + spriteHeight / 2;
+            const sprite = this.scene.add.image(baseX, spriteY, key);
             sprite.setOrigin(0.5, 0.5);
             sprite.setScale(defaultScale);
             sprite.setScrollFactor(0);
@@ -309,9 +350,6 @@ export class PathUI {
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
 
             this.outsideBackgroundContainer.add(sprite);
-
-            const t = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
-            const scrollFactor = count > 1 ? lerp(minFactor, maxFactor, t) : maxFactor;
 
             this.outsideBackgroundLayers.push({
                 sprite,
@@ -717,7 +755,7 @@ export class PathUI {
         }
 
         const scrollDeltaY = typeof deltaY === 'number' ? deltaY : 0;
-        const delta = -scrollDeltaY * WHEEL_SCROLL_MULTIPLIER;
+        const delta = -scrollDeltaY * WHEEL_SCROLL_MULTIPLIER * SCROLL_INPUT_MULTIPLIER;
         this.setScrollY(this.scrollY + delta);
     }
 
@@ -742,7 +780,7 @@ export class PathUI {
         }
 
         const deltaY = pointer.y - this.dragStartY;
-        this.setScrollY(this.scrollStartY + deltaY);
+        this.setScrollY(this.scrollStartY + deltaY * SCROLL_INPUT_MULTIPLIER);
     }
 
     handlePointerUp(pointer) {
@@ -778,8 +816,19 @@ export class PathUI {
                     return;
                 }
 
-                const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
                 const factor = Number.isFinite(layer.scrollFactor) ? layer.scrollFactor : 1;
+
+                if (layer.isTileSprite && typeof layer.sprite.setTilePosition === 'function') {
+                    const baseTileX = Number.isFinite(layer.baseTileX) ? layer.baseTileX : 0;
+                    const baseTileY = Number.isFinite(layer.baseTileY) ? layer.baseTileY : 0;
+                    const tileOffset = baseTileY + this.scrollY * factor;
+                    layer.sprite.setTilePosition(baseTileX, tileOffset);
+                    const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
+                    layer.sprite.y = Math.round(baseY);
+                    return;
+                }
+
+                const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
                 const newY = baseY + this.scrollY * factor;
                 layer.sprite.y = Math.round(newY);
             });
