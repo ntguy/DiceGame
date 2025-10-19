@@ -28,6 +28,15 @@ const LAYOUT = {
     rowSpacing: 156
 };
 
+const PATH_TEXTURE_SCALE = 1.5;
+const GENERAL_TEXTURE_SCALE = 2;
+const PATH_DEPTHS = {
+    background: 5,
+    walls: -1, // grr healthbar
+    connections: 7,
+    nodes: 8
+};
+
 const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
 const BOTTOM_MARGIN = 80;
@@ -55,20 +64,20 @@ export class PathUI {
         this.backgroundTextureKey = backgroundTextureKey || 'path_background';
 
         this.backgroundContainer = scene.add.container(0, 0);
-        this.backgroundContainer.setDepth(17);
+        this.backgroundContainer.setDepth(PATH_DEPTHS.background);
         this.backgroundSprite = null;
         this.wallContainer = scene.add.container(0, 0);
-        this.wallContainer.setDepth(18);
+        this.wallContainer.setDepth(PATH_DEPTHS.walls);
         this.wallSprites = [];
 
         this.container = scene.add.container(0, 0);
-        this.container.setDepth(20);
+        this.container.setDepth(PATH_DEPTHS.nodes);
 
         this.connectionGraphics = scene.add.graphics();
-        this.connectionGraphics.setDepth(19);
+        this.connectionGraphics.setDepth(PATH_DEPTHS.connections);
 
         this.connectionSpriteContainer = scene.add.container(0, 0);
-        this.connectionSpriteContainer.setDepth(19);
+        this.connectionSpriteContainer.setDepth(PATH_DEPTHS.connections);
         this.connectionSprites = [];
 
         this.nodeRefs = new Map();
@@ -188,7 +197,8 @@ export class PathUI {
             return;
         }
 
-        const wallWidth = Math.max(1, sourceImage.width || 1);
+        const wallSourceWidth = Math.max(1, sourceImage.width || 1);
+        const wallWidth = wallSourceWidth * GENERAL_TEXTURE_SCALE;
         const wallHalfWidth = wallWidth / 2;
         const nodeHalfWidth = 28;
         const lateralPadding = 30;
@@ -214,8 +224,9 @@ export class PathUI {
                     height,
                     this.backgroundTextureKey
                 );
+                backgroundSprite.setTileScale(GENERAL_TEXTURE_SCALE, GENERAL_TEXTURE_SCALE); // apply uniform scaling
                 backgroundSprite.setOrigin(0.5, 0.5);
-                backgroundSprite.setDepth(17);
+                backgroundSprite.setDepth(PATH_DEPTHS.background);
                 backgroundSprite.setPosition(Math.round(backgroundSprite.x), Math.round(backgroundSprite.y));
                 this.backgroundContainer.add(backgroundSprite);
                 this.backgroundSprite = backgroundSprite;
@@ -225,7 +236,8 @@ export class PathUI {
         [leftX, rightX].forEach(x => {
             const sprite = this.scene.add.tileSprite(x, centerY, wallWidth, height, this.wallTextureKey);
             sprite.setOrigin(0.5, 0.5);
-            sprite.setDepth(18);
+            sprite.setDepth(PATH_DEPTHS.walls);
+            sprite.setTileScale(GENERAL_TEXTURE_SCALE, GENERAL_TEXTURE_SCALE);
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
             this.wallContainer.add(sprite);
             this.wallSprites.push(sprite);
@@ -354,7 +366,8 @@ export class PathUI {
         }
 
         const ladderHeight = Math.max(1, sourceImage.height || 1);
-        const halfHeight = ladderHeight / 2;
+        const scaledLadderHeight = ladderHeight * PATH_TEXTURE_SCALE;
+        const halfHeight = scaledLadderHeight / 2;
         const processed = new Set();
         const nodes = this.pathManager.getNodes();
 
@@ -386,7 +399,7 @@ export class PathUI {
                 }
 
                 const angle = Phaser.Math.Angle.Between(fromPos.x, fromPos.y, toPos.x, toPos.y) - Math.PI / 2;
-                const step = ladderHeight;
+                const step = scaledLadderHeight;
                 const unitX = dx / distance;
                 const unitY = dy / distance;
 
@@ -395,31 +408,30 @@ export class PathUI {
                     const y = fromPos.y + unitY * offset;
                     const segment = this.scene.add.image(x, y, textureKey);
                     segment.setOrigin(0.5, 0.5);
-                    segment.setDepth(19);
+                    segment.setDepth(PATH_DEPTHS.connections);
                     segment.setRotation(angle);
+                    segment.setScale(PATH_TEXTURE_SCALE);
                     segment.setPosition(Math.round(segment.x), Math.round(segment.y));
 
                     this.connectionSpriteContainer.add(segment);
                     this.connectionSprites.push(segment);
                 };
 
-                if (distance <= ladderHeight) {
+                if (distance <= step) {
                     addSegmentAtOffset(distance / 2);
                     return;
                 }
 
-                const firstOffset = halfHeight;
-                const lastOffset = distance - halfHeight;
-                let offset = firstOffset;
+                const segmentCount = Math.max(1, Math.floor(distance / step));
+                const remainder = distance - segmentCount * step;
+                let offset = halfHeight + remainder / 2;
 
-                while (offset <= lastOffset) {
+                for (let i = 0; i < segmentCount; i++) {
+                    if (offset > distance - halfHeight) {
+                        offset = distance - halfHeight;
+                    }
                     addSegmentAtOffset(offset);
                     offset += step;
-                }
-
-                const previousOffset = offset - step;
-                if (lastOffset - previousOffset > 1e-3) {
-                    addSegmentAtOffset(lastOffset);
                 }
             });
         });
