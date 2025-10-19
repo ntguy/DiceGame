@@ -31,6 +31,7 @@ const LAYOUT = {
 const PATH_TEXTURE_SCALE = 1.5;
 const GENERAL_TEXTURE_SCALE = 2;
 const PATH_DEPTHS = {
+    outsideBackground: -5,
     background: 5,
     walls: -1, // grr healthbar
     connections: 7,
@@ -41,6 +42,9 @@ const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
 const BOTTOM_MARGIN = 80;
 const WHEEL_SCROLL_MULTIPLIER = 0.5;
+const SCROLL_INPUT_MULTIPLIER = 0.5;
+const OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER = 0.25;
+const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
@@ -55,14 +59,20 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey } = {}) {
+    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys } = {}) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
         this.connectionTextureKey = connectionTextureKey || 'path_ladder';
         this.wallTextureKey = wallTextureKey || null;
         this.backgroundTextureKey = backgroundTextureKey || 'path_background';
+        this.outsideBackgroundLayerKeys = Array.isArray(outsideBackgroundLayerKeys)
+            ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
+            : [];
 
+        this.outsideBackgroundContainer = scene.add.container(0, 0);
+        this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
+        this.outsideBackgroundLayers = [];
         this.backgroundContainer = scene.add.container(0, 0);
         this.backgroundContainer.setDepth(PATH_DEPTHS.background);
         this.backgroundSprite = null;
@@ -162,6 +172,23 @@ export class PathUI {
         }
     }
 
+    clearOutsideBackgroundSprites() {
+        if (Array.isArray(this.outsideBackgroundLayers)) {
+            this.outsideBackgroundLayers.forEach(layer => {
+                const sprite = layer && layer.sprite ? layer.sprite : null;
+                if (sprite && typeof sprite.destroy === 'function') {
+                    sprite.destroy();
+                }
+            });
+        }
+
+        this.outsideBackgroundLayers = [];
+
+        if (this.outsideBackgroundContainer && typeof this.outsideBackgroundContainer.removeAll === 'function') {
+            this.outsideBackgroundContainer.removeAll(false);
+        }
+    }
+
     createWalls() {
         if (!this.wallContainer) {
             return;
@@ -169,6 +196,7 @@ export class PathUI {
 
         this.clearWallSprites();
         this.clearBackgroundSprite();
+        this.clearOutsideBackgroundSprites();
 
         const texture = this.getWallTexture();
         if (!texture || typeof texture.getSourceImage !== 'function') {
@@ -213,6 +241,8 @@ export class PathUI {
         const height = Math.max(1, bottom - top);
         const centerY = (top + bottom) / 2;
 
+        this.createOutsideBackgroundSprites({ top, bottom, height, centerY });
+
         const backgroundTexture = this.getBackgroundTexture();
         if (backgroundTexture && this.backgroundContainer) {
             const backgroundWidth = Math.max(1, rightX - leftX - wallWidth);
@@ -241,6 +271,122 @@ export class PathUI {
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
             this.wallContainer.add(sprite);
             this.wallSprites.push(sprite);
+        });
+    }
+
+    createOutsideBackgroundSprites({ top, bottom, height, centerY }) {
+        if (!this.outsideBackgroundContainer) {
+            return;
+        }
+
+        this.clearOutsideBackgroundSprites();
+
+        if (!Array.isArray(this.outsideBackgroundLayerKeys) || this.outsideBackgroundLayerKeys.length === 0) {
+            return;
+        }
+
+        const textures = this.scene && this.scene.textures;
+        const count = this.outsideBackgroundLayerKeys.length;
+        const minFactor = 0.15;
+        const maxFactor = 1;
+        const defaultScale = 2;
+        const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
+        const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
+        const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
+        const spanHeight = Number.isFinite(height) ? height : sceneHeight;
+        const spanTop = Number.isFinite(top)
+            ? top
+            : (Number.isFinite(centerY) ? centerY - spanHeight / 2 : defaultY - spanHeight / 2);
+        const coverageHeight = Math.max(spanHeight, sceneHeight) + sceneHeight;
+        const viewportHeight = Number.isFinite(sceneHeight) && sceneHeight > 0 ? sceneHeight : spanHeight;
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const lerp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Linear === 'function'
+            ? Phaser.Math.Linear
+            : (start, end, t) => start + (end - start) * t;
+
+        this.outsideBackgroundLayerKeys.forEach((key, index) => {
+            if (!key || !textures || typeof textures.exists !== 'function' || !textures.exists(key)) {
+                return;
+            }
+
+            const t = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
+            const baseScrollFactor = count > 1 ? lerp(minFactor, maxFactor, t) : maxFactor;
+            const slowdownMultiplier = index === 0
+                ? OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER * FARTHEST_OUTSIDE_LAYER_MULTIPLIER
+                : OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER;
+            const scrollFactor = baseScrollFactor * slowdownMultiplier;
+            const texture = textures.get(key);
+            const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
+            const sourceWidth = source && source.width ? source.width : sceneHeight || 1;
+            const sourceHeight = source && source.height ? source.height : sceneHeight || 1;
+
+            if (index === 0) {
+                const width = sourceWidth * defaultScale;
+                const tileHeight = Math.max(coverageHeight, sourceHeight * defaultScale);
+                const tileY = spanTop + tileHeight / 2;
+                let tileFrameKey = null;
+
+                if (texture && typeof texture.has === 'function' && typeof texture.add === 'function') {
+                    const croppedHeight = Math.max(1, Math.floor(sourceHeight * 0.45));
+                    const frameKey = `${key}_topHalf`;
+                    if (!texture.has(frameKey)) {
+                        texture.add(frameKey, 0, 0, 0, sourceWidth, croppedHeight);
+                    }
+                    if (texture.has(frameKey)) {
+                        tileFrameKey = frameKey;
+                    }
+                }
+
+                const tileSprite = this.scene.add.tileSprite(
+                    baseX,
+                    tileY,
+                    width,
+                    tileHeight,
+                    key,
+                    tileFrameKey || undefined
+                );
+                tileSprite.setOrigin(0.5, 0.5);
+                tileSprite.setTileScale(defaultScale, defaultScale);
+                tileSprite.setScrollFactor(0);
+                tileSprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
+                tileSprite.setPosition(Math.round(tileSprite.x), Math.round(tileSprite.y));
+
+                this.outsideBackgroundContainer.add(tileSprite);
+
+                this.outsideBackgroundLayers.push({
+                    sprite: tileSprite,
+                    baseY: tileSprite.y,
+                    baseTileX: tileSprite.tilePositionX || 0,
+                    baseTileY: tileSprite.tilePositionY || 0,
+                    scrollFactor,
+                    isTileSprite: true
+                });
+                return;
+            }
+
+            const spriteHeight = sourceHeight * defaultScale;
+            const progress = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
+            const minOffset = viewportHeight * 0.12;
+            const maxOffset = viewportHeight * 0.45;
+            const verticalOffset = lerp(minOffset, maxOffset, progress);
+            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100;
+            const sprite = this.scene.add.image(baseX, spriteY, key);
+            sprite.setOrigin(0.5, 0.5);
+            sprite.setScale(defaultScale);
+            sprite.setScrollFactor(0);
+            sprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
+            sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
+
+            this.outsideBackgroundContainer.add(sprite);
+
+            this.outsideBackgroundLayers.push({
+                sprite,
+                baseY: sprite.y,
+                scrollFactor
+            });
         });
     }
 
@@ -640,7 +786,7 @@ export class PathUI {
         }
 
         const scrollDeltaY = typeof deltaY === 'number' ? deltaY : 0;
-        const delta = -scrollDeltaY * WHEEL_SCROLL_MULTIPLIER;
+        const delta = -scrollDeltaY * WHEEL_SCROLL_MULTIPLIER * SCROLL_INPUT_MULTIPLIER;
         this.setScrollY(this.scrollY + delta);
     }
 
@@ -665,7 +811,7 @@ export class PathUI {
         }
 
         const deltaY = pointer.y - this.dragStartY;
-        this.setScrollY(this.scrollStartY + deltaY);
+        this.setScrollY(this.scrollStartY + deltaY * SCROLL_INPUT_MULTIPLIER);
     }
 
     handlePointerUp(pointer) {
@@ -694,6 +840,29 @@ export class PathUI {
         }
         if (this.wallContainer) {
             this.wallContainer.y = this.scrollY;
+        }
+        if (Array.isArray(this.outsideBackgroundLayers) && this.outsideBackgroundLayers.length > 0) {
+            this.outsideBackgroundLayers.forEach(layer => {
+                if (!layer || !layer.sprite) {
+                    return;
+                }
+
+                const factor = Number.isFinite(layer.scrollFactor) ? layer.scrollFactor : 1;
+
+                if (layer.isTileSprite && typeof layer.sprite.setTilePosition === 'function') {
+                    const baseTileX = Number.isFinite(layer.baseTileX) ? layer.baseTileX : 0;
+                    const baseTileY = Number.isFinite(layer.baseTileY) ? layer.baseTileY : 0;
+                    const tileOffset = baseTileY - this.scrollY * factor;
+                    layer.sprite.setTilePosition(baseTileX, tileOffset);
+                    const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
+                    layer.sprite.y = Math.round(baseY);
+                    return;
+                }
+
+                const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
+                const newY = baseY + this.scrollY * factor;
+                layer.sprite.y = Math.round(newY);
+            });
         }
     }
 
@@ -745,7 +914,12 @@ export class PathUI {
         this.clearConnectionSprites();
         this.clearWallSprites();
         this.clearBackgroundSprite();
+        this.clearOutsideBackgroundSprites();
 
+        if (this.outsideBackgroundContainer) {
+            this.outsideBackgroundContainer.destroy(true);
+            this.outsideBackgroundContainer = null;
+        }
         if (this.backgroundContainer) {
             this.backgroundContainer.destroy(true);
             this.backgroundContainer = null;
