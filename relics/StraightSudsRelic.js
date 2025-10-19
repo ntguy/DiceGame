@@ -4,7 +4,7 @@ export class StraightSudsRelic extends Relic {
     constructor() {
         super({
             id: 'unlocked-and-loaded',
-            name: 'Straight Suds 🧼',
+            name: 'Straight Suds',
             description: 'Penta and Sex Straight cleanse all dice of curses.',
             icon: '🧼',
             cost: 95
