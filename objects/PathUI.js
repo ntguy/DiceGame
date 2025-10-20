@@ -48,6 +48,33 @@ const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
+const OUTSIDE_BACKGROUND_SPARKLE_KEY = 'outside_background_sparkle';
+
+function ensureSparkleTexture(scene) {
+    if (!scene || !scene.textures || scene.textures.exists(OUTSIDE_BACKGROUND_SPARKLE_KEY)) {
+        return OUTSIDE_BACKGROUND_SPARKLE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const size = 28;
+    const half = size / 2;
+
+    graphics.fillStyle(0xffffff, 0.9);
+    graphics.fillCircle(half, half, half * 0.55);
+    graphics.fillStyle(0xffffff, 0.6);
+    graphics.fillCircle(half, half, half * 0.3);
+    graphics.lineStyle(2, 0xffffff, 0.85);
+    graphics.beginPath();
+    graphics.moveTo(half, half - half * 0.9);
+    graphics.lineTo(half, half + half * 0.9);
+    graphics.moveTo(half - half * 0.9, half);
+    graphics.lineTo(half + half * 0.9, half);
+    graphics.strokePath();
+    graphics.generateTexture(OUTSIDE_BACKGROUND_SPARKLE_KEY, size, size);
+    graphics.destroy();
+
+    return OUTSIDE_BACKGROUND_SPARKLE_KEY;
+}
 
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
@@ -76,6 +103,7 @@ export class PathUI {
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
         this.outsideBackgroundLayers = [];
+        this.outsideBackgroundSparkleTweens = [];
         this.backgroundContainer = scene.add.container(0, 0);
         this.backgroundContainer.setDepth(PATH_DEPTHS.background);
         this.backgroundSprite = null;
@@ -176,6 +204,8 @@ export class PathUI {
     }
 
     clearOutsideBackgroundSprites() {
+        this.clearOutsideBackgroundSparkles();
+
         if (Array.isArray(this.outsideBackgroundLayers)) {
             this.outsideBackgroundLayers.forEach(layer => {
                 const sprite = layer && layer.sprite ? layer.sprite : null;
@@ -189,6 +219,23 @@ export class PathUI {
 
         if (this.outsideBackgroundContainer && typeof this.outsideBackgroundContainer.removeAll === 'function') {
             this.outsideBackgroundContainer.removeAll(false);
+        }
+    }
+
+    clearOutsideBackgroundSparkles() {
+        if (Array.isArray(this.outsideBackgroundSparkleTweens)) {
+            this.outsideBackgroundSparkleTweens.forEach(tween => {
+                if (!tween) {
+                    return;
+                }
+
+                if (typeof tween.remove === 'function') {
+                    tween.remove();
+                } else if (typeof tween.stop === 'function') {
+                    tween.stop();
+                }
+            });
+            this.outsideBackgroundSparkleTweens.length = 0;
         }
     }
 
@@ -368,6 +415,15 @@ export class PathUI {
                     scrollFactor,
                     isTileSprite: true
                 });
+
+                this.createOutsideBackgroundSparkles({
+                    spanTop,
+                    coverageHeight: tileHeight,
+                    scrollFactor,
+                    horizontalOffset,
+                    width,
+                    baseX
+                });
                 return;
             }
 
@@ -392,6 +448,70 @@ export class PathUI {
                 scrollFactor
             });
         });
+    }
+
+    createOutsideBackgroundSparkles({ spanTop, coverageHeight, scrollFactor, horizontalOffset, width, baseX }) {
+        if (!this.scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureSparkleTexture(this.scene);
+        if (!textureKey || !this.scene.textures.exists(textureKey)) {
+            return;
+        }
+
+        const hasPhaser = typeof Phaser !== 'undefined';
+        const math = hasPhaser && Phaser.Math ? Phaser.Math : null;
+        const easing = math && math.Easing ? math.Easing : null;
+        const ease = easing && easing.Sine ? easing.Sine.InOut : null;
+        const count = Math.max(12, Math.round(width / 160));
+        const startX = baseX + horizontalOffset - width / 2;
+
+        for (let i = 0; i < count; i += 1) {
+            const x = startX + Math.random() * width;
+            const y = spanTop + Math.random() * coverageHeight;
+            const scale = math && typeof math.FloatBetween === 'function'
+                ? math.FloatBetween(0.35, 0.75)
+                : 0.5;
+            const alpha = math && typeof math.FloatBetween === 'function'
+                ? math.FloatBetween(0.4, 0.85)
+                : 0.6;
+
+            const sprite = this.scene.add.image(x, y, textureKey);
+            sprite.setOrigin(0.5, 0.5);
+            sprite.setScale(scale);
+            sprite.setAlpha(alpha);
+            sprite.setScrollFactor(0);
+            sprite.setDepth(PATH_DEPTHS.outsideBackground + 0.35);
+
+            if (hasPhaser && Phaser.BlendModes && typeof sprite.setBlendMode === 'function') {
+                sprite.setBlendMode(Phaser.BlendModes.ADD);
+            }
+
+            this.outsideBackgroundContainer.add(sprite);
+
+            this.outsideBackgroundLayers.push({
+                sprite,
+                baseY: sprite.y,
+                scrollFactor
+            });
+
+            if (this.scene.tweens && typeof this.scene.tweens.add === 'function') {
+                const duration = math && typeof math.Between === 'function' ? math.Between(1400, 2400) : 1800;
+                const delay = math && typeof math.Between === 'function' ? math.Between(0, 2000) : 0;
+                const tween = this.scene.tweens.add({
+                    targets: sprite,
+                    alpha: { from: alpha, to: alpha * 0.25 },
+                    scale: { from: scale, to: scale * 1.45 },
+                    yoyo: true,
+                    repeat: -1,
+                    duration,
+                    delay,
+                    ease: ease || 'Sine.easeInOut'
+                });
+                this.outsideBackgroundSparkleTweens.push(tween);
+            }
+        }
     }
 
     getNodePosition(node) {
