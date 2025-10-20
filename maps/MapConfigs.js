@@ -158,12 +158,22 @@ export const MAP_CONFIGS = [
         enemySequence: mapTwoEnemySequence,
         pathTextureKey: 'path_ladder_metal',
         wallTextureKey: 'wall2',
-        outsideBackgroundLayerKeys: [
-            'outside_background_1',
-            'outside_background_2',
-            'outside_background_3',
-            'outside_background_4'
-        ]
+        outsideBackground: {
+            layout: 'vertical',
+            ambient: {
+                enableBugs: true
+            },
+            layers: [
+                { key: 'map2_outside_background_1', scale: 3.2, scrollFactor: -0.02 },
+                { key: 'map2_outside_background_2', scale: 3.25, scrollFactor: -0.04 },
+                { key: 'map2_outside_background_3', scale: 3.3, scrollFactor: -0.07 },
+                { key: 'map2_outside_background_4', scale: 3.38, scrollFactor: -0.12 },
+                { key: 'map2_outside_background_5', scale: 3.45, scrollFactor: -0.18 }
+            ],
+            layoutOptions: {
+                topOffset: 0
+            }
+        }
     },
     {
         id: 'map-3',

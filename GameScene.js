@@ -284,6 +284,11 @@ export class GameScene extends Phaser.Scene {
         this.load.image('outside_background_2', './sprites/Clouds 3/2.png');
         this.load.image('outside_background_3', './sprites/Clouds 3/3.png');
         this.load.image('outside_background_4', './sprites/Clouds 3/4.png');
+        this.load.image('map2_outside_background_1', './sprites/Jungle/plx-1.png');
+        this.load.image('map2_outside_background_2', './sprites/Jungle/plx-2.png');
+        this.load.image('map2_outside_background_3', './sprites/Jungle/plx-3.png');
+        this.load.image('map2_outside_background_4', './sprites/Jungle/plx-4.png');
+        this.load.image('map2_outside_background_5', './sprites/Jungle/plx-5.png');
         this.load.image('wall', './sprites/Wall.png');
         this.load.image('wall2', './sprites/Wall2.png');
         this.load.image('wall_highlight_center', './sprites/BrightWallCenter.png');
@@ -2589,29 +2594,92 @@ export class GameScene extends Phaser.Scene {
         return null;
     }
 
-    getOutsideBackgroundLayerKeysForConfig(config) {
+    getOutsideBackgroundConfigForMap(config) {
         const textures = this.textures;
-        const result = [];
 
-        const addKeyIfAvailable = key => {
+        const defaultAmbient = { enableBugs: true };
+        const result = {
+            layout: 'legacy',
+            layers: [],
+            ambient: { ...defaultAmbient },
+            defaultScale: null,
+            layoutOptions: {}
+        };
+
+        const canUseTexture = key => {
             if (!key) {
+                return false;
+            }
+
+            if (!textures || typeof textures.exists !== 'function') {
+                return true;
+            }
+
+            return textures.exists(key);
+        };
+
+        const normalizeLayer = layer => {
+            if (!layer) {
+                return null;
+            }
+
+            if (typeof layer === 'string') {
+                return { key: layer };
+            }
+
+            if (typeof layer === 'object') {
+                const { key, ...rest } = layer;
+                if (typeof key === 'string' && key.length > 0) {
+                    return { key, ...rest };
+                }
+            }
+
+            return null;
+        };
+
+        const addLayer = layer => {
+            const normalized = normalizeLayer(layer);
+            if (!normalized || !canUseTexture(normalized.key)) {
                 return;
             }
 
-            if (textures && typeof textures.exists === 'function' && textures.exists(key)) {
-                if (!result.includes(key)) {
-                    result.push(key);
-                }
+            const alreadyPresent = result.layers.some(existing => existing.key === normalized.key);
+            if (alreadyPresent) {
+                return;
             }
+
+            result.layers.push({ ...normalized });
         };
 
-        if (config && Array.isArray(config.outsideBackgroundLayerKeys)) {
-            config.outsideBackgroundLayerKeys.forEach(addKeyIfAvailable);
+        const outsideBackground = config && typeof config === 'object' ? config.outsideBackground : null;
+
+        if (outsideBackground && typeof outsideBackground === 'object') {
+            if (Array.isArray(outsideBackground.layers)) {
+                outsideBackground.layers.forEach(addLayer);
+            }
+
+            if (outsideBackground.layout && typeof outsideBackground.layout === 'string') {
+                result.layout = outsideBackground.layout;
+            }
+
+            if (outsideBackground.ambient && typeof outsideBackground.ambient === 'object') {
+                result.ambient = { ...defaultAmbient, ...outsideBackground.ambient };
+            }
+
+            if (typeof outsideBackground.defaultScale === 'number' && Number.isFinite(outsideBackground.defaultScale)) {
+                result.defaultScale = outsideBackground.defaultScale;
+            }
+
+            if (outsideBackground.layoutOptions && typeof outsideBackground.layoutOptions === 'object') {
+                result.layoutOptions = { ...outsideBackground.layoutOptions };
+            }
+        } else if (config && Array.isArray(config.outsideBackgroundLayerKeys)) {
+            config.outsideBackgroundLayerKeys.forEach(addLayer);
         }
 
-        if (result.length === 0) {
+        if (result.layers.length === 0) {
             ['outside_background_1', 'outside_background_2', 'outside_background_3', 'outside_background_4']
-                .forEach(addKeyIfAvailable);
+                .forEach(addLayer);
         }
 
         return result;
@@ -2655,7 +2723,7 @@ export class GameScene extends Phaser.Scene {
         const connectionTextureKey = this.getPathTextureKeyForConfig(config);
         const wallTextureKey = this.getWallTextureKeyForConfig(config);
         const backgroundTextureKey = this.getBackgroundTextureKeyForConfig(config);
-        const outsideBackgroundLayerKeys = this.getOutsideBackgroundLayerKeysForConfig(config);
+        const outsideBackgroundConfig = this.getOutsideBackgroundConfigForMap(config);
 
         this.pathManager = new PathManager({
             enemySequence,
@@ -2670,7 +2738,7 @@ export class GameScene extends Phaser.Scene {
                 connectionTextureKey,
                 wallTextureKey,
                 backgroundTextureKey,
-                outsideBackgroundLayerKeys
+                outsideBackgroundConfig
             }
         );
         this.currentPathNodeId = null;

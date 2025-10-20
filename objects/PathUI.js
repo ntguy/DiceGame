@@ -69,12 +69,15 @@ function ensureSparkleTexture(scene) {
     const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
     const size = 12;
     const half = size / 2;
-    const accent = size * 0.3;
 
-    graphics.fillStyle(0xffffff, 1);
-    graphics.fillCircle(half, half, half * 0.45);
-    graphics.fillRect(half - accent / 2, half - half * 0.9, accent, size);
-    graphics.fillRect(half - half * 0.9, half - accent / 2, size, accent);
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillEllipse(half, half, size * 0.55, size * 0.4);
+    graphics.fillEllipse(half, half + size * 0.18, size * 0.3, size * 0.28);
+    graphics.fillStyle(0x1a1a1a, 1);
+    graphics.fillEllipse(half - size * 0.22, half, size * 0.35, size * 0.18);
+    graphics.fillEllipse(half + size * 0.22, half, size * 0.35, size * 0.18);
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillEllipse(half, half - size * 0.2, size * 0.3, size * 0.18);
     graphics.generateTexture(SPARKLE_TEXTURE_KEY, size, size);
     graphics.destroy();
 
@@ -94,15 +97,17 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys } = {}) {
+    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundConfig } = {}) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
         this.connectionTextureKey = connectionTextureKey || 'path_ladder';
         this.wallTextureKey = wallTextureKey || null;
         this.backgroundTextureKey = backgroundTextureKey || 'path_background';
-        this.outsideBackgroundLayerKeys = Array.isArray(outsideBackgroundLayerKeys)
-            ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
+        const normalizedOutsideBackgroundConfig = this.normalizeOutsideBackgroundConfig(outsideBackgroundConfig);
+        this.outsideBackgroundConfig = normalizedOutsideBackgroundConfig;
+        this.outsideBackgroundLayerConfigs = Array.isArray(normalizedOutsideBackgroundConfig.layers)
+            ? normalizedOutsideBackgroundConfig.layers
             : [];
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
@@ -152,6 +157,62 @@ export class PathUI {
             this.scene.events.once('destroy', this.destroy, this);
         }
         this.hide();
+    }
+
+    normalizeOutsideBackgroundLayer(layer) {
+        if (!layer) {
+            return null;
+        }
+
+        if (typeof layer === 'string') {
+            return { key: layer };
+        }
+
+        if (typeof layer === 'object') {
+            const { key, ...rest } = layer;
+            if (typeof key === 'string' && key.length > 0) {
+                return { key, ...rest };
+            }
+        }
+
+        return null;
+    }
+
+    normalizeOutsideBackgroundConfig(config) {
+        const defaultAmbient = { enableBugs: true };
+
+        if (!config || typeof config !== 'object') {
+            return {
+                layout: 'legacy',
+                layers: [],
+                ambient: { ...defaultAmbient },
+                defaultScale: null,
+                layoutOptions: {}
+            };
+        }
+
+        const layout = typeof config.layout === 'string' ? config.layout : 'legacy';
+        const rawLayers = Array.isArray(config.layers) ? config.layers : [];
+        const layers = rawLayers
+            .map(layer => this.normalizeOutsideBackgroundLayer(layer))
+            .filter(Boolean);
+        const ambient = config.ambient && typeof config.ambient === 'object'
+            ? { ...defaultAmbient, ...config.ambient }
+            : { ...defaultAmbient };
+        const defaultScale = typeof config.defaultScale === 'number' && Number.isFinite(config.defaultScale)
+            ? config.defaultScale
+            : null;
+        const layoutOptions = config.layoutOptions && typeof config.layoutOptions === 'object'
+            ? { ...config.layoutOptions }
+            : {};
+
+        return {
+            layout,
+            layers,
+            ambient,
+            defaultScale,
+            layoutOptions
+        };
     }
 
     getWallTexture() {
@@ -273,10 +334,18 @@ export class PathUI {
         if (Array.isArray(this.outsideBackgroundLayers)) {
             this.outsideBackgroundLayers.forEach(layer => {
                 const sprite = layer && layer.sprite ? layer.sprite : null;
-                const tween = layer && layer.tween ? layer.tween : null;
-                if (tween && typeof tween.remove === 'function') {
-                    tween.remove();
+                const tweensToRemove = [];
+                if (layer && layer.tween) {
+                    tweensToRemove.push(layer.tween);
                 }
+                if (layer && layer.moveTween) {
+                    tweensToRemove.push(layer.moveTween);
+                }
+                tweensToRemove.forEach(activeTween => {
+                    if (activeTween && typeof activeTween.remove === 'function') {
+                        activeTween.remove();
+                    }
+                });
                 if (sprite && typeof sprite.destroy === 'function') {
                     sprite.destroy();
                 }
@@ -511,15 +580,33 @@ export class PathUI {
 
         this.clearOutsideBackgroundSprites();
 
-        if (!Array.isArray(this.outsideBackgroundLayerKeys) || this.outsideBackgroundLayerKeys.length === 0) {
+        if (!Array.isArray(this.outsideBackgroundLayerConfigs) || this.outsideBackgroundLayerConfigs.length === 0) {
             return;
         }
 
+        const layout = this.outsideBackgroundConfig && this.outsideBackgroundConfig.layout
+            ? this.outsideBackgroundConfig.layout
+            : 'legacy';
+
+        if (layout === 'vertical') {
+            this.createVerticalOutsideBackgroundSprites({ top, bottom, height, centerY });
+        } else {
+            this.createLegacyOutsideBackgroundSprites({ top, bottom, height, centerY });
+        }
+    }
+
+    createLegacyOutsideBackgroundSprites({ top, bottom, height, centerY }) {
         const textures = this.scene && this.scene.textures;
-        const count = this.outsideBackgroundLayerKeys.length;
+        if (!textures || typeof textures.exists !== 'function') {
+            return;
+        }
+
+        const count = this.outsideBackgroundLayerConfigs.length;
         const minFactor = 0.15;
         const maxFactor = 1;
-        const defaultScale = 2;
+        const defaultScale = Number.isFinite(this.outsideBackgroundConfig.defaultScale)
+            ? this.outsideBackgroundConfig.defaultScale
+            : 2;
         const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
         const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
         const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
@@ -537,8 +624,10 @@ export class PathUI {
             ? Phaser.Math.Linear
             : (start, end, t) => start + (end - start) * t;
 
-        this.outsideBackgroundLayerKeys.forEach((key, index) => {
-            if (!key || !textures || typeof textures.exists !== 'function' || !textures.exists(key)) {
+        this.outsideBackgroundLayerConfigs.forEach((layerConfig, index) => {
+            const normalizedLayer = this.normalizeOutsideBackgroundLayer(layerConfig);
+            const key = normalizedLayer && normalizedLayer.key;
+            if (!key || !textures.exists(key)) {
                 return;
             }
 
@@ -547,17 +636,28 @@ export class PathUI {
             const slowdownMultiplier = index === 0
                 ? OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER * FARTHEST_OUTSIDE_LAYER_MULTIPLIER
                 : OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER;
-            const scrollFactor = baseScrollFactor * slowdownMultiplier;
+            const resolvedScrollFactor = typeof normalizedLayer.scrollFactor === 'number'
+                ? normalizedLayer.scrollFactor
+                : baseScrollFactor * slowdownMultiplier;
             const texture = textures.get(key);
             const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
             const sourceWidth = source && source.width ? source.width : sceneHeight || 1;
             const sourceHeight = source && source.height ? source.height : sceneHeight || 1;
-            const horizontalOffset = OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS[key] || 0;
+            const horizontalOffset = typeof normalizedLayer.offsetX === 'number'
+                ? normalizedLayer.offsetX
+                : OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS[key] || 0;
+            const verticalOffsetOverride = typeof normalizedLayer.offsetY === 'number'
+                ? normalizedLayer.offsetY
+                : 0;
+            const scale = Number.isFinite(normalizedLayer.scale) && normalizedLayer.scale > 0
+                ? normalizedLayer.scale
+                : defaultScale;
+            const useTileSprite = index === 0 && normalizedLayer.useTileSprite !== false;
 
-            if (index === 0) {
-                const width = sourceWidth * defaultScale;
-                const tileHeight = Math.max(coverageHeight, sourceHeight * defaultScale);
-                const tileY = spanTop + tileHeight / 2;
+            if (useTileSprite) {
+                const width = sourceWidth * scale;
+                const tileHeight = Math.max(coverageHeight, sourceHeight * scale);
+                const tileY = spanTop + tileHeight / 2 + verticalOffsetOverride;
                 let tileFrameKey = null;
 
                 if (texture && typeof texture.has === 'function' && typeof texture.add === 'function') {
@@ -580,7 +680,7 @@ export class PathUI {
                     tileFrameKey || undefined
                 );
                 tileSprite.setOrigin(0.5, 0.5);
-                tileSprite.setTileScale(defaultScale, defaultScale);
+                tileSprite.setTileScale(scale, scale);
                 tileSprite.setScrollFactor(0);
                 const layerDepth = PATH_DEPTHS.outsideBackground + index * 0.01;
                 tileSprite.setDepth(layerDepth);
@@ -593,29 +693,34 @@ export class PathUI {
                     baseY: tileSprite.y,
                     baseTileX: tileSprite.tilePositionX || 0,
                     baseTileY: tileSprite.tilePositionY || 0,
-                    scrollFactor,
+                    scrollFactor: resolvedScrollFactor,
                     isTileSprite: true
                 });
 
-                this.createOutsideSparkles({
-                    baseX,
-                    coverageHeight,
-                    tileWidth: width,
-                    scrollFactor,
-                    layerDepth
-                });
+                if (this.outsideBackgroundConfig.ambient && this.outsideBackgroundConfig.ambient.enableBugs) {
+                    const ambientScrollFactor = typeof this.outsideBackgroundConfig.ambient.scrollFactor === 'number'
+                        ? this.outsideBackgroundConfig.ambient.scrollFactor
+                        : resolvedScrollFactor;
+                    this.createOutsideSparkles({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor: ambientScrollFactor,
+                        layerDepth
+                    });
+                }
                 return;
             }
 
-            const spriteHeight = sourceHeight * defaultScale;
+            const spriteHeight = sourceHeight * scale;
             const progress = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
             const minOffset = viewportHeight * 0.12;
             const maxOffset = viewportHeight * 0.45;
             const verticalOffset = lerp(minOffset, maxOffset, progress);
-            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100;
+            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100 + verticalOffsetOverride;
             const sprite = this.scene.add.image(baseX + horizontalOffset, spriteY, key);
             sprite.setOrigin(0.5, 0.5);
-            sprite.setScale(defaultScale);
+            sprite.setScale(scale);
             sprite.setScrollFactor(0);
             sprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
@@ -625,9 +730,96 @@ export class PathUI {
             this.outsideBackgroundLayers.push({
                 sprite,
                 baseY: sprite.y,
-                scrollFactor
+                scrollFactor: resolvedScrollFactor
             });
         });
+    }
+
+    createVerticalOutsideBackgroundSprites({ height }) {
+        const textures = this.scene && this.scene.textures;
+        if (!textures || typeof textures.exists !== 'function') {
+            return;
+        }
+
+        const sceneWidth = this.scene && this.scene.scale ? this.scene.scale.width : 0;
+        const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
+        const baseX = sceneWidth / 2;
+        const headerHeight = CONSTANTS.HEADER_HEIGHT || 0;
+        const layoutOptions = this.outsideBackgroundConfig && this.outsideBackgroundConfig.layoutOptions
+            ? this.outsideBackgroundConfig.layoutOptions
+            : {};
+        const topOffset = typeof layoutOptions.topOffset === 'number' ? layoutOptions.topOffset : headerHeight;
+        const defaultScale = Number.isFinite(this.outsideBackgroundConfig.defaultScale)
+            ? this.outsideBackgroundConfig.defaultScale
+            : null;
+
+        this.outsideBackgroundLayerConfigs.forEach((layerConfig, index) => {
+            const normalizedLayer = this.normalizeOutsideBackgroundLayer(layerConfig);
+            const key = normalizedLayer && normalizedLayer.key;
+            if (!key || !textures.exists(key)) {
+                return;
+            }
+
+            const texture = textures.get(key);
+            const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
+            const sourceWidth = source && source.width ? source.width : sceneWidth || 1;
+            const sourceHeight = source && source.height ? source.height : height || sceneHeight || 1;
+            let scale = Number.isFinite(normalizedLayer.scale) && normalizedLayer.scale > 0
+                ? normalizedLayer.scale
+                : defaultScale;
+            if (!Number.isFinite(scale) || scale <= 0) {
+                const widthScale = sceneWidth > 0 ? sceneWidth / Math.max(1, sourceWidth) : 1;
+                const heightScale = sceneHeight > 0 ? sceneHeight / Math.max(1, sourceHeight) : 1;
+                scale = Math.max(widthScale, heightScale) * 1.1;
+            }
+
+            const offsetX = typeof normalizedLayer.offsetX === 'number' ? normalizedLayer.offsetX : 0;
+            const offsetY = typeof normalizedLayer.offsetY === 'number' ? normalizedLayer.offsetY : 0;
+            const originX = typeof normalizedLayer.originX === 'number' ? normalizedLayer.originX : 0.5;
+            const originY = typeof normalizedLayer.originY === 'number'
+                ? normalizedLayer.originY
+                : (normalizedLayer.anchorTop === false ? 0.5 : 0);
+            const sprite = this.scene.add.image(baseX + offsetX, 0, key);
+            sprite.setOrigin(originX, originY);
+            sprite.setScale(scale);
+            sprite.setScrollFactor(0);
+            sprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
+
+            const anchorTop = originY === 0;
+            const baseY = anchorTop
+                ? topOffset + offsetY
+                : (sceneHeight / 2) + offsetY;
+
+            sprite.setY(baseY);
+            sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
+
+            this.outsideBackgroundContainer.add(sprite);
+
+            const resolvedScrollFactor = typeof normalizedLayer.scrollFactor === 'number'
+                ? normalizedLayer.scrollFactor
+                : -OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER * (0.2 + index * 0.12);
+
+            this.outsideBackgroundLayers.push({
+                sprite,
+                baseY,
+                scrollFactor: resolvedScrollFactor
+            });
+        });
+
+        if (this.outsideBackgroundConfig.ambient && this.outsideBackgroundConfig.ambient.enableBugs) {
+            const ambientScrollFactor = typeof this.outsideBackgroundConfig.ambient.scrollFactor === 'number'
+                ? this.outsideBackgroundConfig.ambient.scrollFactor
+                : -0.05;
+            const coverageHeight = Math.max(height || 0, sceneHeight) + sceneHeight;
+            const layerDepth = PATH_DEPTHS.outsideBackground + this.outsideBackgroundLayerConfigs.length * 0.01 + 0.001;
+            this.createOutsideSparkles({
+                baseX: baseX,
+                coverageHeight,
+                tileWidth: sceneWidth,
+                scrollFactor: ambientScrollFactor,
+                layerDepth
+            });
+        }
     }
 
     createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
@@ -659,46 +851,72 @@ export class PathUI {
             : (scene.scale && scene.scale.width) || 0;
         const halfWidth = width / 2;
         const minY = CONSTANTS.HEADER_HEIGHT;
-        const maxY = safeCoverage * 0.3;
+        const maxY = safeCoverage * 0.35;
         const sparkleCount = 50;
 
         for (let i = 0; i < sparkleCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
             const y = clamp(random(minY, maxY), minY, maxY);
             const sparkle = scene.add.image(baseX + offsetX, y, textureKey);
-            const baseScale = random(0.2, 0.5);
+            const baseScale = random(0.18, 0.32);
+            const baseAlpha = clamp(random(0.35, 0.7), 0.2, 0.9);
             sparkle.setScale(baseScale);
             sparkle.setScrollFactor(0);
             sparkle.setDepth(layerDepth + 0.001);
-            sparkle.setAlpha(random(0.2, 0.8));
-            if (scene.sys && scene.sys.game && Phaser.BlendModes) {
-                sparkle.setBlendMode(Phaser.BlendModes.ADD);
-            }
+            sparkle.setAlpha(baseAlpha);
 
             this.outsideBackgroundContainer.add(sparkle);
 
-            const tween = scene.tweens.add({
+            const alphaTween = scene.tweens.add({
                 targets: sparkle,
-                alpha: { from: random(0.1, 0.4), to: 1 },
-                scale: { from: baseScale * 0.75, to: baseScale * 1.1 },
-                duration: between(900, 1600),
+                alpha: {
+                    from: clamp(baseAlpha * random(0.6, 0.85), 0, 1),
+                    to: clamp(baseAlpha * random(0.95, 1.15), 0, 1)
+                },
+                scale: {
+                    from: baseScale * random(0.9, 0.96),
+                    to: baseScale * random(1.02, 1.12)
+                },
+                duration: between(1100, 1900),
                 yoyo: true,
                 repeat: -1,
-                delay: between(0, 1200),
+                delay: between(0, 900),
+                ease: 'Sine.easeInOut'
+            });
+
+            const moveRadius = random(10, 28);
+            const moveDuration = between(1200, 2200);
+            const angle = random(0, Math.PI * 2);
+            const deltaX = Math.cos(angle) * moveRadius;
+            const deltaY = Math.sin(angle) * moveRadius * random(0.6, 1.1);
+            const moveTween = scene.tweens.add({
+                targets: sparkle,
+                x: sparkle.x + deltaX,
+                y: sparkle.y + deltaY,
+                duration: moveDuration,
+                yoyo: true,
+                repeat: -1,
+                delay: between(0, 600),
                 ease: 'Sine.easeInOut'
             });
 
             sparkle.once('destroy', () => {
-                if (tween && typeof tween.remove === 'function') {
-                    tween.remove();
+                if (alphaTween && typeof alphaTween.remove === 'function') {
+                    alphaTween.remove();
+                }
+                if (moveTween && typeof moveTween.remove === 'function') {
+                    moveTween.remove();
                 }
             });
+
+            const bugScrollFactor = Number.isFinite(scrollFactor) ? scrollFactor : 0.05;
 
             this.outsideBackgroundLayers.push({
                 sprite: sparkle,
                 baseY: sparkle.y,
-                scrollFactor: 0.05,
-                tween
+                scrollFactor: bugScrollFactor,
+                tween: alphaTween,
+                moveTween
             });
         }
     }
