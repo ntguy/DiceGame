@@ -94,10 +94,10 @@ const DEFINITIONS = [
 const IN_DEVELOPMENT_DEFINITIONS = [
     {
         id: 'bomb',
-        name: 'Bombard',
+        name: 'Time Bomb',
         emoji: '💣',
-        description: 'Damage all enemies by FV.',
-        upgradeDescription: 'Damage all enemies by FV + 2.',
+        description: 'Unused turn: countdown -1. At 0: +25 ⚔️ once.',
+        upgradeDescription: 'Unused turn: countdown -1. At 0: +35 ⚔️ once.',
         allowedZones: ['attack', 'defend']
     }
 ];

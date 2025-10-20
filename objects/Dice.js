@@ -93,6 +93,17 @@ export function createDie(scene, slotIndex, blueprint) {
     container.add(emojiText);
     container.emojiText = emojiText;
 
+    const leftStatusText = scene.add.text(0, emojiY, '', {
+        fontSize: '20px',
+        fontStyle: 'bold',
+        color: '#ff7675',
+        stroke: '#000000',
+        strokeThickness: 3,
+    }).setOrigin(1, 0);
+    leftStatusText.setVisible(false);
+    container.add(leftStatusText);
+    container.leftStatusText = leftStatusText;
+
     const upgradePlusText = scene.add.text(0, emojiY, '+', {
         fontSize: '20px',
         fontStyle: 'bold',
@@ -107,6 +118,25 @@ export function createDie(scene, slotIndex, blueprint) {
     container.updateEmoji = function() {
         if (this.emojiText) {
             this.emojiText.setText(getDieEmoji(this));
+        }
+
+        if (this.leftStatusText) {
+            const labelProvider = typeof scene.getDieLeftStatusText === 'function'
+                ? scene.getDieLeftStatusText(this)
+                : '';
+            const shouldShowLeft = typeof labelProvider === 'string' && labelProvider.length > 0;
+            if (shouldShowLeft && this.emojiText && this.emojiText.text && this.emojiText.text.trim().length > 0) {
+                this.leftStatusText.setText(labelProvider);
+                const emojiHalfWidth = (this.emojiText && this.emojiText.displayWidth) ? this.emojiText.displayWidth / 2 : 0;
+                const emojiX = this.emojiText ? this.emojiText.x : 0;
+                const emojiYPosition = this.emojiText ? this.emojiText.y : emojiY;
+                const spacing = 6;
+                this.leftStatusText.setVisible(true);
+                this.leftStatusText.setX(emojiX - emojiHalfWidth - spacing);
+                this.leftStatusText.setY(emojiYPosition);
+            } else {
+                this.leftStatusText.setVisible(false);
+            }
         }
 
         if (this.upgradePlusText) {
@@ -171,6 +201,9 @@ export function createDie(scene, slotIndex, blueprint) {
         }
         if (this.upgradePlusText) {
             this.upgradePlusText.setAlpha(this.isNullified ? 0.2 : 1);
+        }
+        if (this.leftStatusText) {
+            this.leftStatusText.setAlpha(this.isNullified ? 0.2 : 1);
         }
     };
 
