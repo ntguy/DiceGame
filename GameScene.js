@@ -283,6 +283,11 @@ export class GameScene extends Phaser.Scene {
         this.load.image('outside_background_4', './sprites/Clouds 3/4.png');
         this.load.image('wall', './sprites/Wall.png');
         this.load.image('wall2', './sprites/Wall2.png');
+        this.load.image('wall_highlight_center', './sprites/BrightWallCenter.png');
+        this.load.spritesheet('wall_torch', './sprites/spr_torch.png', {
+            frameWidth: 21,
+            frameHeight: 27
+        });
     }
     
     create() {

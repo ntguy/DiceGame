@@ -30,6 +30,13 @@ const LAYOUT = {
 
 const PATH_TEXTURE_SCALE = 1.5;
 const GENERAL_TEXTURE_SCALE = 2;
+const WALL_HIGHLIGHT_TEXTURE_KEY = 'wall_highlight_center';
+const WALL_HIGHLIGHT_MIN_ALPHA = 0.8;
+const WALL_HIGHLIGHT_MAX_ALPHA = 1;
+const WALL_HIGHLIGHT_TWEEN_DURATION = 1200;
+const WALL_TORCH_TEXTURE_KEY = 'wall_torch';
+const WALL_TORCH_ANIMATION_KEY = 'wall_torch_flicker';
+const WALL_TORCH_FRAME_RATE = 15;
 const PATH_DEPTHS = {
     outsideBackground: -5,
     background: 5,
@@ -82,6 +89,9 @@ export class PathUI {
         this.wallContainer = scene.add.container(0, 0);
         this.wallContainer.setDepth(PATH_DEPTHS.walls);
         this.wallSprites = [];
+        this.wallHighlightSprites = [];
+        this.wallHighlightTweens = [];
+        this.wallTorchSprites = [];
 
         this.container = scene.add.container(0, 0);
         this.container.setDepth(PATH_DEPTHS.nodes);
@@ -146,20 +156,79 @@ export class PathUI {
     }
 
     clearWallSprites() {
-        if (!Array.isArray(this.wallSprites)) {
-            return;
+        this.clearWallTorchSprites();
+        this.clearWallHighlightSprites();
+
+        if (Array.isArray(this.wallSprites)) {
+            this.wallSprites.forEach(sprite => {
+                if (sprite && typeof sprite.destroy === 'function') {
+                    sprite.destroy();
+                }
+            });
+
+            this.wallSprites.length = 0;
+        } else {
+            this.wallSprites = [];
         }
-
-        this.wallSprites.forEach(sprite => {
-            if (sprite && typeof sprite.destroy === 'function') {
-                sprite.destroy();
-            }
-        });
-
-        this.wallSprites.length = 0;
 
         if (this.wallContainer && typeof this.wallContainer.removeAll === 'function') {
             this.wallContainer.removeAll(false);
+        }
+    }
+
+    clearWallHighlightSprites() {
+        if (Array.isArray(this.wallHighlightTweens)) {
+            this.wallHighlightTweens.forEach(tween => {
+                if (!tween) {
+                    return;
+                }
+
+                if (typeof tween.stop === 'function') {
+                    tween.stop();
+                }
+
+                if (typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+
+            this.wallHighlightTweens.length = 0;
+        } else {
+            this.wallHighlightTweens = [];
+        }
+
+        if (Array.isArray(this.wallHighlightSprites)) {
+            this.wallHighlightSprites.forEach(sprite => {
+                if (sprite && typeof sprite.destroy === 'function') {
+                    sprite.destroy();
+                }
+            });
+
+            this.wallHighlightSprites.length = 0;
+        } else {
+            this.wallHighlightSprites = [];
+        }
+    }
+
+    clearWallTorchSprites() {
+        if (Array.isArray(this.wallTorchSprites)) {
+            this.wallTorchSprites.forEach(sprite => {
+                if (!sprite) {
+                    return;
+                }
+
+                if (sprite.anims && typeof sprite.anims.stop === 'function') {
+                    sprite.anims.stop();
+                }
+
+                if (typeof sprite.destroy === 'function') {
+                    sprite.destroy();
+                }
+            });
+
+            this.wallTorchSprites.length = 0;
+        } else {
+            this.wallTorchSprites = [];
         }
     }
 
@@ -230,6 +299,8 @@ export class PathUI {
 
         const wallSourceWidth = Math.max(1, sourceImage.width || 1);
         const wallWidth = wallSourceWidth * GENERAL_TEXTURE_SCALE;
+        const wallSourceHeight = Math.max(1, sourceImage.height || 1);
+        const wallPieceHeight = wallSourceHeight * GENERAL_TEXTURE_SCALE;
         const wallHalfWidth = wallWidth / 2;
         const nodeHalfWidth = 28;
         const lateralPadding = 30;
@@ -266,6 +337,15 @@ export class PathUI {
             }
         }
 
+        const textures = this.scene && this.scene.textures;
+        const hasHighlightTexture = textures
+            && typeof textures.exists === 'function'
+            && textures.exists(WALL_HIGHLIGHT_TEXTURE_KEY);
+        const hasTorchTexture = textures
+            && typeof textures.exists === 'function'
+            && textures.exists(WALL_TORCH_TEXTURE_KEY);
+        const torchAnimationReady = hasTorchTexture && this.ensureWallTorchAnimation();
+
         [leftX, rightX].forEach(x => {
             const sprite = this.scene.add.tileSprite(x, centerY, wallWidth, height, this.wallTextureKey);
             sprite.setOrigin(0.5, 0.5);
@@ -274,7 +354,125 @@ export class PathUI {
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
             this.wallContainer.add(sprite);
             this.wallSprites.push(sprite);
+
+            if ((!hasHighlightTexture && !torchAnimationReady)
+                || !Number.isFinite(wallPieceHeight)
+                || wallPieceHeight <= 0) {
+                return;
+            }
+
+            const pieceCount = Math.max(0, Math.ceil(height / wallPieceHeight));
+            for (let index = 2; index < pieceCount; index += 3) {
+                const y = top + (index + 0.5) * wallPieceHeight;
+                if (y < top || y > bottom) {
+                    continue;
+                }
+
+                if (hasHighlightTexture) {
+                    const highlightSprite = this.scene.add.sprite(x, y, WALL_HIGHLIGHT_TEXTURE_KEY);
+                    highlightSprite.setOrigin(0.5, 0.5);
+                    highlightSprite.setScale(GENERAL_TEXTURE_SCALE, GENERAL_TEXTURE_SCALE);
+                    highlightSprite.setDepth(PATH_DEPTHS.walls + 0.01);
+                    highlightSprite.setAlpha(WALL_HIGHLIGHT_MAX_ALPHA);
+                    highlightSprite.setPosition(Math.round(highlightSprite.x), Math.round(highlightSprite.y));
+                    this.wallContainer.add(highlightSprite);
+                    this.wallHighlightSprites.push(highlightSprite);
+
+                    if (this.scene && this.scene.tweens && typeof this.scene.tweens.add === 'function') {
+                        const tween = this.scene.tweens.add({
+                            targets: highlightSprite,
+                            alpha: {
+                                from: WALL_HIGHLIGHT_MIN_ALPHA,
+                                to: WALL_HIGHLIGHT_MAX_ALPHA
+                            },
+                            duration: WALL_HIGHLIGHT_TWEEN_DURATION,
+                            yoyo: true,
+                            repeat: -1,
+                            ease: 'Sine.easeInOut'
+                        });
+
+                        this.wallHighlightTweens.push(tween);
+                    }
+                }
+
+                if (torchAnimationReady) {
+                    const torchSprite = this.scene.add.sprite(x, y, WALL_TORCH_TEXTURE_KEY, 0);
+                    torchSprite.setOrigin(0.5, 0.5);
+                    torchSprite.setScale(GENERAL_TEXTURE_SCALE, GENERAL_TEXTURE_SCALE);
+                    torchSprite.setDepth(PATH_DEPTHS.walls + 0.02);
+                    torchSprite.setPosition(Math.round(torchSprite.x), Math.round(torchSprite.y));
+                    this.wallContainer.add(torchSprite);
+                    this.wallTorchSprites.push(torchSprite);
+
+                    if (typeof torchSprite.play === 'function') {
+                        torchSprite.play(WALL_TORCH_ANIMATION_KEY);
+                        const randomProgress = typeof Phaser !== 'undefined'
+                            && Phaser.Math
+                            && typeof Phaser.Math.FloatBetween === 'function'
+                                ? Phaser.Math.FloatBetween(0, 1)
+                                : Math.random();
+                        if (torchSprite.anims && typeof torchSprite.anims.setProgress === 'function') {
+                            torchSprite.anims.setProgress(randomProgress);
+                        }
+                    }
+                }
+            }
         });
+    }
+
+    ensureWallTorchAnimation() {
+        if (!this.scene || !this.scene.anims) {
+            return false;
+        }
+
+        const anims = this.scene.anims;
+        const animationAlreadyExists = (typeof anims.exists === 'function' && anims.exists(WALL_TORCH_ANIMATION_KEY))
+            || (typeof anims.get === 'function' && anims.get(WALL_TORCH_ANIMATION_KEY));
+        if (animationAlreadyExists) {
+            return true;
+        }
+
+        const textures = this.scene.textures;
+        if (!textures || typeof textures.exists !== 'function' || !textures.exists(WALL_TORCH_TEXTURE_KEY)) {
+            return false;
+        }
+
+        const texture = textures.get(WALL_TORCH_TEXTURE_KEY);
+        if (!texture) {
+            return false;
+        }
+
+        const frameNames = typeof texture.getFrameNames === 'function'
+            ? texture.getFrameNames(false)
+            : Object.keys(texture.frames || {}).filter(name => name !== '__BASE');
+
+        if (!Array.isArray(frameNames) || frameNames.length === 0) {
+            return false;
+        }
+
+        if (typeof anims.create !== 'function') {
+            return false;
+        }
+
+        const sortedFrameNames = [...frameNames].sort((a, b) => {
+            const aNum = Number(a);
+            const bNum = Number(b);
+            if (Number.isNaN(aNum) || Number.isNaN(bNum)) {
+                return String(a).localeCompare(String(b));
+            }
+            return aNum - bNum;
+        });
+
+        const frames = sortedFrameNames.map(frame => ({ key: WALL_TORCH_TEXTURE_KEY, frame }));
+
+        anims.create({
+            key: WALL_TORCH_ANIMATION_KEY,
+            frames,
+            frameRate: WALL_TORCH_FRAME_RATE,
+            repeat: -1
+        });
+
+        return true;
     }
 
     createOutsideBackgroundSprites({ top, bottom, height, centerY }) {
