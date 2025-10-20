@@ -159,11 +159,65 @@ export const MAP_CONFIGS = [
         pathTextureKey: 'path_ladder_metal',
         wallTextureKey: 'wall2',
         outsideBackgroundLayerKeys: [
-            'outside_background_1',
-            'outside_background_2',
-            'outside_background_3',
-            'outside_background_4'
-        ]
+            'map2_outside_background_1',
+            'map2_outside_background_2',
+            'map2_outside_background_3',
+            'map2_outside_background_4',
+            'map2_outside_background_5'
+        ],
+        outsideBackgroundConfig: {
+            baseTop: 40,
+            defaultScale: 3.2,
+            layers: [
+                {
+                    key: 'map2_outside_background_1',
+                    scrollFactor: 0.05,
+                    scale: 3.1,
+                    anchor: 'top',
+                    crop: { top: 18, bottom: 18 }
+                },
+                {
+                    key: 'map2_outside_background_2',
+                    scrollFactor: 0.1,
+                    scale: 3.2,
+                    anchor: 'top',
+                    offsetY: 20,
+                    crop: { top: 18, bottom: 18 }
+                },
+                {
+                    key: 'map2_outside_background_3',
+                    scrollFactor: 0.16,
+                    scale: 3.28,
+                    anchor: 'top',
+                    offsetY: 36,
+                    crop: { top: 18, bottom: 18 }
+                },
+                {
+                    key: 'map2_outside_background_4',
+                    scrollFactor: 0.23,
+                    scale: 3.35,
+                    anchor: 'top',
+                    offsetY: 52,
+                    crop: { top: 18, bottom: 18 }
+                },
+                {
+                    key: 'map2_outside_background_5',
+                    scrollFactor: 0.32,
+                    scale: 3.42,
+                    anchor: 'top',
+                    offsetY: 70,
+                    crop: { top: 18, bottom: 18 }
+                }
+            ],
+            ambient: {
+                type: 'bugs',
+                count: 60,
+                width: 1250,
+                top: 60,
+                height: 280,
+                scrollFactor: 0.14
+            }
+        }
     },
     {
         id: 'map-3',

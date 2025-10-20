@@ -284,6 +284,11 @@ export class GameScene extends Phaser.Scene {
         this.load.image('outside_background_2', './sprites/Clouds 3/2.png');
         this.load.image('outside_background_3', './sprites/Clouds 3/3.png');
         this.load.image('outside_background_4', './sprites/Clouds 3/4.png');
+        this.load.image('map2_outside_background_1', './sprites/Jungle/plx-1.png');
+        this.load.image('map2_outside_background_2', './sprites/Jungle/plx-2.png');
+        this.load.image('map2_outside_background_3', './sprites/Jungle/plx-3.png');
+        this.load.image('map2_outside_background_4', './sprites/Jungle/plx-4.png');
+        this.load.image('map2_outside_background_5', './sprites/Jungle/plx-5.png');
         this.load.image('wall', './sprites/Wall.png');
         this.load.image('wall2', './sprites/Wall2.png');
         this.load.image('wall_highlight_center', './sprites/BrightWallCenter.png');
@@ -2656,6 +2661,9 @@ export class GameScene extends Phaser.Scene {
         const wallTextureKey = this.getWallTextureKeyForConfig(config);
         const backgroundTextureKey = this.getBackgroundTextureKeyForConfig(config);
         const outsideBackgroundLayerKeys = this.getOutsideBackgroundLayerKeysForConfig(config);
+        const outsideBackgroundConfig = config && typeof config.outsideBackgroundConfig === 'object'
+            ? JSON.parse(JSON.stringify(config.outsideBackgroundConfig))
+            : null;
 
         this.pathManager = new PathManager({
             enemySequence,
@@ -2670,7 +2678,8 @@ export class GameScene extends Phaser.Scene {
                 connectionTextureKey,
                 wallTextureKey,
                 backgroundTextureKey,
-                outsideBackgroundLayerKeys
+                outsideBackgroundLayerKeys,
+                outsideBackgroundConfig
             }
         );
         this.currentPathNodeId = null;

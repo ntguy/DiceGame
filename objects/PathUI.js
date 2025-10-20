@@ -56,6 +56,7 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
+const BUG_TEXTURE_KEY = 'outside_bug_sprite';
 
 function ensureSparkleTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
@@ -81,6 +82,31 @@ function ensureSparkleTexture(scene) {
     return SPARKLE_TEXTURE_KEY;
 }
 
+function ensureBugTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(BUG_TEXTURE_KEY)) {
+        return BUG_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const size = 10;
+    const half = size / 2;
+    const wingWidth = size * 0.4;
+    const wingHeight = size * 0.25;
+
+    graphics.fillStyle(0x111111, 1);
+    graphics.fillEllipse(half, half, size * 0.5, size * 0.65);
+    graphics.fillEllipse(half - wingWidth * 0.4, half, wingWidth, wingHeight);
+    graphics.fillEllipse(half + wingWidth * 0.4, half, wingWidth, wingHeight);
+    graphics.generateTexture(BUG_TEXTURE_KEY, size, size);
+    graphics.destroy();
+
+    return BUG_TEXTURE_KEY;
+}
+
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
     const baseColor = Phaser.Display.Color.ValueToColor(base);
@@ -94,7 +120,7 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys } = {}) {
+    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys, outsideBackgroundConfig } = {}) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
@@ -104,6 +130,9 @@ export class PathUI {
         this.outsideBackgroundLayerKeys = Array.isArray(outsideBackgroundLayerKeys)
             ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
             : [];
+        this.outsideBackgroundConfig = outsideBackgroundConfig && typeof outsideBackgroundConfig === 'object'
+            ? outsideBackgroundConfig
+            : null;
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -273,10 +302,22 @@ export class PathUI {
         if (Array.isArray(this.outsideBackgroundLayers)) {
             this.outsideBackgroundLayers.forEach(layer => {
                 const sprite = layer && layer.sprite ? layer.sprite : null;
-                const tween = layer && layer.tween ? layer.tween : null;
-                if (tween && typeof tween.remove === 'function') {
-                    tween.remove();
+                const tweens = [];
+                if (layer) {
+                    if (layer.tween) {
+                        tweens.push(layer.tween);
+                    }
+                    if (Array.isArray(layer.tweens)) {
+                        tweens.push(...layer.tweens);
+                    }
                 }
+
+                tweens.forEach(entry => {
+                    if (entry && typeof entry.remove === 'function') {
+                        entry.remove();
+                    }
+                });
+
                 if (sprite && typeof sprite.destroy === 'function') {
                     sprite.destroy();
                 }
@@ -515,6 +556,20 @@ export class PathUI {
             return;
         }
 
+        const config = this.outsideBackgroundConfig;
+        if (config && Array.isArray(config.layers) && config.layers.length > 0) {
+            this.createConfiguredOutsideBackgroundLayers({ top, bottom, height, centerY, config });
+            return;
+        }
+
+        this.createDefaultOutsideBackgroundLayers({ top, bottom, height, centerY });
+    }
+
+    createDefaultOutsideBackgroundLayers({ top, height, centerY }) {
+        if (!Array.isArray(this.outsideBackgroundLayerKeys) || this.outsideBackgroundLayerKeys.length === 0) {
+            return;
+        }
+
         const textures = this.scene && this.scene.textures;
         const count = this.outsideBackgroundLayerKeys.length;
         const minFactor = 0.15;
@@ -591,6 +646,7 @@ export class PathUI {
                 this.outsideBackgroundLayers.push({
                     sprite: tileSprite,
                     baseY: tileSprite.y,
+                    baseX: tileSprite.x,
                     baseTileX: tileSprite.tilePositionX || 0,
                     baseTileY: tileSprite.tilePositionY || 0,
                     scrollFactor,
@@ -625,9 +681,112 @@ export class PathUI {
             this.outsideBackgroundLayers.push({
                 sprite,
                 baseY: sprite.y,
+                baseX: sprite.x,
                 scrollFactor
             });
         });
+    }
+
+    createConfiguredOutsideBackgroundLayers({ top, height, centerY, config }) {
+        const textures = this.scene && this.scene.textures;
+        if (!textures || typeof textures.exists !== 'function') {
+            return;
+        }
+
+        const sceneWidth = this.scene && this.scene.scale ? this.scene.scale.width : 0;
+        const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
+        const spanHeight = Number.isFinite(height) ? height : sceneHeight;
+        const defaultY = Number.isFinite(centerY) ? centerY : sceneHeight / 2;
+        const spanTop = Number.isFinite(config && config.baseTop)
+            ? config.baseTop
+            : (Number.isFinite(top) ? top : defaultY - spanHeight / 2);
+        const baseX = sceneWidth / 2;
+        const layers = Array.isArray(config.layers) ? config.layers : [];
+        const depthBase = Number.isFinite(config.depthOffset)
+            ? config.depthOffset
+            : PATH_DEPTHS.outsideBackground;
+        const defaultScale = Number.isFinite(config.defaultScale) ? config.defaultScale : 3;
+
+        layers.forEach((layerConfig, index) => {
+            const keyFromConfig = layerConfig && typeof layerConfig.key === 'string'
+                ? layerConfig.key
+                : null;
+            const keyFromFallback = index < this.outsideBackgroundLayerKeys.length
+                ? this.outsideBackgroundLayerKeys[index]
+                : null;
+            const key = keyFromConfig || keyFromFallback;
+            if (!key || !textures.exists(key)) {
+                return;
+            }
+
+            const texture = textures.get(key);
+            const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
+            const sourceWidth = source && source.width ? source.width : 1;
+            const sourceHeight = source && source.height ? source.height : 1;
+
+            const cropTop = Math.max(0, layerConfig && layerConfig.crop && Number.isFinite(layerConfig.crop.top)
+                ? layerConfig.crop.top
+                : (config && config.crop && Number.isFinite(config.crop.top) ? config.crop.top : 0));
+            const cropBottom = Math.max(0, layerConfig && layerConfig.crop && Number.isFinite(layerConfig.crop.bottom)
+                ? layerConfig.crop.bottom
+                : (config && config.crop && Number.isFinite(config.crop.bottom) ? config.crop.bottom : 0));
+            const cropHeight = Math.max(1, sourceHeight - cropTop - cropBottom);
+
+            const sprite = this.scene.add.image(baseX, 0, key);
+            sprite.setCrop(0, cropTop, sourceWidth, cropHeight);
+
+            const scale = Number.isFinite(layerConfig && layerConfig.scale)
+                ? layerConfig.scale
+                : defaultScale;
+            sprite.setScale(scale);
+
+            const anchorTop = layerConfig && layerConfig.anchor === 'top';
+            sprite.setOrigin(0.5, anchorTop ? 0 : 0.5);
+
+            const offsetX = Number.isFinite(layerConfig && layerConfig.offsetX) ? layerConfig.offsetX : 0;
+            const offsetY = Number.isFinite(layerConfig && layerConfig.offsetY) ? layerConfig.offsetY : 0;
+            sprite.x = Math.round(baseX + offsetX);
+
+            const displayHeight = cropHeight * scale;
+            const baseY = anchorTop
+                ? spanTop + offsetY
+                : spanTop + displayHeight / 2 + offsetY;
+            sprite.y = Math.round(baseY);
+            sprite.setScrollFactor(0);
+            const depth = depthBase + index * 0.01;
+            sprite.setDepth(depth);
+
+            this.outsideBackgroundContainer.add(sprite);
+
+            const scrollFactor = Number.isFinite(layerConfig && layerConfig.scrollFactor)
+                ? layerConfig.scrollFactor
+                : (Number.isFinite(config.defaultScrollFactor) ? config.defaultScrollFactor : 0.12 * (index + 1));
+
+            this.outsideBackgroundLayers.push({
+                sprite,
+                baseY: sprite.y,
+                baseX: sprite.x,
+                scrollFactor,
+                anchorTop
+            });
+        });
+
+        if (config && config.ambient && config.ambient.type === 'bugs') {
+            const ambient = config.ambient;
+            const ambientWidth = Number.isFinite(ambient.width) ? ambient.width : sceneWidth * 1.1;
+            const ambientHeight = Number.isFinite(ambient.height) ? ambient.height : spanHeight * 0.5;
+            const ambientTop = Number.isFinite(ambient.top) ? ambient.top : spanTop;
+            const ambientDepth = depthBase + layers.length * 0.01 + 0.002;
+            this.createOutsideAmbientBugs({
+                baseX,
+                width: ambientWidth,
+                top: ambientTop,
+                height: ambientHeight,
+                depth: ambientDepth,
+                scrollFactor: Number.isFinite(ambient.scrollFactor) ? ambient.scrollFactor : 0.12,
+                count: Number.isFinite(ambient.count) ? ambient.count : 50
+            });
+        }
     }
 
     createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
@@ -697,9 +856,104 @@ export class PathUI {
             this.outsideBackgroundLayers.push({
                 sprite: sparkle,
                 baseY: sparkle.y,
+                baseX: sparkle.x,
                 scrollFactor: 0.05,
-                tween
+                tweens: [tween]
             });
+        }
+    }
+
+    createOutsideAmbientBugs({ baseX, width, top, height, depth, scrollFactor, count }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureBugTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const randomFloat = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const randomInt = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const halfWidth = Number.isFinite(width) && width > 0 ? width / 2 : ((scene.scale && scene.scale.width) || 0) / 2;
+        const areaTop = Number.isFinite(top) ? top : CONSTANTS.HEADER_HEIGHT;
+        const areaHeight = Number.isFinite(height) && height > 0
+            ? height
+            : ((scene.scale && scene.scale.height) || 0) * 0.4;
+        const areaBottom = areaTop + areaHeight;
+        const bugCount = Number.isFinite(count) ? Math.max(1, Math.floor(count)) : 40;
+        const depthValue = Number.isFinite(depth) ? depth : PATH_DEPTHS.outsideBackground + 0.005;
+        const parallax = Number.isFinite(scrollFactor) ? scrollFactor : 0.1;
+
+        for (let i = 0; i < bugCount; i += 1) {
+            const offsetX = randomFloat(-halfWidth, halfWidth);
+            const y = randomFloat(areaTop, areaBottom);
+            const bug = scene.add.image(baseX + offsetX, y, textureKey);
+            const baseScale = randomFloat(0.22, 0.32);
+            bug.setScale(baseScale);
+            bug.setScrollFactor(0);
+            bug.setDepth(depthValue);
+            bug.setAlpha(randomFloat(0.45, 0.75));
+
+            this.outsideBackgroundContainer.add(bug);
+
+            const layerEntry = {
+                sprite: bug,
+                baseX: bug.x,
+                baseY: bug.y,
+                scrollFactor: parallax,
+                dynamicOffsetX: 0,
+                dynamicOffsetY: 0
+            };
+
+            const flickerTween = scene.tweens.add({
+                targets: bug,
+                alpha: { from: randomFloat(0.3, 0.5), to: randomFloat(0.6, 0.8) },
+                scale: { from: baseScale * 0.9, to: baseScale * 1.05 },
+                duration: randomInt(900, 1500),
+                yoyo: true,
+                repeat: -1,
+                delay: randomInt(0, 900),
+                ease: 'Sine.easeInOut'
+            });
+
+            const drift = { x: 0, y: 0 };
+            const driftTween = scene.tweens.add({
+                targets: drift,
+                x: randomFloat(-28, 28),
+                y: randomFloat(-20, 20),
+                duration: randomInt(1400, 2200),
+                yoyo: true,
+                repeat: -1,
+                delay: randomInt(0, 1200),
+                ease: 'Sine.easeInOut',
+                onUpdate: () => {
+                    layerEntry.dynamicOffsetX = drift.x;
+                    layerEntry.dynamicOffsetY = drift.y;
+                    const factor = Number.isFinite(layerEntry.scrollFactor) ? layerEntry.scrollFactor : 0;
+                    const newY = layerEntry.baseY + this.scrollY * factor + layerEntry.dynamicOffsetY;
+                    bug.y = Math.round(newY);
+                    bug.x = Math.round(layerEntry.baseX + layerEntry.dynamicOffsetX);
+                }
+            });
+
+            bug.once('destroy', () => {
+                if (flickerTween && typeof flickerTween.remove === 'function') {
+                    flickerTween.remove();
+                }
+                if (driftTween && typeof driftTween.remove === 'function') {
+                    driftTween.remove();
+                }
+            });
+
+            layerEntry.tweens = [flickerTween, driftTween];
+            this.outsideBackgroundLayers.push(layerEntry);
         }
     }
 
@@ -1169,12 +1423,22 @@ export class PathUI {
                     layer.sprite.setTilePosition(baseTileX, tileOffset);
                     const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
                     layer.sprite.y = Math.round(baseY);
+                    if (Number.isFinite(layer.baseX)) {
+                        layer.sprite.x = Math.round(layer.baseX);
+                    }
                     return;
                 }
 
                 const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
-                const newY = baseY + this.scrollY * factor;
+                const dynamicOffsetY = Number.isFinite(layer.dynamicOffsetY) ? layer.dynamicOffsetY : 0;
+                const newY = baseY + this.scrollY * factor + dynamicOffsetY;
                 layer.sprite.y = Math.round(newY);
+
+                if (Number.isFinite(layer.baseX) || Number.isFinite(layer.dynamicOffsetX)) {
+                    const baseX = Number.isFinite(layer.baseX) ? layer.baseX : layer.sprite.x;
+                    const dynamicOffsetX = Number.isFinite(layer.dynamicOffsetX) ? layer.dynamicOffsetX : 0;
+                    layer.sprite.x = Math.round(baseX + dynamicOffsetX);
+                }
             });
         }
     }
