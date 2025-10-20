@@ -56,6 +56,16 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
+const BIRD_TEXTURE_KEY = 'outside_bird_silhouette';
+
+const AMBIENT_TYPES = {
+    SPARKLES: 'sparkles',
+    BIRDS: 'birds'
+};
+
+const DEFAULT_AMBIENT_CONFIG = {
+    type: AMBIENT_TYPES.SPARKLES
+};
 
 function ensureSparkleTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
@@ -81,6 +91,57 @@ function ensureSparkleTexture(scene) {
     return SPARKLE_TEXTURE_KEY;
 }
 
+function ensureBirdTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(BIRD_TEXTURE_KEY)) {
+        return BIRD_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const width = 36;
+    const height = 18;
+    const midY = height * 0.55;
+
+    graphics.fillStyle(0x1f2a44, 0.95);
+    graphics.beginPath();
+    graphics.moveTo(0, height);
+    graphics.quadraticCurveTo(width * 0.18, height * 0.1, width * 0.4, midY);
+    graphics.quadraticCurveTo(width * 0.5, height * 0.35, width * 0.6, midY);
+    graphics.quadraticCurveTo(width * 0.82, height * 0.1, width, height);
+    graphics.quadraticCurveTo(width * 0.68, height * 0.55, width * 0.5, height * 0.7);
+    graphics.quadraticCurveTo(width * 0.32, height * 0.55, 0, height);
+    graphics.closePath();
+    graphics.fillPath();
+    graphics.generateTexture(BIRD_TEXTURE_KEY, width, height);
+    graphics.destroy();
+
+    return BIRD_TEXTURE_KEY;
+}
+
+function resolveAmbientConfig(rawConfig) {
+    const config = { ...DEFAULT_AMBIENT_CONFIG };
+
+    if (typeof rawConfig === 'string') {
+        config.type = rawConfig.toLowerCase();
+        return config;
+    }
+
+    if (rawConfig && typeof rawConfig === 'object') {
+        Object.assign(config, rawConfig);
+    }
+
+    if (!config.type || typeof config.type !== 'string') {
+        config.type = DEFAULT_AMBIENT_CONFIG.type;
+    } else {
+        config.type = config.type.toLowerCase();
+    }
+
+    return config;
+}
+
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
     const baseColor = Phaser.Display.Color.ValueToColor(base);
@@ -94,7 +155,7 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys } = {}) {
+    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys, outsideAmbient } = {}) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
@@ -104,6 +165,7 @@ export class PathUI {
         this.outsideBackgroundLayerKeys = Array.isArray(outsideBackgroundLayerKeys)
             ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
             : [];
+        this.outsideAmbientConfig = resolveAmbientConfig(outsideAmbient);
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -274,8 +336,25 @@ export class PathUI {
             this.outsideBackgroundLayers.forEach(layer => {
                 const sprite = layer && layer.sprite ? layer.sprite : null;
                 const tween = layer && layer.tween ? layer.tween : null;
+                const offsetTween = layer && layer.offsetTween ? layer.offsetTween : null;
+                const timer = layer && layer.timer ? layer.timer : null;
                 if (tween && typeof tween.remove === 'function') {
                     tween.remove();
+                }
+                if (offsetTween && typeof offsetTween.remove === 'function') {
+                    offsetTween.remove();
+                }
+                if (timer) {
+                    if (typeof timer.remove === 'function') {
+                        timer.remove(false);
+                    } else if (typeof timer.destroy === 'function') {
+                        timer.destroy();
+                    }
+                }
+                if (layer) {
+                    layer.tween = null;
+                    layer.offsetTween = null;
+                    layer.timer = null;
                 }
                 if (sprite && typeof sprite.destroy === 'function') {
                     sprite.destroy();
@@ -597,7 +676,7 @@ export class PathUI {
                     isTileSprite: true
                 });
 
-                this.createOutsideSparkles({
+                this.createOutsideAmbientElements({
                     baseX,
                     coverageHeight,
                     tileWidth: width,
@@ -630,7 +709,24 @@ export class PathUI {
         });
     }
 
-    createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+    createOutsideAmbientElements(params = {}) {
+        const ambientConfig = this.outsideAmbientConfig || DEFAULT_AMBIENT_CONFIG;
+        const type = ambientConfig && typeof ambientConfig.type === 'string'
+            ? ambientConfig.type
+            : DEFAULT_AMBIENT_CONFIG.type;
+
+        switch (type) {
+        case AMBIENT_TYPES.BIRDS:
+            this.createOutsideBirds({ ...params, ambientConfig });
+            break;
+        case AMBIENT_TYPES.SPARKLES:
+        default:
+            this.createOutsideSparkles({ ...params, ambientConfig });
+            break;
+        }
+    }
+
+    createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth, ambientConfig }) {
         const scene = this.scene;
         if (!scene || !this.outsideBackgroundContainer) {
             return;
@@ -660,7 +756,9 @@ export class PathUI {
         const halfWidth = width / 2;
         const minY = CONSTANTS.HEADER_HEIGHT;
         const maxY = safeCoverage * 0.3;
-        const sparkleCount = 50;
+        const sparkleCount = ambientConfig && Number.isFinite(ambientConfig.count)
+            ? Math.max(1, Math.floor(ambientConfig.count))
+            : 50;
 
         for (let i = 0; i < sparkleCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
@@ -700,6 +798,213 @@ export class PathUI {
                 scrollFactor: 0.05,
                 tween
             });
+        }
+    }
+
+    createOutsideBirds({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth, ambientConfig }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureBirdTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const extraSpan = Math.max(120, width * 0.25);
+        const leftEdge = baseX - halfWidth - extraSpan;
+        const rightEdge = baseX + halfWidth + extraSpan;
+        const minY = CONSTANTS.HEADER_HEIGHT + 40;
+        const maxY = Math.max(minY + 60, safeCoverage * 0.4);
+
+        const birdCount = ambientConfig && Number.isFinite(ambientConfig.count)
+            ? Math.max(1, Math.floor(ambientConfig.count))
+            : 12;
+        const minDuration = ambientConfig && Number.isFinite(ambientConfig.minDuration)
+            ? Math.max(2000, ambientConfig.minDuration)
+            : 9000;
+        const maxDuration = ambientConfig && Number.isFinite(ambientConfig.maxDuration)
+            ? Math.max(minDuration, ambientConfig.maxDuration)
+            : 14000;
+        const minPause = ambientConfig && Number.isFinite(ambientConfig.minPause)
+            ? Math.max(0, ambientConfig.minPause)
+            : 800;
+        const maxPause = ambientConfig && Number.isFinite(ambientConfig.maxPause)
+            ? Math.max(minPause, ambientConfig.maxPause)
+            : 2200;
+
+        const baseScrollFactor = Number.isFinite(scrollFactor) ? scrollFactor : OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER;
+        const layerScrollFactor = Math.max(0.02, baseScrollFactor * 0.8);
+
+        for (let i = 0; i < birdCount; i += 1) {
+            const bird = scene.add.image(baseX, minY, textureKey);
+            const initialScale = random(0.38, 0.68);
+            bird.setScale(initialScale);
+            bird.setOrigin(0.5, 0.5);
+            bird.setAlpha(0);
+            bird.setDepth(layerDepth + 0.002);
+            bird.setScrollFactor(0);
+            bird.setVisible(false);
+
+            this.outsideBackgroundContainer.add(bird);
+
+            const layerRecord = {
+                sprite: bird,
+                baseY: minY,
+                dynamicOffset: 0,
+                scrollFactor: layerScrollFactor,
+                tween: null,
+                offsetTween: null,
+                timer: null
+            };
+
+            const updatePosition = () => {
+                if (!layerRecord.sprite) {
+                    return;
+                }
+
+                const factor = Number.isFinite(layerRecord.scrollFactor) ? layerRecord.scrollFactor : 0;
+                const base = Number.isFinite(layerRecord.baseY) ? layerRecord.baseY : 0;
+                const offset = Number.isFinite(layerRecord.dynamicOffset) ? layerRecord.dynamicOffset : 0;
+                layerRecord.sprite.y = Math.round(base + offset + this.scrollY * factor);
+            };
+            layerRecord.updatePosition = updatePosition;
+
+            const scheduleNextFlight = delay => {
+                if (!scene.time || typeof scene.time.delayedCall !== 'function') {
+                    return;
+                }
+
+                if (layerRecord.timer && typeof layerRecord.timer.remove === 'function') {
+                    layerRecord.timer.remove(false);
+                    layerRecord.timer = null;
+                } else if (layerRecord.timer && typeof layerRecord.timer.destroy === 'function') {
+                    layerRecord.timer.destroy();
+                    layerRecord.timer = null;
+                }
+
+                const safeDelay = Math.max(0, delay);
+                layerRecord.timer = scene.time.delayedCall(safeDelay, () => {
+                    layerRecord.timer = null;
+                    if (!bird.active || this.isDestroyed) {
+                        return;
+                    }
+                    launchFlight();
+                });
+            };
+
+            const launchFlight = () => {
+                if (!bird.active || this.isDestroyed) {
+                    return;
+                }
+
+                if (layerRecord.tween && typeof layerRecord.tween.remove === 'function') {
+                    layerRecord.tween.remove();
+                }
+                layerRecord.tween = null;
+
+                if (layerRecord.offsetTween && typeof layerRecord.offsetTween.remove === 'function') {
+                    layerRecord.offsetTween.remove();
+                }
+                layerRecord.offsetTween = null;
+
+                const direction = random(0, 1) < 0.5 ? -1 : 1;
+                const startVariance = random(0, halfWidth * 0.6);
+                const endVariance = random(0, halfWidth * 0.6);
+                const startX = direction > 0
+                    ? leftEdge - startVariance
+                    : rightEdge + startVariance;
+                const endX = direction > 0
+                    ? rightEdge + endVariance
+                    : leftEdge - endVariance;
+                const altitude = clamp(random(minY, maxY), minY, maxY);
+                const sway = random(-26, 26);
+                const duration = between(minDuration, maxDuration);
+                const pause = between(minPause, maxPause);
+                const scale = random(0.4, 0.72);
+
+                bird.x = startX;
+                bird.setVisible(true);
+                bird.setScale(direction > 0 ? scale : -scale, scale);
+                bird.setAlpha(random(0.55, 0.9));
+                bird.setAngle(direction > 0 ? random(-5, 2) : random(-2, 5));
+
+                layerRecord.baseY = altitude;
+                layerRecord.dynamicOffset = 0;
+                updatePosition();
+
+                layerRecord.offsetTween = scene.tweens.add({
+                    targets: layerRecord,
+                    dynamicOffset: sway,
+                    duration: Math.max(600, duration * 0.45),
+                    yoyo: true,
+                    ease: 'Sine.easeInOut',
+                    onUpdate: updatePosition,
+                    onComplete: () => {
+                        layerRecord.dynamicOffset = 0;
+                        updatePosition();
+                        layerRecord.offsetTween = null;
+                    }
+                });
+
+                layerRecord.tween = scene.tweens.add({
+                    targets: bird,
+                    x: endX,
+                    duration,
+                    ease: 'Sine.easeInOut',
+                    onUpdate: updatePosition,
+                    onComplete: () => {
+                        layerRecord.tween = null;
+                        layerRecord.dynamicOffset = 0;
+                        updatePosition();
+                        bird.setVisible(false);
+                        bird.setAlpha(0);
+                        bird.setAngle(0);
+                        if (!this.isDestroyed && bird.active) {
+                            scheduleNextFlight(pause);
+                        }
+                    }
+                });
+            };
+
+            bird.once('destroy', () => {
+                if (layerRecord.tween && typeof layerRecord.tween.remove === 'function') {
+                    layerRecord.tween.remove();
+                }
+                if (layerRecord.offsetTween && typeof layerRecord.offsetTween.remove === 'function') {
+                    layerRecord.offsetTween.remove();
+                }
+                if (layerRecord.timer) {
+                    if (typeof layerRecord.timer.remove === 'function') {
+                        layerRecord.timer.remove(false);
+                    } else if (typeof layerRecord.timer.destroy === 'function') {
+                        layerRecord.timer.destroy();
+                    }
+                    layerRecord.timer = null;
+                }
+            });
+
+            this.outsideBackgroundLayers.push(layerRecord);
+            updatePosition();
+            scheduleNextFlight(between(0, 1800));
         }
     }
 
@@ -1157,6 +1462,11 @@ export class PathUI {
         if (Array.isArray(this.outsideBackgroundLayers) && this.outsideBackgroundLayers.length > 0) {
             this.outsideBackgroundLayers.forEach(layer => {
                 if (!layer || !layer.sprite) {
+                    return;
+                }
+
+                if (typeof layer.updatePosition === 'function') {
+                    layer.updatePosition();
                     return;
                 }
 

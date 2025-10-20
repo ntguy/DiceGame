@@ -284,6 +284,10 @@ export class GameScene extends Phaser.Scene {
         this.load.image('outside_background_2', './sprites/Clouds 3/2.png');
         this.load.image('outside_background_3', './sprites/Clouds 3/3.png');
         this.load.image('outside_background_4', './sprites/Clouds 3/4.png');
+        this.load.image('outside_background2_1', './sprites/World2/1.png');
+        this.load.image('outside_background2_2', './sprites/World2/2.png');
+        this.load.image('outside_background2_3', './sprites/World2/3.png');
+        this.load.image('outside_background2_4', './sprites/World2/4.png');
         this.load.image('wall', './sprites/Wall.png');
         this.load.image('wall2', './sprites/Wall2.png');
         this.load.image('wall_highlight_center', './sprites/BrightWallCenter.png');
@@ -2670,7 +2674,8 @@ export class GameScene extends Phaser.Scene {
                 connectionTextureKey,
                 wallTextureKey,
                 backgroundTextureKey,
-                outsideBackgroundLayerKeys
+                outsideBackgroundLayerKeys,
+                outsideAmbient: config && config.outsideAmbient ? config.outsideAmbient : undefined
             }
         );
         this.currentPathNodeId = null;
