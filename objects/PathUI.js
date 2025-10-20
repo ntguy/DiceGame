@@ -735,8 +735,8 @@ export class PathUI {
             : (scene.scale && scene.scale.width) || 0;
         const halfWidth = width / 2;
         const minY = CONSTANTS.HEADER_HEIGHT;
-        const maxY = safeCoverage * 0.3;
-        const birdCount = 22;
+        const maxY = safeCoverage * 0.2;
+        const birdCount = 20;
 
         for (let i = 0; i < birdCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
@@ -745,10 +745,10 @@ export class PathUI {
             const baseScale = random(0.45, 0.85);
             const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
             const depth = layerDepth + 0.001 + i * 0.0001;
-            const travelDistance = random(140, 280);
-            const verticalDrift = random(6, 18);
-            const duration = between(5200, 7800);
-            const delay = between(0, 1800);
+            const travelDistance = random(140, 400);
+            const verticalDrift = random(6, 12) + random(0, 10) + random(0, 10);
+            const duration = between(5000, 9000);
+            const delay = between(0, 3000);
 
             const setFacing = direction => {
                 const clampedDirection = direction < 0 ? -1 : 1;
