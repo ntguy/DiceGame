@@ -1809,8 +1809,14 @@ export class GameScene extends Phaser.Scene {
 
         if (stateChanged) {
             this.getDiceInPlay().forEach(die => {
-                if (die && typeof die.updateEmoji === 'function') {
+                if (!die) {
+                    return;
+                }
+                if (typeof die.updateEmoji === 'function') {
                     die.updateEmoji();
+                }
+                if (typeof die.updateVisualState === 'function') {
+                    die.updateVisualState();
                 }
             });
         }
@@ -1825,7 +1831,10 @@ export class GameScene extends Phaser.Scene {
 
         const label = detonatedCount > 1 ? `BOMBARD x${detonatedCount}` : 'BOMBARD';
         const centerX = this.cameras && this.cameras.main ? this.cameras.main.centerX : 0;
-        const centerY = this.cameras && this.cameras.main ? this.cameras.main.centerY : CONSTANTS.RESOLVE_TEXT_Y;
+        const baseCenterY = this.cameras && this.cameras.main
+            ? this.cameras.main.centerY
+            : CONSTANTS.RESOLVE_TEXT_Y;
+        const centerY = baseCenterY - 120;
 
         const text = this.add.text(centerX, centerY, label, {
             fontSize: '86px',

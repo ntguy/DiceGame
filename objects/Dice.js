@@ -196,14 +196,20 @@ export function createDie(scene, slotIndex, blueprint) {
             this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
         }
         this.setAlpha(this.isWeakened ? 0.5 : 1);
+        const isBomb = this.dieBlueprint && this.dieBlueprint.id === 'bomb';
+        const hasSceneLookup = isBomb && scene && typeof scene.getTimeBombStateByUid === 'function';
+        const bombState = hasSceneLookup ? scene.getTimeBombStateByUid(this.dieBlueprint.uid) : null;
+        const isDetonated = !!(bombState && bombState.detonated);
+        const shouldDim = this.isNullified || isDetonated;
+
         if (this.emojiText) {
-            this.emojiText.setAlpha(this.isNullified ? 0.2 : 1);
+            this.emojiText.setAlpha(shouldDim ? 0.2 : 1);
         }
         if (this.upgradePlusText) {
-            this.upgradePlusText.setAlpha(this.isNullified ? 0.2 : 1);
+            this.upgradePlusText.setAlpha(shouldDim ? 0.2 : 1);
         }
         if (this.leftStatusText) {
-            this.leftStatusText.setAlpha(this.isNullified ? 0.2 : 1);
+            this.leftStatusText.setAlpha(shouldDim ? 0.2 : 1);
         }
     };
 
