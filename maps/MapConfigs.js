@@ -159,11 +159,12 @@ export const MAP_CONFIGS = [
         pathTextureKey: 'path_ladder_metal',
         wallTextureKey: 'wall',
         outsideBackgroundLayerKeys: [
-            'outside_background_1',
-            'outside_background_2',
-            'outside_background_3',
-            'outside_background_4'
-        ]
+            'outside_background_world2_1',
+            'outside_background_world2_2',
+            'outside_background_world2_3',
+            'outside_background_world2_4'
+        ],
+        outsideBackgroundEffect: 'birds'
     },
     {
         id: 'map-3',

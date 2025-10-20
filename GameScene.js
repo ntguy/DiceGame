@@ -284,6 +284,10 @@ export class GameScene extends Phaser.Scene {
         this.load.image('outside_background_2', './sprites/Clouds 3/2.png');
         this.load.image('outside_background_3', './sprites/Clouds 3/3.png');
         this.load.image('outside_background_4', './sprites/Clouds 3/4.png');
+        this.load.image('outside_background_world2_1', './sprites/World2/1.png');
+        this.load.image('outside_background_world2_2', './sprites/World2/2.png');
+        this.load.image('outside_background_world2_3', './sprites/World2/3.png');
+        this.load.image('outside_background_world2_4', './sprites/World2/4.png');
         this.load.image('wall', './sprites/Wall.png');
         this.load.image('wall2', './sprites/Wall2.png');
         this.load.image('wall_highlight_center', './sprites/BrightWallCenter.png');
@@ -404,7 +408,8 @@ export class GameScene extends Phaser.Scene {
                 {
                     connectionTextureKey: this.getPathTextureKeyForConfig(null),
                     wallTextureKey: this.getWallTextureKeyForConfig(null),
-                    backgroundTextureKey: this.getBackgroundTextureKeyForConfig(null)
+                    backgroundTextureKey: this.getBackgroundTextureKeyForConfig(null),
+                    outsideBackgroundEffect: null
                 }
             );
             this.updateEnemyHealthUI();
@@ -2656,6 +2661,9 @@ export class GameScene extends Phaser.Scene {
         const wallTextureKey = this.getWallTextureKeyForConfig(config);
         const backgroundTextureKey = this.getBackgroundTextureKeyForConfig(config);
         const outsideBackgroundLayerKeys = this.getOutsideBackgroundLayerKeysForConfig(config);
+        const outsideBackgroundEffect = config && typeof config.outsideBackgroundEffect === 'string'
+            ? config.outsideBackgroundEffect
+            : null;
 
         this.pathManager = new PathManager({
             enemySequence,
@@ -2670,7 +2678,8 @@ export class GameScene extends Phaser.Scene {
                 connectionTextureKey,
                 wallTextureKey,
                 backgroundTextureKey,
-                outsideBackgroundLayerKeys
+                outsideBackgroundLayerKeys,
+                outsideBackgroundEffect
             }
         );
         this.currentPathNodeId = null;
