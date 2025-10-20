@@ -1840,62 +1840,108 @@ export class GameScene extends Phaser.Scene {
         text.setAlpha(0);
 
         return new Promise(resolve => {
-            let hasResolved = false;
-            const timeline = this.tweens.timeline({
-                onComplete: () => {
-                    if (text && typeof text.destroy === 'function' && text.scene) {
-                        text.destroy();
-                    }
-                    if (!hasResolved) {
-                        hasResolved = true;
-                        resolve();
-                    }
+            const finish = () => {
+                if (text && typeof text.destroy === 'function' && text.scene) {
+                    text.destroy();
                 }
-            });
+                resolve();
+            };
 
-            timeline.add({
-                targets: text,
-                alpha: { from: 0, to: 1 },
-                scale: { from: 0.25, to: 1.15 },
-                duration: 350,
-                ease: 'Back.Out'
-            });
+            let hasResolved = false;
+            const completeOnce = () => {
+                if (!hasResolved) {
+                    hasResolved = true;
+                    finish();
+                }
+            };
 
-            timeline.add({
-                targets: text,
-                scale: 0.95,
-                duration: 160,
-                ease: 'Sine.InOut',
-                yoyo: true,
-                repeat: 1
-            });
+            const makeTimeline = () => {
+                if (!this.tweens) {
+                    return null;
+                }
+                if (typeof this.tweens.timeline === 'function') {
+                    return this.tweens.timeline.bind(this.tweens);
+                }
+                if (typeof this.tweens.createTimeline === 'function') {
+                    return this.tweens.createTimeline.bind(this.tweens);
+                }
+                return null;
+            };
 
-            timeline.add({
-                targets: text,
-                duration: 220,
-                ease: 'Linear'
-            });
+            const segments = [
+                {
+                    targets: text,
+                    alpha: { from: 0, to: 1 },
+                    scale: { from: 0.25, to: 1.15 },
+                    duration: 350,
+                    ease: 'Back.Out'
+                },
+                {
+                    targets: text,
+                    scale: 0.95,
+                    duration: 160,
+                    ease: 'Sine.InOut',
+                    yoyo: true,
+                    repeat: 1
+                },
+                {
+                    targets: text,
+                    duration: 220,
+                    ease: 'Linear'
+                },
+                {
+                    targets: text,
+                    alpha: { from: 1, to: 0 },
+                    scale: { to: 0.5 },
+                    duration: 320,
+                    ease: 'Quad.In'
+                }
+            ];
 
-            timeline.add({
-                targets: text,
-                alpha: { from: 1, to: 0 },
-                scale: { to: 0.5 },
-                duration: 320,
-                ease: 'Quad.In'
-            });
+            const timelineFactory = makeTimeline();
+            if (timelineFactory) {
+                const timeline = timelineFactory({
+                    onComplete: completeOnce
+                });
 
-            timeline.play();
+                if (timeline && typeof timeline.add === 'function' && typeof timeline.play === 'function') {
+                    segments.forEach(config => timeline.add(config));
+                    timeline.play();
+                } else {
+                    completeOnce();
+                }
+            } else if (this.tweens && typeof this.tweens.add === 'function') {
+                let index = 0;
+                const playNext = () => {
+                    if (index >= segments.length) {
+                        completeOnce();
+                        return;
+                    }
+
+                    const config = { ...segments[index] };
+                    index += 1;
+                    const previousComplete = config.onComplete;
+                    config.onComplete = () => {
+                        if (typeof previousComplete === 'function') {
+                            previousComplete();
+                        }
+                        playNext();
+                    };
+                    this.tweens.add(config);
+                };
+
+                playNext();
+            } else {
+                completeOnce();
+            }
 
             if (this.time && typeof this.time.delayedCall === 'function') {
                 this.time.delayedCall(1800, () => {
                     if (hasResolved) {
                         return;
                     }
-                    if (text && typeof text.destroy === 'function' && text.scene) {
-                        text.destroy();
-                    }
                     hasResolved = true;
-                    resolve();
+                    finish();
                 });
             }
         });
