@@ -1841,7 +1841,7 @@ export class GameScene extends Phaser.Scene {
 
         return new Promise(resolve => {
             let hasResolved = false;
-            const timeline = this.tweens.createTimeline({
+            const timeline = this.tweens.timeline({
                 onComplete: () => {
                     if (text && typeof text.destroy === 'function' && text.scene) {
                         text.destroy();

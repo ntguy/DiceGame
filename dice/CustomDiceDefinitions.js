@@ -88,10 +88,7 @@ const DEFINITIONS = [
         description: 'Double chance to roll a 1 or a 6.',
         upgradeDescription: 'Double chance to roll a 3 or 6.',
         allowedZones: ['attack', 'defend']
-    }
-];
-
-const IN_DEVELOPMENT_DEFINITIONS = [
+    },
     {
         id: 'bomb',
         name: 'Time Bomb',
@@ -101,6 +98,8 @@ const IN_DEVELOPMENT_DEFINITIONS = [
         allowedZones: ['attack', 'defend']
     }
 ];
+
+const IN_DEVELOPMENT_DEFINITIONS = [];
 
 const ALL_DEFINITIONS = [...DEFINITIONS, ...IN_DEVELOPMENT_DEFINITIONS];
 
