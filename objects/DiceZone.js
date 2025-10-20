@@ -15,15 +15,17 @@ export function setupZones(scene) {
     const attackZoneX = 600;
 
     const defendZone = scene.add.zone(defendZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
+    const defendBackground = scene.add.tileSprite(defendZoneX, zoneY, zoneWidth, zoneHeight, 'path_background').setOrigin(0.5);
     const defendRect = scene.add.rectangle(defendZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0x3498db);
     const defendLabel = scene.add.text(defendZoneX, zoneY - zoneHeight/2 - 20, "DEFEND", { fontSize: "24px", color: "#3498db" }).setOrigin(0.5);
-    visuals.push(defendRect, defendLabel);
+    visuals.push(defendBackground, defendRect, defendLabel);
 
     // --- Attack zone ---
     const attackZone = scene.add.zone(attackZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
+    const attackBackground = scene.add.tileSprite(attackZoneX, zoneY, zoneWidth, zoneHeight, 'path_background').setOrigin(0.5);
     const attackRect = scene.add.rectangle(attackZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0xe74c3c);
     const attackLabel = scene.add.text(attackZoneX, zoneY - zoneHeight/2 - 20, "ATTACK", { fontSize: "24px", color: "#e74c3c" }).setOrigin(0.5);
-    visuals.push(attackRect, attackLabel);
+    visuals.push(attackBackground, attackRect, attackLabel);
 
     scene.defendZone = defendZone;
     scene.attackZone = attackZone;
