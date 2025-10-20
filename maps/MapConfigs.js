@@ -139,11 +139,11 @@ const mapThreeEnemySequence = [
 export const MAP_CONFIGS = [
     {
         id: 'map-1',
-        displayName: 'Map 1: Molten Forge',
+        displayName: 'Map 1: Twilight Tumble',
         createEnemies: mapOneEnemyFactories,
         createEnemySequence: () => createMapOneEnemySequence(),
-        pathTextureKey: 'path_ladder',
-        wallTextureKey: 'wall',
+        pathTextureKey: 'path_ladder_clean',
+        wallTextureKey: 'wall2',
         outsideBackgroundLayerKeys: [
             'outside_background_1',
             'outside_background_2',
@@ -153,11 +153,11 @@ export const MAP_CONFIGS = [
     },
     {
         id: 'map-2',
-        displayName: 'Map 2: Iron Bastion',
+        displayName: 'Map 2: Cloudfall Court',
         createEnemies: mapTwoEnemyFactories,
         enemySequence: mapTwoEnemySequence,
         pathTextureKey: 'path_ladder_metal',
-        wallTextureKey: 'wall2',
+        wallTextureKey: 'wall',
         outsideBackgroundLayerKeys: [
             'outside_background_1',
             'outside_background_2',
@@ -170,7 +170,7 @@ export const MAP_CONFIGS = [
         displayName: 'Map 3: Sanguine Depths',
         createEnemies: mapThreeEnemyFactories,
         enemySequence: mapThreeEnemySequence,
-        pathTextureKey: 'path_ladder_clean',
+        pathTextureKey: 'path_ladder',
         wallTextureKey: 'wall2',
         outsideBackgroundLayerKeys: [
             'outside_background_1',
