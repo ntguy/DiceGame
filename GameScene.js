@@ -1834,7 +1834,7 @@ export class GameScene extends Phaser.Scene {
         const baseCenterY = this.cameras && this.cameras.main
             ? this.cameras.main.centerY
             : CONSTANTS.RESOLVE_TEXT_Y;
-        const centerY = baseCenterY - 120;
+        const centerY = baseCenterY - 200;
 
         const text = this.add.text(centerX, centerY, label, {
             fontSize: '86px',
