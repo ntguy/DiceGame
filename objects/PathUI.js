@@ -46,7 +46,7 @@ const SCROLL_INPUT_MULTIPLIER = 0.5;
 const OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER = 0.25;
 const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
-    outside_background_2: -150
+    outside_background_2: -350
 };
 
 function blendColor(base, mix, amount = 0.5) {
