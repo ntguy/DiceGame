@@ -55,7 +55,8 @@ const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
-const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
+const JUNGLE_BACKGROUND_KEY_PREFIX = 'outside_jungle_background_';
+const SPARKLE_TEXTURE_KEY = 'outside_bug_swarm';
 
 function ensureSparkleTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
@@ -67,14 +68,32 @@ function ensureSparkleTexture(scene) {
     }
 
     const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
-    const size = 12;
+    const size = 14;
     const half = size / 2;
-    const accent = size * 0.3;
+    const bodyWidth = size * 0.38;
+    const bodyHeight = size * 0.62;
+    const wingWidth = size * 0.55;
+    const wingHeight = size * 0.28;
+    const headRadius = size * 0.12;
 
-    graphics.fillStyle(0xffffff, 1);
-    graphics.fillCircle(half, half, half * 0.45);
-    graphics.fillRect(half - accent / 2, half - half * 0.9, accent, size);
-    graphics.fillRect(half - half * 0.9, half - accent / 2, size, accent);
+    if (typeof graphics.fillEllipse === 'function') {
+        graphics.fillStyle(0x000000, 0.7);
+        graphics.fillEllipse(half - bodyWidth * 0.4, half - bodyHeight * 0.25, wingWidth, wingHeight);
+        graphics.fillEllipse(half + bodyWidth * 0.4, half - bodyHeight * 0.25, wingWidth, wingHeight);
+        graphics.fillStyle(0x000000, 1);
+        graphics.fillEllipse(half, half, bodyWidth, bodyHeight);
+    } else {
+        graphics.fillStyle(0x000000, 1);
+        graphics.fillCircle(half, half, bodyWidth / 2);
+    }
+
+    graphics.fillCircle(half, half - bodyHeight * 0.55, headRadius);
+    graphics.fillRect(
+        half - bodyWidth * 0.2,
+        half + bodyHeight * 0.1,
+        bodyWidth * 0.4,
+        bodyHeight * 0.35
+    );
     graphics.generateTexture(SPARKLE_TEXTURE_KEY, size, size);
     graphics.destroy();
 
@@ -273,10 +292,27 @@ export class PathUI {
         if (Array.isArray(this.outsideBackgroundLayers)) {
             this.outsideBackgroundLayers.forEach(layer => {
                 const sprite = layer && layer.sprite ? layer.sprite : null;
-                const tween = layer && layer.tween ? layer.tween : null;
-                if (tween && typeof tween.remove === 'function') {
-                    tween.remove();
+                const tweenCandidates = [];
+
+                if (layer) {
+                    if (Array.isArray(layer.tweens)) {
+                        tweenCandidates.push(...layer.tweens);
+                    }
+                    if (layer.tween) {
+                        tweenCandidates.push(layer.tween);
+                    }
+                    if (layer.movementTween) {
+                        tweenCandidates.push(layer.movementTween);
+                    }
                 }
+
+                const uniqueTweens = Array.from(new Set(tweenCandidates));
+                uniqueTweens.forEach(tween => {
+                    if (tween && typeof tween.remove === 'function') {
+                        tween.remove();
+                    }
+                });
+
                 if (sprite && typeof sprite.destroy === 'function') {
                     sprite.destroy();
                 }
@@ -515,6 +551,11 @@ export class PathUI {
             return;
         }
 
+        if (this.shouldUseJungleOutsideBackground()) {
+            this.createJungleOutsideBackgroundSprites({ top, bottom, height, centerY });
+            return;
+        }
+
         const textures = this.scene && this.scene.textures;
         const count = this.outsideBackgroundLayerKeys.length;
         const minFactor = 0.15;
@@ -630,6 +671,123 @@ export class PathUI {
         });
     }
 
+    shouldUseJungleOutsideBackground() {
+        if (!Array.isArray(this.outsideBackgroundLayerKeys) || this.outsideBackgroundLayerKeys.length === 0) {
+            return false;
+        }
+
+        return this.outsideBackgroundLayerKeys.every(key => typeof key === 'string'
+            && key.length > 0
+            && key.startsWith(JUNGLE_BACKGROUND_KEY_PREFIX));
+    }
+
+    createJungleOutsideBackgroundSprites({ top, bottom, height, centerY }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textures = scene.textures;
+        if (!textures || typeof textures.exists !== 'function') {
+            return;
+        }
+
+        const sceneWidth = scene.scale ? scene.scale.width : 0;
+        const sceneHeight = scene.scale ? scene.scale.height : 0;
+        const spanHeight = Number.isFinite(height) ? height : sceneHeight;
+        const spanTop = Number.isFinite(top)
+            ? top
+            : (Number.isFinite(centerY) ? centerY - spanHeight / 2 : 0);
+        const coverageHeight = Math.max(spanHeight, sceneHeight) + sceneHeight * 0.75;
+        const baseX = sceneWidth / 2;
+        const count = this.outsideBackgroundLayerKeys.length;
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const lerp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Linear === 'function'
+            ? Phaser.Math.Linear
+            : (start, end, t) => start + (end - start) * t;
+
+        const minScrollFactor = 0.04;
+        const maxScrollFactor = 0.55;
+        let createdAnyLayer = false;
+        let farLayerScrollFactor = minScrollFactor;
+
+        this.outsideBackgroundLayerKeys.forEach((key, index) => {
+            if (!key || !textures.exists(key)) {
+                return;
+            }
+
+            const texture = textures.get(key);
+            const source = texture && typeof texture.getSourceImage === 'function'
+                ? texture.getSourceImage()
+                : null;
+            const sourceWidth = source && source.width ? source.width : 384;
+            const sourceHeight = source && source.height ? source.height : 216;
+
+            const desiredHeight = Math.max(coverageHeight, sceneHeight + 120);
+            const zoomScale = Math.max(
+                sceneWidth / Math.max(1, sourceWidth),
+                desiredHeight / Math.max(1, sourceHeight)
+            );
+
+            const sprite = scene.add.image(baseX, spanTop, key);
+            sprite.setOrigin(0.5, 0);
+            sprite.setScale(zoomScale);
+            sprite.setScrollFactor(0);
+
+            const layerDepth = PATH_DEPTHS.outsideBackground + index * 0.01;
+            sprite.setDepth(layerDepth);
+            sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
+
+            const t = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
+            const scrollFactor = lerp(minScrollFactor, maxScrollFactor, t);
+            if (index === 0) {
+                farLayerScrollFactor = scrollFactor;
+            }
+
+            const layerInfo = {
+                sprite,
+                baseX: sprite.x,
+                baseY: sprite.y,
+                scrollFactor
+            };
+
+            layerInfo.updatePosition = () => {
+                const driftX = layerInfo.drift && Number.isFinite(layerInfo.drift.x) ? layerInfo.drift.x : 0;
+                const driftY = layerInfo.drift && Number.isFinite(layerInfo.drift.y) ? layerInfo.drift.y : 0;
+                const offset = this.scrollY * scrollFactor;
+                sprite.x = Math.round(layerInfo.baseX + driftX);
+                sprite.y = Math.round(layerInfo.baseY + offset + driftY);
+            };
+
+            layerInfo.updatePosition();
+
+            this.outsideBackgroundContainer.add(sprite);
+            this.outsideBackgroundLayers.push(layerInfo);
+            createdAnyLayer = true;
+        });
+
+        if (!createdAnyLayer) {
+            return;
+        }
+
+        const firstLayerDepth = this.outsideBackgroundLayers[0]
+            && this.outsideBackgroundLayers[0].sprite
+            && typeof this.outsideBackgroundLayers[0].sprite.depth === 'number'
+            ? this.outsideBackgroundLayers[0].sprite.depth
+            : PATH_DEPTHS.outsideBackground;
+
+        this.createOutsideSparkles({
+            baseX,
+            coverageHeight,
+            tileWidth: sceneWidth * 1.3,
+            scrollFactor: farLayerScrollFactor * 0.6,
+            layerDepth: firstLayerDepth + 0.001
+        });
+    }
+
     createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
         const scene = this.scene;
         if (!scene || !this.outsideBackgroundContainer) {
@@ -659,47 +817,81 @@ export class PathUI {
             : (scene.scale && scene.scale.width) || 0;
         const halfWidth = width / 2;
         const minY = CONSTANTS.HEADER_HEIGHT;
-        const maxY = safeCoverage * 0.3;
+        const maxY = safeCoverage * 0.35;
         const sparkleCount = 50;
+        const effectiveScrollFactor = Number.isFinite(scrollFactor) ? scrollFactor : 0.05;
 
         for (let i = 0; i < sparkleCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
             const y = clamp(random(minY, maxY), minY, maxY);
             const sparkle = scene.add.image(baseX + offsetX, y, textureKey);
-            const baseScale = random(0.2, 0.5);
+            const baseScale = random(0.18, 0.32);
             sparkle.setScale(baseScale);
             sparkle.setScrollFactor(0);
             sparkle.setDepth(layerDepth + 0.001);
-            sparkle.setAlpha(random(0.2, 0.8));
-            if (scene.sys && scene.sys.game && Phaser.BlendModes) {
-                sparkle.setBlendMode(Phaser.BlendModes.ADD);
-            }
+            sparkle.setAlpha(random(0.35, 0.8));
 
             this.outsideBackgroundContainer.add(sparkle);
 
-            const tween = scene.tweens.add({
+            const drift = { x: 0, y: 0 };
+            const layerInfo = {
+                sprite: sparkle,
+                baseX: sparkle.x,
+                baseY: sparkle.y,
+                scrollFactor: effectiveScrollFactor,
+                drift
+            };
+
+            layerInfo.updatePosition = () => {
+                const offset = this.scrollY * layerInfo.scrollFactor;
+                sparkle.x = Math.round(layerInfo.baseX + drift.x);
+                sparkle.y = Math.round(layerInfo.baseY + offset + drift.y);
+            };
+
+            layerInfo.updatePosition();
+
+            const appearanceTween = scene.tweens.add({
                 targets: sparkle,
-                alpha: { from: random(0.1, 0.4), to: 1 },
-                scale: { from: baseScale * 0.75, to: baseScale * 1.1 },
-                duration: between(900, 1600),
+                alpha: { from: random(0.3, 0.55), to: random(0.7, 0.85) },
+                scale: { from: baseScale * 0.9, to: baseScale * 1.05 },
+                duration: between(800, 1400),
                 yoyo: true,
                 repeat: -1,
-                delay: between(0, 1200),
+                delay: between(0, 900),
                 ease: 'Sine.easeInOut'
             });
 
-            sparkle.once('destroy', () => {
-                if (tween && typeof tween.remove === 'function') {
-                    tween.remove();
+            const travelX = random(16, 38);
+            const travelY = random(10, 28);
+            const movementTween = scene.tweens.add({
+                targets: drift,
+                x: random(-travelX, travelX),
+                y: random(-travelY, travelY),
+                duration: between(1300, 2200),
+                yoyo: true,
+                repeat: -1,
+                delay: between(0, 900),
+                ease: 'Sine.easeInOut',
+                onUpdate: () => {
+                    if (typeof layerInfo.updatePosition === 'function') {
+                        layerInfo.updatePosition();
+                    }
                 }
             });
 
-            this.outsideBackgroundLayers.push({
-                sprite: sparkle,
-                baseY: sparkle.y,
-                scrollFactor: 0.05,
-                tween
+            sparkle.once('destroy', () => {
+                [appearanceTween, movementTween].forEach(tween => {
+                    if (tween && typeof tween.remove === 'function') {
+                        tween.remove();
+                    }
+                });
             });
+
+            layerInfo.tween = appearanceTween;
+            layerInfo.movementTween = movementTween;
+            layerInfo.tweens = [appearanceTween, movementTween];
+
+            this.outsideBackgroundLayers.push(layerInfo);
         }
     }
 
@@ -1162,6 +1354,11 @@ export class PathUI {
 
                 const factor = Number.isFinite(layer.scrollFactor) ? layer.scrollFactor : 1;
 
+                if (typeof layer.updatePosition === 'function') {
+                    layer.updatePosition();
+                    return;
+                }
+
                 if (layer.isTileSprite && typeof layer.sprite.setTilePosition === 'function') {
                     const baseTileX = Number.isFinite(layer.baseTileX) ? layer.baseTileX : 0;
                     const baseTileY = Number.isFinite(layer.baseTileY) ? layer.baseTileY : 0;
@@ -1173,8 +1370,14 @@ export class PathUI {
                 }
 
                 const baseY = Number.isFinite(layer.baseY) ? layer.baseY : layer.sprite.y;
-                const newY = baseY + this.scrollY * factor;
+                const driftY = layer.drift && Number.isFinite(layer.drift.y) ? layer.drift.y : 0;
+                const newY = baseY + this.scrollY * factor + driftY;
                 layer.sprite.y = Math.round(newY);
+
+                if (layer.drift && Number.isFinite(layer.drift.x)) {
+                    const baseX = Number.isFinite(layer.baseX) ? layer.baseX : layer.sprite.x - layer.drift.x;
+                    layer.sprite.x = Math.round(baseX + layer.drift.x);
+                }
             });
         }
     }
