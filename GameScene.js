@@ -408,7 +408,8 @@ export class GameScene extends Phaser.Scene {
                 {
                     connectionTextureKey: this.getPathTextureKeyForConfig(null),
                     wallTextureKey: this.getWallTextureKeyForConfig(null),
-                    backgroundTextureKey: this.getBackgroundTextureKeyForConfig(null)
+                    backgroundTextureKey: this.getBackgroundTextureKeyForConfig(null),
+                    outsideBackgroundEffect: null
                 }
             );
             this.updateEnemyHealthUI();
@@ -2660,6 +2661,9 @@ export class GameScene extends Phaser.Scene {
         const wallTextureKey = this.getWallTextureKeyForConfig(config);
         const backgroundTextureKey = this.getBackgroundTextureKeyForConfig(config);
         const outsideBackgroundLayerKeys = this.getOutsideBackgroundLayerKeysForConfig(config);
+        const outsideBackgroundEffect = config && typeof config.outsideBackgroundEffect === 'string'
+            ? config.outsideBackgroundEffect
+            : null;
 
         this.pathManager = new PathManager({
             enemySequence,
@@ -2674,7 +2678,8 @@ export class GameScene extends Phaser.Scene {
                 connectionTextureKey,
                 wallTextureKey,
                 backgroundTextureKey,
-                outsideBackgroundLayerKeys
+                outsideBackgroundLayerKeys,
+                outsideBackgroundEffect
             }
         );
         this.currentPathNodeId = null;

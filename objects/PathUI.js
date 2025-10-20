@@ -55,6 +55,7 @@ const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
+const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
 
 function ensureBirdTexture(scene) {
@@ -92,9 +93,9 @@ function ensureBirdTexture(scene) {
         centerX + wingSpan * 0.15,
         centerY + height * 0.15
     );
-    graphics.fillStyle(0xe0e0e0, 1);
-    graphics.fillEllipse(centerX, centerY + height * 0.1, width * 0.3, height * 0.45);
-    graphics.fillStyle(0xc9c9c9, 1);
+    graphics.fillStyle(0xe8e8e8, 1);
+    graphics.fillEllipse(centerX, centerY + height * 0.08, width * 0.18, height * 0.28);
+    graphics.fillStyle(0xcfcfcf, 1);
     graphics.fillTriangle(
         centerX + width * 0.1,
         centerY + height * 0.1,
@@ -110,6 +111,30 @@ function ensureBirdTexture(scene) {
     return BIRD_TEXTURE_KEY;
 }
 
+function ensureSparkleTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(SPARKLE_TEXTURE_KEY)) {
+        return SPARKLE_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const size = 12;
+    const half = size / 2;
+    const accent = size * 0.3;
+
+    graphics.fillStyle(0xffffff, 1);
+    graphics.fillCircle(half, half, half * 0.45);
+    graphics.fillRect(half - accent / 2, half - half * 0.9, accent, size);
+    graphics.fillRect(half - half * 0.9, half - accent / 2, size, accent);
+    graphics.generateTexture(SPARKLE_TEXTURE_KEY, size, size);
+    graphics.destroy();
+
+    return SPARKLE_TEXTURE_KEY;
+}
+
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
     const baseColor = Phaser.Display.Color.ValueToColor(base);
@@ -123,7 +148,18 @@ function blendColor(base, mix, amount = 0.5) {
 }
 
 export class PathUI {
-    constructor(scene, pathManager, onSelect, { connectionTextureKey, wallTextureKey, backgroundTextureKey, outsideBackgroundLayerKeys } = {}) {
+    constructor(
+        scene,
+        pathManager,
+        onSelect,
+        {
+            connectionTextureKey,
+            wallTextureKey,
+            backgroundTextureKey,
+            outsideBackgroundLayerKeys,
+            outsideBackgroundEffect
+        } = {}
+    ) {
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
@@ -133,6 +169,7 @@ export class PathUI {
         this.outsideBackgroundLayerKeys = Array.isArray(outsideBackgroundLayerKeys)
             ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
             : [];
+        this.outsideBackgroundEffect = outsideBackgroundEffect || 'sparkles';
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -626,13 +663,23 @@ export class PathUI {
                     isTileSprite: true
                 });
 
-                this.createOutsideBirds({
-                    baseX,
-                    coverageHeight,
-                    tileWidth: width,
-                    scrollFactor,
-                    layerDepth
-                });
+                if (this.outsideBackgroundEffect === 'birds') {
+                    this.createOutsideBirds({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
+                } else {
+                    this.createOutsideSparkles({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
+                }
                 return;
             }
 
@@ -698,10 +745,10 @@ export class PathUI {
             const baseScale = random(0.45, 0.85);
             const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
             const depth = layerDepth + 0.001 + i * 0.0001;
-            const travelDistance = random(160, 320);
+            const travelDistance = random(140, 280);
             const verticalDrift = random(6, 18);
-            const duration = between(3600, 6200);
-            const delay = between(0, 1600);
+            const duration = between(5200, 7800);
+            const delay = between(0, 1800);
 
             const setFacing = direction => {
                 const clampedDirection = direction < 0 ? -1 : 1;
@@ -738,6 +785,79 @@ export class PathUI {
             this.outsideBackgroundLayers.push({
                 sprite: bird,
                 baseY: bird.y,
+                scrollFactor: Math.max(0.04, scrollFactor * 0.15),
+                tween
+            });
+        }
+    }
+
+    createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureSparkleTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const minY = CONSTANTS.HEADER_HEIGHT;
+        const maxY = safeCoverage * 0.3;
+        const sparkleCount = 50;
+
+        for (let i = 0; i < sparkleCount; i += 1) {
+            const offsetX = random(-halfWidth, halfWidth);
+            const y = clamp(random(minY, maxY), minY, maxY);
+            const sparkle = scene.add.image(baseX + offsetX, y, textureKey);
+            const baseScale = random(0.2, 0.5);
+            sparkle.setScale(baseScale);
+            sparkle.setScrollFactor(0);
+            sparkle.setDepth(layerDepth + 0.001);
+            sparkle.setAlpha(random(0.2, 0.8));
+            if (scene.sys && scene.sys.game && Phaser.BlendModes) {
+                sparkle.setBlendMode(Phaser.BlendModes.ADD);
+            }
+
+            this.outsideBackgroundContainer.add(sparkle);
+
+            const tween = scene.tweens.add({
+                targets: sparkle,
+                alpha: { from: random(0.1, 0.4), to: 1 },
+                scale: { from: baseScale * 0.75, to: baseScale * 1.1 },
+                duration: between(900, 1600),
+                yoyo: true,
+                repeat: -1,
+                delay: between(0, 1200),
+                ease: 'Sine.easeInOut'
+            });
+
+            sparkle.once('destroy', () => {
+                if (tween && typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+
+            this.outsideBackgroundLayers.push({
+                sprite: sparkle,
+                baseY: sparkle.y,
                 scrollFactor: Math.max(0.04, scrollFactor * 0.15),
                 tween
             });
