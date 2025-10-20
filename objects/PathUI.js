@@ -30,6 +30,10 @@ const LAYOUT = {
 
 const PATH_TEXTURE_SCALE = 1.5;
 const GENERAL_TEXTURE_SCALE = 2;
+const WALL_HIGHLIGHT_TEXTURE_KEY = 'wall_highlight_center';
+const WALL_HIGHLIGHT_MIN_ALPHA = 0.8;
+const WALL_HIGHLIGHT_MAX_ALPHA = 1;
+const WALL_HIGHLIGHT_TWEEN_DURATION = 1200;
 const PATH_DEPTHS = {
     outsideBackground: -5,
     background: 5,
@@ -82,6 +86,8 @@ export class PathUI {
         this.wallContainer = scene.add.container(0, 0);
         this.wallContainer.setDepth(PATH_DEPTHS.walls);
         this.wallSprites = [];
+        this.wallHighlightSprites = [];
+        this.wallHighlightTweens = [];
 
         this.container = scene.add.container(0, 0);
         this.container.setDepth(PATH_DEPTHS.nodes);
@@ -146,20 +152,56 @@ export class PathUI {
     }
 
     clearWallSprites() {
-        if (!Array.isArray(this.wallSprites)) {
-            return;
+        this.clearWallHighlightSprites();
+
+        if (Array.isArray(this.wallSprites)) {
+            this.wallSprites.forEach(sprite => {
+                if (sprite && typeof sprite.destroy === 'function') {
+                    sprite.destroy();
+                }
+            });
+
+            this.wallSprites.length = 0;
+        } else {
+            this.wallSprites = [];
         }
-
-        this.wallSprites.forEach(sprite => {
-            if (sprite && typeof sprite.destroy === 'function') {
-                sprite.destroy();
-            }
-        });
-
-        this.wallSprites.length = 0;
 
         if (this.wallContainer && typeof this.wallContainer.removeAll === 'function') {
             this.wallContainer.removeAll(false);
+        }
+    }
+
+    clearWallHighlightSprites() {
+        if (Array.isArray(this.wallHighlightTweens)) {
+            this.wallHighlightTweens.forEach(tween => {
+                if (!tween) {
+                    return;
+                }
+
+                if (typeof tween.stop === 'function') {
+                    tween.stop();
+                }
+
+                if (typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+
+            this.wallHighlightTweens.length = 0;
+        } else {
+            this.wallHighlightTweens = [];
+        }
+
+        if (Array.isArray(this.wallHighlightSprites)) {
+            this.wallHighlightSprites.forEach(sprite => {
+                if (sprite && typeof sprite.destroy === 'function') {
+                    sprite.destroy();
+                }
+            });
+
+            this.wallHighlightSprites.length = 0;
+        } else {
+            this.wallHighlightSprites = [];
         }
     }
 
@@ -230,6 +272,8 @@ export class PathUI {
 
         const wallSourceWidth = Math.max(1, sourceImage.width || 1);
         const wallWidth = wallSourceWidth * GENERAL_TEXTURE_SCALE;
+        const wallSourceHeight = Math.max(1, sourceImage.height || 1);
+        const wallPieceHeight = wallSourceHeight * GENERAL_TEXTURE_SCALE;
         const wallHalfWidth = wallWidth / 2;
         const nodeHalfWidth = 28;
         const lateralPadding = 30;
@@ -266,6 +310,11 @@ export class PathUI {
             }
         }
 
+        const textures = this.scene && this.scene.textures;
+        const hasHighlightTexture = textures
+            && typeof textures.exists === 'function'
+            && textures.exists(WALL_HIGHLIGHT_TEXTURE_KEY);
+
         [leftX, rightX].forEach(x => {
             const sprite = this.scene.add.tileSprite(x, centerY, wallWidth, height, this.wallTextureKey);
             sprite.setOrigin(0.5, 0.5);
@@ -274,6 +323,42 @@ export class PathUI {
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
             this.wallContainer.add(sprite);
             this.wallSprites.push(sprite);
+
+            if (!hasHighlightTexture || !Number.isFinite(wallPieceHeight) || wallPieceHeight <= 0) {
+                return;
+            }
+
+            const pieceCount = Math.max(0, Math.ceil(height / wallPieceHeight));
+            for (let index = 2; index < pieceCount; index += 3) {
+                const y = top + (index + 0.5) * wallPieceHeight;
+                if (y < top || y > bottom) {
+                    continue;
+                }
+                const highlightSprite = this.scene.add.sprite(x, y, WALL_HIGHLIGHT_TEXTURE_KEY);
+                highlightSprite.setOrigin(0.5, 0.5);
+                highlightSprite.setScale(GENERAL_TEXTURE_SCALE, GENERAL_TEXTURE_SCALE);
+                highlightSprite.setDepth(PATH_DEPTHS.walls + 0.01);
+                highlightSprite.setAlpha(WALL_HIGHLIGHT_MAX_ALPHA);
+                highlightSprite.setPosition(Math.round(highlightSprite.x), Math.round(highlightSprite.y));
+                this.wallContainer.add(highlightSprite);
+                this.wallHighlightSprites.push(highlightSprite);
+
+                if (this.scene && this.scene.tweens && typeof this.scene.tweens.add === 'function') {
+                    const tween = this.scene.tweens.add({
+                        targets: highlightSprite,
+                        alpha: {
+                            from: WALL_HIGHLIGHT_MIN_ALPHA,
+                            to: WALL_HIGHLIGHT_MAX_ALPHA
+                        },
+                        duration: WALL_HIGHLIGHT_TWEEN_DURATION,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+
+                    this.wallHighlightTweens.push(tween);
+                }
+            }
         });
     }
 
