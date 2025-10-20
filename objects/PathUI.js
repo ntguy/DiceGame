@@ -45,6 +45,9 @@ const WHEEL_SCROLL_MULTIPLIER = 0.5;
 const SCROLL_INPUT_MULTIPLIER = 0.5;
 const OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER = 0.25;
 const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
+const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
+    outside_background_2: -350
+};
 
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
@@ -322,6 +325,7 @@ export class PathUI {
             const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
             const sourceWidth = source && source.width ? source.width : sceneHeight || 1;
             const sourceHeight = source && source.height ? source.height : sceneHeight || 1;
+            const horizontalOffset = OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS[key] || 0;
 
             if (index === 0) {
                 const width = sourceWidth * defaultScale;
@@ -341,7 +345,7 @@ export class PathUI {
                 }
 
                 const tileSprite = this.scene.add.tileSprite(
-                    baseX,
+                    baseX + horizontalOffset,
                     tileY,
                     width,
                     tileHeight,
@@ -373,7 +377,7 @@ export class PathUI {
             const maxOffset = viewportHeight * 0.45;
             const verticalOffset = lerp(minOffset, maxOffset, progress);
             const spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100;
-            const sprite = this.scene.add.image(baseX, spriteY, key);
+            const sprite = this.scene.add.image(baseX + horizontalOffset, spriteY, key);
             sprite.setOrigin(0.5, 0.5);
             sprite.setScale(defaultScale);
             sprite.setScrollFactor(0);
