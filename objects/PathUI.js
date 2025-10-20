@@ -401,7 +401,6 @@ export class PathUI {
 
                 this.createOutsideSparkles({
                     baseX,
-                    spanTop,
                     coverageHeight,
                     tileWidth: width,
                     scrollFactor,
@@ -433,7 +432,7 @@ export class PathUI {
         });
     }
 
-    createOutsideSparkles({ baseX, spanTop, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+    createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
         const scene = this.scene;
         if (!scene || !this.outsideBackgroundContainer) {
             return;
@@ -461,15 +460,15 @@ export class PathUI {
             ? tileWidth
             : (scene.scale && scene.scale.width) || 0;
         const halfWidth = width / 2;
-        const minY = spanTop + safeCoverage * 0.1;
-        const maxY = spanTop + safeCoverage * 0.45;
-        const sparkleCount = 22;
+        const minY = CONSTANTS.HEADER_HEIGHT;
+        const maxY = safeCoverage * 0.3;
+        const sparkleCount = 50;
 
         for (let i = 0; i < sparkleCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
             const y = clamp(random(minY, maxY), minY, maxY);
             const sparkle = scene.add.image(baseX + offsetX, y, textureKey);
-            const baseScale = random(0.35, 0.85);
+            const baseScale = random(0.2, 0.5);
             sparkle.setScale(baseScale);
             sparkle.setScrollFactor(0);
             sparkle.setDepth(layerDepth + 0.001);
@@ -500,7 +499,7 @@ export class PathUI {
             this.outsideBackgroundLayers.push({
                 sprite: sparkle,
                 baseY: sparkle.y,
-                scrollFactor,
+                scrollFactor: 0.05,
                 tween
             });
         }
