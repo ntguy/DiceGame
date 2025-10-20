@@ -33,10 +33,10 @@ const GENERAL_TEXTURE_SCALE = 2;
 const WALL_HIGHLIGHT_TEXTURE_KEY = 'wall_highlight_center';
 const WALL_HIGHLIGHT_MIN_ALPHA = 0.8;
 const WALL_HIGHLIGHT_MAX_ALPHA = 1;
-const WALL_HIGHLIGHT_TWEEN_DURATION = 1200;
+const WALL_HIGHLIGHT_TWEEN_DURATION = 120;
 const WALL_TORCH_TEXTURE_KEY = 'wall_torch';
 const WALL_TORCH_ANIMATION_KEY = 'wall_torch_flicker';
-const WALL_TORCH_FRAME_RATE = 15;
+const WALL_TORCH_FRAME_RATE = 8;
 const PATH_DEPTHS = {
     outsideBackground: -5,
     background: 5,
@@ -382,7 +382,7 @@ export class PathUI {
                         const tween = this.scene.tweens.add({
                             targets: highlightSprite,
                             alpha: {
-                                from: WALL_HIGHLIGHT_MIN_ALPHA,
+                                from: WALL_HIGHLIGHT_MIN_ALPHA + (Math.random() * 0.2),
                                 to: WALL_HIGHLIGHT_MAX_ALPHA
                             },
                             duration: WALL_HIGHLIGHT_TWEEN_DURATION,
