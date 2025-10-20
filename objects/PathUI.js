@@ -48,6 +48,31 @@ const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
+const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
+
+function ensureSparkleTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(SPARKLE_TEXTURE_KEY)) {
+        return SPARKLE_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const size = 12;
+    const half = size / 2;
+    const accent = size * 0.3;
+
+    graphics.fillStyle(0xffffff, 1);
+    graphics.fillCircle(half, half, half * 0.45);
+    graphics.fillRect(half - accent / 2, half - half * 0.9, accent, size);
+    graphics.fillRect(half - half * 0.9, half - accent / 2, size, accent);
+    graphics.generateTexture(SPARKLE_TEXTURE_KEY, size, size);
+    graphics.destroy();
+
+    return SPARKLE_TEXTURE_KEY;
+}
 
 function blendColor(base, mix, amount = 0.5) {
     const clamped = Phaser.Math.Clamp(amount, 0, 1);
@@ -179,6 +204,10 @@ export class PathUI {
         if (Array.isArray(this.outsideBackgroundLayers)) {
             this.outsideBackgroundLayers.forEach(layer => {
                 const sprite = layer && layer.sprite ? layer.sprite : null;
+                const tween = layer && layer.tween ? layer.tween : null;
+                if (tween && typeof tween.remove === 'function') {
+                    tween.remove();
+                }
                 if (sprite && typeof sprite.destroy === 'function') {
                     sprite.destroy();
                 }
@@ -355,7 +384,8 @@ export class PathUI {
                 tileSprite.setOrigin(0.5, 0.5);
                 tileSprite.setTileScale(defaultScale, defaultScale);
                 tileSprite.setScrollFactor(0);
-                tileSprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
+                const layerDepth = PATH_DEPTHS.outsideBackground + index * 0.01;
+                tileSprite.setDepth(layerDepth);
                 tileSprite.setPosition(Math.round(tileSprite.x), Math.round(tileSprite.y));
 
                 this.outsideBackgroundContainer.add(tileSprite);
@@ -367,6 +397,14 @@ export class PathUI {
                     baseTileY: tileSprite.tilePositionY || 0,
                     scrollFactor,
                     isTileSprite: true
+                });
+
+                this.createOutsideSparkles({
+                    baseX,
+                    coverageHeight,
+                    tileWidth: width,
+                    scrollFactor,
+                    layerDepth
                 });
                 return;
             }
@@ -392,6 +430,79 @@ export class PathUI {
                 scrollFactor
             });
         });
+    }
+
+    createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureSparkleTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const minY = CONSTANTS.HEADER_HEIGHT;
+        const maxY = safeCoverage * 0.3;
+        const sparkleCount = 50;
+
+        for (let i = 0; i < sparkleCount; i += 1) {
+            const offsetX = random(-halfWidth, halfWidth);
+            const y = clamp(random(minY, maxY), minY, maxY);
+            const sparkle = scene.add.image(baseX + offsetX, y, textureKey);
+            const baseScale = random(0.2, 0.5);
+            sparkle.setScale(baseScale);
+            sparkle.setScrollFactor(0);
+            sparkle.setDepth(layerDepth + 0.001);
+            sparkle.setAlpha(random(0.2, 0.8));
+            if (scene.sys && scene.sys.game && Phaser.BlendModes) {
+                sparkle.setBlendMode(Phaser.BlendModes.ADD);
+            }
+
+            this.outsideBackgroundContainer.add(sparkle);
+
+            const tween = scene.tweens.add({
+                targets: sparkle,
+                alpha: { from: random(0.1, 0.4), to: 1 },
+                scale: { from: baseScale * 0.75, to: baseScale * 1.1 },
+                duration: between(900, 1600),
+                yoyo: true,
+                repeat: -1,
+                delay: between(0, 1200),
+                ease: 'Sine.easeInOut'
+            });
+
+            sparkle.once('destroy', () => {
+                if (tween && typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+
+            this.outsideBackgroundLayers.push({
+                sprite: sparkle,
+                baseY: sparkle.y,
+                scrollFactor: 0.05,
+                tween
+            });
+        }
     }
 
     getNodePosition(node) {
