@@ -55,30 +55,59 @@ const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
-const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
+const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
 
-function ensureSparkleTexture(scene) {
+function ensureBirdTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
         return null;
     }
 
-    if (scene.textures.exists(SPARKLE_TEXTURE_KEY)) {
-        return SPARKLE_TEXTURE_KEY;
+    if (scene.textures.exists(BIRD_TEXTURE_KEY)) {
+        return BIRD_TEXTURE_KEY;
     }
 
     const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
-    const size = 12;
-    const half = size / 2;
-    const accent = size * 0.3;
+    const width = 28;
+    const height = 16;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const wingSpan = width * 0.85;
+    const wingY = height * 0.4;
 
-    graphics.fillStyle(0xffffff, 1);
-    graphics.fillCircle(half, half, half * 0.45);
-    graphics.fillRect(half - accent / 2, half - half * 0.9, accent, size);
-    graphics.fillRect(half - half * 0.9, half - accent / 2, size, accent);
-    graphics.generateTexture(SPARKLE_TEXTURE_KEY, size, size);
+    graphics.clear();
+    graphics.fillStyle(0xf5f5f5, 1);
+    graphics.fillTriangle(
+        centerX,
+        centerY,
+        centerX - wingSpan / 2,
+        wingY,
+        centerX - wingSpan * 0.15,
+        centerY + height * 0.15
+    );
+    graphics.fillTriangle(
+        centerX,
+        centerY,
+        centerX + wingSpan / 2,
+        wingY,
+        centerX + wingSpan * 0.15,
+        centerY + height * 0.15
+    );
+    graphics.fillStyle(0xe0e0e0, 1);
+    graphics.fillEllipse(centerX, centerY + height * 0.1, width * 0.3, height * 0.45);
+    graphics.fillStyle(0xc9c9c9, 1);
+    graphics.fillTriangle(
+        centerX + width * 0.1,
+        centerY + height * 0.1,
+        centerX + width * 0.28,
+        centerY + height * 0.05,
+        centerX + width * 0.32,
+        centerY + height * 0.18
+    );
+
+    graphics.generateTexture(BIRD_TEXTURE_KEY, width, height);
     graphics.destroy();
 
-    return SPARKLE_TEXTURE_KEY;
+    return BIRD_TEXTURE_KEY;
 }
 
 function blendColor(base, mix, amount = 0.5) {
@@ -597,7 +626,7 @@ export class PathUI {
                     isTileSprite: true
                 });
 
-                this.createOutsideSparkles({
+                this.createOutsideBirds({
                     baseX,
                     coverageHeight,
                     tileWidth: width,
@@ -630,13 +659,13 @@ export class PathUI {
         });
     }
 
-    createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+    createOutsideBirds({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
         const scene = this.scene;
         if (!scene || !this.outsideBackgroundContainer) {
             return;
         }
 
-        const textureKey = ensureSparkleTexture(scene);
+        const textureKey = ensureBirdTexture(scene);
         if (!textureKey) {
             return;
         }
@@ -660,44 +689,56 @@ export class PathUI {
         const halfWidth = width / 2;
         const minY = CONSTANTS.HEADER_HEIGHT;
         const maxY = safeCoverage * 0.3;
-        const sparkleCount = 50;
+        const birdCount = 22;
 
-        for (let i = 0; i < sparkleCount; i += 1) {
+        for (let i = 0; i < birdCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
             const y = clamp(random(minY, maxY), minY, maxY);
-            const sparkle = scene.add.image(baseX + offsetX, y, textureKey);
-            const baseScale = random(0.2, 0.5);
-            sparkle.setScale(baseScale);
-            sparkle.setScrollFactor(0);
-            sparkle.setDepth(layerDepth + 0.001);
-            sparkle.setAlpha(random(0.2, 0.8));
-            if (scene.sys && scene.sys.game && Phaser.BlendModes) {
-                sparkle.setBlendMode(Phaser.BlendModes.ADD);
-            }
+            const bird = scene.add.image(baseX + offsetX, y, textureKey);
+            const baseScale = random(0.45, 0.85);
+            const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
+            const depth = layerDepth + 0.001 + i * 0.0001;
+            const travelDistance = random(160, 320);
+            const verticalDrift = random(6, 18);
+            const duration = between(3600, 6200);
+            const delay = between(0, 1600);
 
-            this.outsideBackgroundContainer.add(sparkle);
+            const setFacing = direction => {
+                const clampedDirection = direction < 0 ? -1 : 1;
+                bird.setScale(baseScale * clampedDirection, baseScale * 0.9);
+            };
+
+            setFacing(facingDirection);
+
+            bird.setScrollFactor(0);
+            bird.setDepth(depth);
+            bird.setAlpha(random(0.65, 0.95));
+
+            this.outsideBackgroundContainer.add(bird);
 
             const tween = scene.tweens.add({
-                targets: sparkle,
-                alpha: { from: random(0.1, 0.4), to: 1 },
-                scale: { from: baseScale * 0.75, to: baseScale * 1.1 },
-                duration: between(900, 1600),
+                targets: bird,
+                x: bird.x + travelDistance * facingDirection,
+                y: bird.y + verticalDrift,
+                duration,
                 yoyo: true,
                 repeat: -1,
-                delay: between(0, 1200),
-                ease: 'Sine.easeInOut'
+                delay,
+                ease: 'Sine.easeInOut',
+                onYoyo: () => setFacing(-facingDirection),
+                onRepeat: () => setFacing(facingDirection)
             });
 
-            sparkle.once('destroy', () => {
+            bird.once('destroy', () => {
                 if (tween && typeof tween.remove === 'function') {
                     tween.remove();
                 }
             });
 
             this.outsideBackgroundLayers.push({
-                sprite: sparkle,
-                baseY: sparkle.y,
-                scrollFactor: 0.05,
+                sprite: bird,
+                baseY: bird.y,
+                scrollFactor: Math.max(0.04, scrollFactor * 0.15),
                 tween
             });
         }
