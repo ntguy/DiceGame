@@ -100,6 +100,8 @@ export class GameScene extends Phaser.Scene {
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
         this.temporarilyDestroyedDice = [];
+        this.timeBombStates = new Map();
+        this.activeTimeBombResolveBonus = 0;
         this.gameOverManager = null;
         this.muteButton = null;
         this.isMuted = false;
@@ -246,6 +248,7 @@ export class GameScene extends Phaser.Scene {
         this.zoneVisuals = [];
         this.activeFacilityUI = null;
         this.customDiceLoadout = [];
+        this.timeBombStates = new Map();
         this.diceRewardUI = null;
         this.resetRelicState();
         this.resetMenuState();
@@ -880,6 +883,15 @@ export class GameScene extends Phaser.Scene {
         const defendScore = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
         const attackScore = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
 
+        const pendingTimeBombBonus = Number.isFinite(this.activeTimeBombResolveBonus)
+            ? this.activeTimeBombResolveBonus
+            : 0;
+        if (pendingTimeBombBonus > 0) {
+            attackScore.baseSum = (attackScore.baseSum || 0) + pendingTimeBombBonus;
+            attackScore.total = (attackScore.total || 0) + pendingTimeBombBonus;
+            attackScore.timeBombBonus = (attackScore.timeBombBonus || 0) + pendingTimeBombBonus;
+        }
+
         this.updateWildcardDisplays({
             defendAssignments: defendScore.assignments,
             attackAssignments: attackScore.assignments,
@@ -894,7 +906,11 @@ export class GameScene extends Phaser.Scene {
         }
 
         const formatScoreLine = score => {
-            const breakdown = [`${score.baseSum}`, `${score.comboBonus}`];
+            const breakdown = [`${score.baseSum}`];
+            if (Number.isFinite(score.timeBombBonus) && score.timeBombBonus > 0) {
+                breakdown.push(`${score.timeBombBonus}`);
+            }
+            breakdown.push(`${score.comboBonus}`);
             return `${score.total}: ${breakdown.join('+')}`;
         };
         const formatComboLine = score => `${score.comboType}`;
@@ -1470,7 +1486,7 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
-    resolveDice() {
+    async resolveDice() {
         if (!this.inCombat || this.isGameOver) {
             return;
         }
@@ -1481,6 +1497,50 @@ export class GameScene extends Phaser.Scene {
         this.isResolving = true;
 
         this.disableAllInputs();
+
+        const usedTimeBombUids = new Set();
+        [...(this.defendDice || []), ...(this.attackDice || [])].forEach(die => {
+            if (!die || !die.dieBlueprint) {
+                return;
+            }
+            if (die.dieBlueprint.id === 'bomb' && die.dieBlueprint.uid) {
+                usedTimeBombUids.add(die.dieBlueprint.uid);
+            }
+        });
+
+        const nullifiedTimeBombUids = new Set();
+        if (this.nullifiedDice && typeof this.nullifiedDice.forEach === 'function') {
+            this.nullifiedDice.forEach(die => {
+                if (!die || !die.dieBlueprint) {
+                    return;
+                }
+                if (die.dieBlueprint.id === 'bomb' && die.dieBlueprint.uid) {
+                    nullifiedTimeBombUids.add(die.dieBlueprint.uid);
+                }
+            });
+        }
+
+        const timeBombResolution = this.resolveTimeBombCountdowns({
+            usedBlueprintUids: usedTimeBombUids,
+            nullifiedBlueprintUids: nullifiedTimeBombUids
+        }) || { totalBonus: 0, detonatedCount: 0 };
+
+        const timeBombBonus = Number.isFinite(timeBombResolution.totalBonus)
+            ? timeBombResolution.totalBonus
+            : 0;
+        this.activeTimeBombResolveBonus = timeBombBonus;
+
+        let bombardAnimationPromise = null;
+        if (timeBombBonus > 0) {
+            this.updateZonePreviewText();
+            bombardAnimationPromise = this.playTimeBombDetonationAnimation({
+                detonatedCount: timeBombResolution.detonatedCount
+            });
+        }
+
+        if (bombardAnimationPromise) {
+            await bombardAnimationPromise;
+        }
 
         // Play resolve sound effect
         this.sound.play('chimeShort', { volume: 0.7 });
@@ -1494,6 +1554,13 @@ export class GameScene extends Phaser.Scene {
         // Calculate scores
         const defendResult = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
         const attackResult = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
+
+        if (timeBombBonus > 0) {
+            attackResult.baseSum = (attackResult.baseSum || 0) + timeBombBonus;
+            attackResult.total = (attackResult.total || 0) + timeBombBonus;
+            attackResult.timeBombBonus = (attackResult.timeBombBonus || 0) + timeBombBonus;
+        }
+
         const defendScore = defendResult.total;
         const attackScore = attackResult.total;
 
@@ -1536,6 +1603,7 @@ export class GameScene extends Phaser.Scene {
         const diceToResolve = this.getDiceInPlay();
         this.applyEnemyComboDestruction({ attackResult, defendResult });
         const finishResolution = () => {
+            this.activeTimeBombResolveBonus = 0;
             if (locksToCarryOver > 0) {
                 this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + locksToCarryOver);
             }
@@ -1631,6 +1699,266 @@ export class GameScene extends Phaser.Scene {
         blueprints = blueprints.slice(0, CONSTANTS.DICE_PER_SET);
 
         return this.applyTemporaryDestructionToBlueprints(blueprints);
+    }
+
+    initializeTimeBombStatesForEncounter() {
+        if (!this.timeBombStates || typeof this.timeBombStates.clear !== 'function') {
+            this.timeBombStates = new Map();
+        } else {
+            this.timeBombStates.clear();
+        }
+
+        let loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        if (loadout.length > 0) {
+            let mutated = false;
+            loadout = loadout.map(entry => {
+                if (!entry) {
+                    return entry;
+                }
+                if (entry.uid) {
+                    return entry;
+                }
+                const { uid } = createDieBlueprint(entry.id, { isUpgraded: entry.isUpgraded });
+                mutated = true;
+                return { ...entry, uid };
+            });
+            if (mutated) {
+                this.customDiceLoadout = loadout;
+            }
+        }
+
+        const activeEntries = loadout.slice(0, CONSTANTS.DICE_PER_SET);
+        activeEntries.forEach(entry => {
+            if (!entry || entry.id !== 'bomb' || !entry.uid) {
+                return;
+            }
+            this.timeBombStates.set(entry.uid, {
+                countdown: 3,
+                detonated: false,
+                isUpgraded: !!entry.isUpgraded
+            });
+        });
+    }
+
+    getTimeBombStateByUid(uid) {
+        if (!uid || !this.timeBombStates) {
+            return null;
+        }
+        return this.timeBombStates.get(uid) || null;
+    }
+
+    getDieLeftStatusText(die) {
+        if (!die || !die.dieBlueprint) {
+            return '';
+        }
+
+        const blueprint = die.dieBlueprint;
+        if (blueprint.id !== 'bomb') {
+            return '';
+        }
+
+        const state = this.getTimeBombStateByUid(blueprint.uid);
+        if (!state || state.detonated) {
+            return '';
+        }
+
+        const countdown = Number.isFinite(state.countdown) ? state.countdown : 0;
+        if (countdown <= 0) {
+            return '';
+        }
+
+        return `${countdown}`;
+    }
+
+    resolveTimeBombCountdowns({ usedBlueprintUids, nullifiedBlueprintUids } = {}) {
+        if (!this.timeBombStates || this.timeBombStates.size === 0) {
+            return { totalBonus: 0, detonatedCount: 0, detonatedStates: [] };
+        }
+
+        const usedSet = usedBlueprintUids instanceof Set
+            ? usedBlueprintUids
+            : new Set(Array.isArray(usedBlueprintUids) ? usedBlueprintUids : []);
+
+        const nullifiedSet = nullifiedBlueprintUids instanceof Set
+            ? nullifiedBlueprintUids
+            : new Set(Array.isArray(nullifiedBlueprintUids) ? nullifiedBlueprintUids : []);
+
+        let totalBonus = 0;
+        let stateChanged = false;
+        const detonatedStates = [];
+
+        this.timeBombStates.forEach((state, uid) => {
+            if (!state || state.detonated) {
+                return;
+            }
+
+            if (usedSet.has(uid) || nullifiedSet.has(uid)) {
+                return;
+            }
+
+            const currentCountdown = Number.isFinite(state.countdown) ? state.countdown : 3;
+            const updatedCountdown = Math.max(0, currentCountdown - 1);
+            if (updatedCountdown !== currentCountdown) {
+                stateChanged = true;
+            }
+            state.countdown = updatedCountdown;
+
+            if (state.countdown === 0 && !state.detonated) {
+                state.detonated = true;
+                stateChanged = true;
+                const bonus = state.isUpgraded ? 35 : 25;
+                totalBonus += bonus;
+                detonatedStates.push({ uid, bonus });
+            }
+        });
+
+        if (stateChanged) {
+            this.getDiceInPlay().forEach(die => {
+                if (!die) {
+                    return;
+                }
+                if (typeof die.updateEmoji === 'function') {
+                    die.updateEmoji();
+                }
+                if (typeof die.updateVisualState === 'function') {
+                    die.updateVisualState();
+                }
+            });
+        }
+
+        return { totalBonus, detonatedCount: detonatedStates.length, detonatedStates };
+    }
+
+    playTimeBombDetonationAnimation({ detonatedCount = 1 } = {}) {
+        if (!this.add || !this.tweens) {
+            return Promise.resolve();
+        }
+
+        const label = detonatedCount > 1 ? `BOMBARD x${detonatedCount}` : 'BOMBARD';
+        const centerX = this.cameras && this.cameras.main ? this.cameras.main.centerX : 0;
+        const baseCenterY = this.cameras && this.cameras.main
+            ? this.cameras.main.centerY
+            : CONSTANTS.RESOLVE_TEXT_Y;
+        const centerY = baseCenterY - 200;
+
+        const text = this.add.text(centerX, centerY, label, {
+            fontSize: '86px',
+            fontStyle: 'bold',
+            color: '#ff4d4d',
+            stroke: '#000000',
+            strokeThickness: 10,
+            align: 'center'
+        }).setOrigin(0.5);
+        text.setDepth(2000);
+        text.setScale(0.25);
+        text.setAlpha(0);
+
+        return new Promise(resolve => {
+            const finish = () => {
+                if (text && typeof text.destroy === 'function' && text.scene) {
+                    text.destroy();
+                }
+                resolve();
+            };
+
+            let hasResolved = false;
+            const completeOnce = () => {
+                if (!hasResolved) {
+                    hasResolved = true;
+                    finish();
+                }
+            };
+
+            const makeTimeline = () => {
+                if (!this.tweens) {
+                    return null;
+                }
+                if (typeof this.tweens.timeline === 'function') {
+                    return this.tweens.timeline.bind(this.tweens);
+                }
+                if (typeof this.tweens.createTimeline === 'function') {
+                    return this.tweens.createTimeline.bind(this.tweens);
+                }
+                return null;
+            };
+
+            const segments = [
+                {
+                    targets: text,
+                    alpha: { from: 0, to: 1 },
+                    scale: { from: 0.25, to: 1.15 },
+                    duration: 350,
+                    ease: 'Back.Out'
+                },
+                {
+                    targets: text,
+                    scale: 0.95,
+                    duration: 160,
+                    ease: 'Sine.InOut',
+                    yoyo: true,
+                    repeat: 1
+                },
+                {
+                    targets: text,
+                    duration: 220,
+                    ease: 'Linear'
+                },
+                {
+                    targets: text,
+                    alpha: { from: 1, to: 0 },
+                    scale: { to: 0.5 },
+                    duration: 320,
+                    ease: 'Quad.In'
+                }
+            ];
+
+            const timelineFactory = makeTimeline();
+            if (timelineFactory) {
+                const timeline = timelineFactory({
+                    onComplete: completeOnce
+                });
+
+                if (timeline && typeof timeline.add === 'function' && typeof timeline.play === 'function') {
+                    segments.forEach(config => timeline.add(config));
+                    timeline.play();
+                } else {
+                    completeOnce();
+                }
+            } else if (this.tweens && typeof this.tweens.add === 'function') {
+                let index = 0;
+                const playNext = () => {
+                    if (index >= segments.length) {
+                        completeOnce();
+                        return;
+                    }
+
+                    const config = { ...segments[index] };
+                    index += 1;
+                    const previousComplete = config.onComplete;
+                    config.onComplete = () => {
+                        if (typeof previousComplete === 'function') {
+                            previousComplete();
+                        }
+                        playNext();
+                    };
+                    this.tweens.add(config);
+                };
+
+                playNext();
+            } else {
+                completeOnce();
+            }
+
+            if (this.time && typeof this.time.delayedCall === 'function') {
+                this.time.delayedCall(1800, () => {
+                    if (hasResolved) {
+                        return;
+                    }
+                    hasResolved = true;
+                    finish();
+                });
+            }
+        });
     }
 
     applyTemporaryDestructionToBlueprints(blueprints = []) {
@@ -1873,7 +2201,14 @@ export class GameScene extends Phaser.Scene {
                 continue;
             }
 
+            const previousBlueprint = die.dieBlueprint ? { ...die.dieBlueprint } : null;
             this.applyBlueprintToDie(die, replacementBlueprint);
+            if (previousBlueprint
+                && previousBlueprint.id === 'bomb'
+                && previousBlueprint.uid
+                && this.timeBombStates instanceof Map) {
+                this.timeBombStates.delete(previousBlueprint.uid);
+            }
             replaced = true;
             break;
         }
@@ -1894,6 +2229,10 @@ export class GameScene extends Phaser.Scene {
         const [removedBlueprint] = loadout.splice(index, 1);
         if (!removedBlueprint) {
             return false;
+        }
+
+        if (removedBlueprint.uid && this.timeBombStates instanceof Map) {
+            this.timeBombStates.delete(removedBlueprint.uid);
         }
 
         this.customDiceLoadout = loadout;
@@ -2933,6 +3272,7 @@ export class GameScene extends Phaser.Scene {
         this.isFirstCombatTurn = true;
         this.prepperCarryoverRolls = 0;
         this.resetGameState({ destroyDice: true });
+        this.initializeTimeBombStatesForEncounter();
         this.resetEnemyBurn();
         this.setMapMode(false);
         let enemyIndex = node ? node.enemyIndex : -1;
@@ -3636,6 +3976,7 @@ export class GameScene extends Phaser.Scene {
             this.getDiceInPlay().forEach(d => d.destroy());
             this.temporarilyDestroyedDice = [];
         }
+        this.activeTimeBombResolveBonus = 0;
         this.dice = [];
         this.defendDice = [];
         this.attackDice = [];

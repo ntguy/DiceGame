@@ -88,19 +88,18 @@ const DEFINITIONS = [
         description: 'Double chance to roll a 1 or a 6.',
         upgradeDescription: 'Double chance to roll a 3 or 6.',
         allowedZones: ['attack', 'defend']
-    }
-];
-
-const IN_DEVELOPMENT_DEFINITIONS = [
+    },
     {
         id: 'bomb',
-        name: 'Bombard',
+        name: 'Time Bomb',
         emoji: '💣',
-        description: 'Damage all enemies by FV.',
-        upgradeDescription: 'Damage all enemies by FV + 2.',
+        description: 'Unused turn: countdown -1. At 0: +25 ⚔️ once.',
+        upgradeDescription: 'Unused turn: countdown -1. At 0: +35 ⚔️ once.',
         allowedZones: ['attack', 'defend']
     }
 ];
+
+const IN_DEVELOPMENT_DEFINITIONS = [];
 
 const ALL_DEFINITIONS = [...DEFINITIONS, ...IN_DEVELOPMENT_DEFINITIONS];
 

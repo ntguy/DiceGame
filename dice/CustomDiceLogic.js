@@ -244,21 +244,6 @@ function getPostResolutionEffects({ die, zone }) {
 
     const effects = [];
 
-    if (definition.id === 'bomb') {
-        // Bomb die: damages every enemy after resolution.
-        const damage = faceValue + (isUpgraded ? 2 : 0);
-        if (damage > 0) {
-            effects.push(context => {
-                const { scene } = context || {};
-                const defeatedCurrent = callSceneManagerMethod(scene, 'enemyManager', 'damageAllEnemies', damage) === true;
-                callSceneMethod(scene, 'updateEnemyHealthUI');
-                if (defeatedCurrent) {
-                    callSceneMethod(scene, 'handleEnemyDefeat');
-                }
-            });
-        }
-    }
-
     if (definition.id === 'flameout') {
         // Flameout die: cleanses burn when rolled low or upgraded.
         const shouldCleanse = isUpgraded || (faceValue >= 1 && faceValue <= 4);

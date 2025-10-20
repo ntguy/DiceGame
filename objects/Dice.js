@@ -93,6 +93,17 @@ export function createDie(scene, slotIndex, blueprint) {
     container.add(emojiText);
     container.emojiText = emojiText;
 
+    const leftStatusText = scene.add.text(0, emojiY, '', {
+        fontSize: '20px',
+        fontStyle: 'bold',
+        color: '#ff7675',
+        stroke: '#000000',
+        strokeThickness: 3,
+    }).setOrigin(1, 0);
+    leftStatusText.setVisible(false);
+    container.add(leftStatusText);
+    container.leftStatusText = leftStatusText;
+
     const upgradePlusText = scene.add.text(0, emojiY, '+', {
         fontSize: '20px',
         fontStyle: 'bold',
@@ -107,6 +118,25 @@ export function createDie(scene, slotIndex, blueprint) {
     container.updateEmoji = function() {
         if (this.emojiText) {
             this.emojiText.setText(getDieEmoji(this));
+        }
+
+        if (this.leftStatusText) {
+            const labelProvider = typeof scene.getDieLeftStatusText === 'function'
+                ? scene.getDieLeftStatusText(this)
+                : '';
+            const shouldShowLeft = typeof labelProvider === 'string' && labelProvider.length > 0;
+            if (shouldShowLeft && this.emojiText && this.emojiText.text && this.emojiText.text.trim().length > 0) {
+                this.leftStatusText.setText(labelProvider);
+                const emojiHalfWidth = (this.emojiText && this.emojiText.displayWidth) ? this.emojiText.displayWidth / 2 : 0;
+                const emojiX = this.emojiText ? this.emojiText.x : 0;
+                const emojiYPosition = this.emojiText ? this.emojiText.y : emojiY;
+                const spacing = 6;
+                this.leftStatusText.setVisible(true);
+                this.leftStatusText.setX(emojiX - emojiHalfWidth - spacing);
+                this.leftStatusText.setY(emojiYPosition);
+            } else {
+                this.leftStatusText.setVisible(false);
+            }
         }
 
         if (this.upgradePlusText) {
@@ -166,11 +196,20 @@ export function createDie(scene, slotIndex, blueprint) {
             this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
         }
         this.setAlpha(this.isWeakened ? 0.5 : 1);
+        const isBomb = this.dieBlueprint && this.dieBlueprint.id === 'bomb';
+        const hasSceneLookup = isBomb && scene && typeof scene.getTimeBombStateByUid === 'function';
+        const bombState = hasSceneLookup ? scene.getTimeBombStateByUid(this.dieBlueprint.uid) : null;
+        const isDetonated = !!(bombState && bombState.detonated);
+        const shouldDim = this.isNullified || isDetonated;
+
         if (this.emojiText) {
-            this.emojiText.setAlpha(this.isNullified ? 0.2 : 1);
+            this.emojiText.setAlpha(shouldDim ? 0.2 : 1);
         }
         if (this.upgradePlusText) {
-            this.upgradePlusText.setAlpha(this.isNullified ? 0.2 : 1);
+            this.upgradePlusText.setAlpha(shouldDim ? 0.2 : 1);
+        }
+        if (this.leftStatusText) {
+            this.leftStatusText.setAlpha(shouldDim ? 0.2 : 1);
         }
     };
 
