@@ -746,7 +746,7 @@ export class PathUI {
             const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
             const depth = layerDepth + 0.001 + i * 0.0001;
             const travelDistance = random(140, 400);
-            const verticalDrift = random(6, 12) + random(0, 10) + random(0, 10);
+            const verticalDrift = random(6, 50);
             const duration = between(5000, 9000);
             const delay = between(0, 3000);
 
