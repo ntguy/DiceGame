@@ -4,6 +4,8 @@ import { snapToGrid } from './Dice.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';
 
 const ZONE_BACKGROUND_TILE_SCALE = 2;
+const ZONE_AREA_PADDING_X = 40;
+const ZONE_AREA_PADDING_Y = 32;
 
 export function setupZones(scene) {
     const zoneWidth = scene && typeof scene.getZoneWidth === 'function'
@@ -22,6 +24,18 @@ export function setupZones(scene) {
     // --- Defend zone ---
     const defendZoneX = 200;
     const attackZoneX = 600;
+
+    const zoneAreaCenterX = (defendZoneX + attackZoneX) / 2;
+    const zoneAreaBackground = scene.add.rectangle(
+        zoneAreaCenterX,
+        zoneY,
+        (attackZoneX - defendZoneX) + zoneWidth + ZONE_AREA_PADDING_X * 2,
+        zoneHeight + ZONE_AREA_PADDING_Y * 2,
+        0x000000,
+        0.5
+    ).setOrigin(0.5);
+    zoneAreaBackground.setDepth(-5);
+    visuals.push(zoneAreaBackground);
 
     const defendZone = scene.add.zone(defendZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
     const defendBackground = scene.add.tileSprite(defendZoneX, zoneY, zoneWidth, zoneHeight, backgroundTextureKey)
@@ -42,6 +56,8 @@ export function setupZones(scene) {
 
     scene.defendZone = defendZone;
     scene.attackZone = attackZone;
+    scene.zoneAreaBackground = zoneAreaBackground;
+    scene.zoneAreaPadding = { x: ZONE_AREA_PADDING_X, y: ZONE_AREA_PADDING_Y };
     scene.defendZoneBackground = defendBackground;
     scene.attackZoneBackground = attackBackground;
     scene.defendZoneRect = defendRect;

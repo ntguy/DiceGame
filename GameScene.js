@@ -646,6 +646,39 @@ export class GameScene extends Phaser.Scene {
             this.attackZoneBackground.setDisplaySize(zoneWidthWithPadding, zoneHeight);
         }
 
+        if (this.zoneAreaBackground) {
+            const defendCenter = this.defendZoneCenter || { x: 200, y: 350 };
+            const attackCenter = this.attackZoneCenter || { x: 600, y: 350 };
+            const padding = this.zoneAreaPadding || { x: 40, y: 32 };
+            const zoneAreaLeft = defendCenter.x - zoneWidthWithPadding / 2;
+            const zoneAreaRight = attackCenter.x + zoneWidthWithPadding / 2;
+            const zoneTop = defendCenter.y - zoneHeight / 2;
+            const zoneBottom = zoneTop + zoneHeight;
+
+            const labelTops = [];
+            if (this.defendZoneLabel) {
+                const defendLabelHalfHeight = (this.defendZoneLabel.displayHeight || this.defendZoneLabel.height || 0) / 2;
+                labelTops.push(this.defendZoneLabel.y - defendLabelHalfHeight);
+            }
+            if (this.attackZoneLabel) {
+                const attackLabelHalfHeight = (this.attackZoneLabel.displayHeight || this.attackZoneLabel.height || 0) / 2;
+                labelTops.push(this.attackZoneLabel.y - attackLabelHalfHeight);
+            }
+            const fallbackLabelTop = zoneTop - 32;
+            const labelTop = labelTops.length > 0 ? Math.min(...labelTops) : fallbackLabelTop;
+
+            const topEdge = Math.min(labelTop, zoneTop) - padding.y;
+            const bottomEdge = zoneBottom + padding.y;
+            const width = (zoneAreaRight - zoneAreaLeft) + padding.x * 2;
+            const height = bottomEdge - topEdge;
+            const centerX = (zoneAreaLeft + zoneAreaRight) / 2;
+            const centerY = (topEdge + bottomEdge) / 2;
+
+            this.zoneAreaBackground.setPosition(centerX, centerY);
+            this.zoneAreaBackground.setSize(width, height);
+            this.zoneAreaBackground.setDisplaySize(width, height);
+        }
+
         if (this.defendZoneRect) {
             this.defendZoneRect.setSize(zoneWidthWithPadding, zoneHeight);
         }
