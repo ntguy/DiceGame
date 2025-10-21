@@ -47,9 +47,9 @@ export class StartScene extends Phaser.Scene {
     constructor() {
         super({ key: 'StartScene' });
 
-        this.dieSize = 54;
-        this.dieSpacing = 6;
-        this.letterSpacing = 28;
+        this.dieSize = 20;
+        this.dieSpacing = 2;
+        this.letterSpacing = 10;
         this.lineSpacing = this.dieSize + this.dieSpacing * 2;
         this.titleDice = [];
     }
@@ -206,7 +206,7 @@ export class StartScene extends Phaser.Scene {
         this.tweens.add({
             targets: container,
             alpha: 1,
-            duration: Phaser.Math.Between(250, 600),
+            duration: Phaser.Math.Between(500, 1200),
             delay: Phaser.Math.Between(0, 300),
             ease: 'Sine.easeOut'
         });
