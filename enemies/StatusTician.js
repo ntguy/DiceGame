@@ -587,11 +587,7 @@ export class StatusTicianEnemy extends BaseEnemy {
             lines.push('Barrage Mode: Attack and Defense escalate each loop.');
         }
 
-        if (lines.length === 0) {
-            return '';
-        }
-
-        return `Status:\n${lines.join('\n')}`;
+        return lines.join('\n');
     }
 
     onPlayerReroll(count, enemyManager) {
