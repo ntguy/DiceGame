@@ -47,7 +47,7 @@ export class StartScene extends Phaser.Scene {
     constructor() {
         super({ key: 'StartScene' });
 
-        this.dieSize = 22;
+        this.dieSize = 26;
         this.dieSpacing = 2;
         this.letterSpacing = 12;
         this.lineSpacing = this.dieSize * 0.8;
@@ -96,13 +96,13 @@ export class StartScene extends Phaser.Scene {
                 this.tweens.add({
                     targets: this.titleDice,
                     alpha: 0,
-                    duration: 250,
+                    duration: 200,
                     ease: 'Cubic.easeIn'
                 });
                 this.tweens.add({
                     targets: button,
                     alpha: 0,
-                    duration: 250,
+                    duration: 200,
                     ease: 'Cubic.easeIn',
                     onComplete: () => {
                         this.scene.start('GameScene');
@@ -224,8 +224,8 @@ export class StartScene extends Phaser.Scene {
         this.tweens.add({
             targets: container,
             alpha: 1,
-            duration: Phaser.Math.Between(750, 1800),
-            delay: Phaser.Math.Between(0, 300),
+            duration: Phaser.Math.Between(800, 1800),
+            delay: Phaser.Math.Between(0, 1000),
             ease: 'Sine.easeOut'
         });
 
