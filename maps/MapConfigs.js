@@ -147,7 +147,7 @@ export const MAP_CONFIGS = [
         createEnemySequence: () => createMapOneEnemySequence(),
         pathTextureKey: 'path_ladder_clean',
         wallTextureKey: 'wall2',
-        backgroundTextureKey: 'path_background_bright',
+        backgroundTextureKey: 'path_background',
         outsideBackgroundLayerKeys: [
             'outside_background_1',
             'outside_background_2',
@@ -173,12 +173,12 @@ export const MAP_CONFIGS = [
     },
     {
         id: 'map-3',
-        displayName: 'Map 3: Sanguine Depths',
+        displayName: 'Map 3: Azure Abyss',
         createEnemies: mapThreeEnemyFactories,
         enemySequence: mapThreeEnemySequence,
         pathTextureKey: 'path_ladder',
         wallTextureKey: 'wall2',
-        backgroundTextureKey: 'path_background',
+        backgroundTextureKey: 'path_background_bright',
         outsideBackgroundLayerKeys: [
             'outside_background_world3_1',
             'outside_background_world3_2',
