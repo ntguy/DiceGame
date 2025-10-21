@@ -458,15 +458,15 @@ export class BackpackUI {
     }
 
     setVisible(visible) {
-        if (this.backdrop) {
+        if (this.backdrop && this.backdrop.scene) {
             this.backdrop.setVisible(visible);
             if (visible) {
                 this.backdrop.setInteractive({ useHandCursor: false });
-            } else {
+            } else if (this.backdrop.disableInteractive) {
                 this.backdrop.disableInteractive();
             }
         }
-        if (this.container) {
+        if (this.container && this.container.scene) {
             this.container.setVisible(visible);
         }
     }
