@@ -11,7 +11,6 @@ export class VictoryScreen {
         this.messageText = null;
         this.playAgainButton = null;
         this.onPlayAgain = null;
-        this.confettiManager = null;
         this.confettiEmitter = null;
     }
 
@@ -109,12 +108,8 @@ export class VictoryScreen {
             return;
         }
 
-        this.confettiManager = this.scene.add.particles(CONFETTI_TEXTURE_KEY);
-        this.confettiManager.setDepth(1099);
-
         const { width } = this.scene.scale;
-
-        this.confettiEmitter = this.confettiManager.createEmitter({
+        const emitterConfig = {
             x: { min: width * 0.1, max: width * 0.9 },
             y: -30,
             lifespan: 4200,
@@ -128,11 +123,19 @@ export class VictoryScreen {
             alpha: { start: 1, end: 0 },
             scale: { start: 0.8, end: 0.8 },
             tint: [0xf1c40f, 0xe67e22, 0xe74c3c, 0x3498db, 0x9b59b6, 0x2ecc71]
-        });
+        };
 
+        this.confettiEmitter = this.scene.add.particles(0, 0, CONFETTI_TEXTURE_KEY, null, emitterConfig);
+
+        if (!this.confettiEmitter) {
+            return;
+        }
+
+        this.confettiEmitter.setDepth(1099);
+        this.confettiEmitter.setScrollFactor(0);
+        this.confettiEmitter.setVisible(false);
+        this.confettiEmitter.setActive(false);
         this.confettiEmitter.stop();
-        this.confettiManager.setVisible(false);
-        this.confettiManager.setActive(false);
     }
 
     show({ onPlayAgain } = {}) {
@@ -163,12 +166,13 @@ export class VictoryScreen {
             });
         }
 
-        if (this.confettiManager) {
-            this.confettiManager.setVisible(true);
-            this.confettiManager.setActive(true);
+        if (typeof this.scene.acquireModalInputLock === 'function') {
+            this.scene.acquireModalInputLock();
         }
 
         if (this.confettiEmitter) {
+            this.confettiEmitter.setVisible(true);
+            this.confettiEmitter.setActive(true);
             this.confettiEmitter.start();
         }
     }
@@ -190,11 +194,12 @@ export class VictoryScreen {
 
         if (this.confettiEmitter) {
             this.confettiEmitter.stop();
+            this.confettiEmitter.setVisible(false);
+            this.confettiEmitter.setActive(false);
         }
 
-        if (this.confettiManager) {
-            this.confettiManager.setVisible(false);
-            this.confettiManager.setActive(false);
+        if (typeof this.scene.releaseModalInputLock === 'function') {
+            this.scene.releaseModalInputLock();
         }
 
         this.onPlayAgain = null;
