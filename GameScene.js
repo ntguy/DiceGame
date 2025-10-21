@@ -1,6 +1,13 @@
 import { CONSTANTS } from './config.js';
 import { createDie, snapToGrid } from './objects/Dice.js';
-import { setupZones } from './objects/DiceZone.js';
+import {
+    setupZones,
+    ZONE_AREA_PADDING_X,
+    ZONE_AREA_PADDING_TOP,
+    ZONE_AREA_PADDING_BOTTOM,
+    ZONE_LABEL_FONT_SIZE,
+    ZONE_LABEL_OFFSET
+} from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
 import { createMenuUI } from './objects/MenuUI.js';
@@ -658,6 +665,24 @@ export class GameScene extends Phaser.Scene {
         }
         if (this.attackHighlight) {
             this.attackHighlight.setSize(zoneWidthWithPadding, zoneHeight);
+        }
+
+        if (this.zoneAreaBackground && this.defendZoneCenter && this.attackZoneCenter) {
+            const defendCenterX = this.defendZoneCenter.x;
+            const attackCenterX = this.attackZoneCenter.x;
+            const zoneAreaCenterX = (defendCenterX + attackCenterX) / 2;
+            const zoneAreaWidth = Math.abs(attackCenterX - defendCenterX) + zoneWidthWithPadding + ZONE_AREA_PADDING_X * 2;
+
+            const zoneCenterY = this.defendZoneCenter.y;
+            const zoneTop = zoneCenterY - zoneHeight / 2;
+            const zoneBottom = zoneCenterY + zoneHeight / 2;
+            const zoneAreaTop = zoneTop - ZONE_LABEL_OFFSET - (ZONE_LABEL_FONT_SIZE / 2) - ZONE_AREA_PADDING_TOP;
+            const zoneAreaBottom = zoneBottom + ZONE_AREA_PADDING_BOTTOM;
+            const zoneAreaHeight = zoneAreaBottom - zoneAreaTop;
+            const zoneAreaCenterY = zoneAreaTop + zoneAreaHeight / 2;
+
+            this.zoneAreaBackground.setPosition(zoneAreaCenterX, zoneAreaCenterY);
+            this.zoneAreaBackground.setSize(zoneAreaWidth, zoneAreaHeight);
         }
 
         this.layoutZoneDice('defend');

@@ -5,6 +5,13 @@ import { callSceneMethod } from '../utils/SceneHelpers.js';
 
 const ZONE_BACKGROUND_TILE_SCALE = 2;
 
+export const ZONE_LABEL_OFFSET = 20;
+export const ZONE_LABEL_FONT_SIZE = 24;
+export const ZONE_AREA_PADDING_X = 20;
+export const ZONE_AREA_PADDING_TOP = 40;
+export const ZONE_AREA_PADDING_BOTTOM = 16;
+const ZONE_AREA_BACKGROUND_ALPHA = 0.6;
+
 export function setupZones(scene) {
     const zoneWidth = scene && typeof scene.getZoneWidth === 'function'
         ? scene.getZoneWidth({ includePadding: true })
@@ -23,12 +30,36 @@ export function setupZones(scene) {
     const defendZoneX = 200;
     const attackZoneX = 600;
 
+    const zoneAreaCenterX = (defendZoneX + attackZoneX) / 2;
+    const zoneAreaWidth = Math.abs(attackZoneX - defendZoneX) + zoneWidth + ZONE_AREA_PADDING_X * 2;
+    const zoneTop = zoneY - zoneHeight / 2;
+    const zoneBottom = zoneY + zoneHeight / 2;
+    const zoneAreaTop = zoneTop - ZONE_LABEL_OFFSET - (ZONE_LABEL_FONT_SIZE / 2) - ZONE_AREA_PADDING_TOP;
+    const zoneAreaBottom = zoneBottom + ZONE_AREA_PADDING_BOTTOM;
+    const zoneAreaHeight = zoneAreaBottom - zoneAreaTop;
+    const zoneAreaCenterY = zoneAreaTop + zoneAreaHeight / 2;
+
+    const zoneAreaBackground = scene.add.rectangle(
+        zoneAreaCenterX,
+        zoneAreaCenterY,
+        zoneAreaWidth,
+        zoneAreaHeight,
+        0x000000,
+        ZONE_AREA_BACKGROUND_ALPHA
+    ).setOrigin(0.5);
+    visuals.push(zoneAreaBackground);
+
     const defendZone = scene.add.zone(defendZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
     const defendBackground = scene.add.tileSprite(defendZoneX, zoneY, zoneWidth, zoneHeight, backgroundTextureKey)
         .setOrigin(0.5)
         .setTileScale(ZONE_BACKGROUND_TILE_SCALE, ZONE_BACKGROUND_TILE_SCALE);
     const defendRect = scene.add.rectangle(defendZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0x3498db);
-    const defendLabel = scene.add.text(defendZoneX, zoneY - zoneHeight/2 - 20, "DEFEND", { fontSize: "24px", color: "#3498db" }).setOrigin(0.5);
+    const defendLabel = scene.add.text(
+        defendZoneX,
+        zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
+        "DEFEND",
+        { fontSize: `${ZONE_LABEL_FONT_SIZE}px`, color: "#3498db" }
+    ).setOrigin(0.5);
     visuals.push(defendBackground, defendRect, defendLabel);
 
     // --- Attack zone ---
@@ -37,7 +68,12 @@ export function setupZones(scene) {
         .setOrigin(0.5)
         .setTileScale(ZONE_BACKGROUND_TILE_SCALE, ZONE_BACKGROUND_TILE_SCALE);
     const attackRect = scene.add.rectangle(attackZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0xe74c3c);
-    const attackLabel = scene.add.text(attackZoneX, zoneY - zoneHeight/2 - 20, "ATTACK", { fontSize: "24px", color: "#e74c3c" }).setOrigin(0.5);
+    const attackLabel = scene.add.text(
+        attackZoneX,
+        zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
+        "ATTACK",
+        { fontSize: `${ZONE_LABEL_FONT_SIZE}px`, color: "#e74c3c" }
+    ).setOrigin(0.5);
     visuals.push(attackBackground, attackRect, attackLabel);
 
     scene.defendZone = defendZone;
@@ -48,6 +84,7 @@ export function setupZones(scene) {
     scene.attackZoneRect = attackRect;
     scene.defendZoneLabel = defendLabel;
     scene.attackZoneLabel = attackLabel;
+    scene.zoneAreaBackground = zoneAreaBackground;
     scene.defendZoneCenter = { x: defendZoneX, y: zoneY };
     scene.attackZoneCenter = { x: attackZoneX, y: zoneY };
 
