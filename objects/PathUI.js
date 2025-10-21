@@ -57,6 +57,8 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
+const DEFAULT_OUTSIDE_BACKGROUND_SCALE = 2;
+const MIN_OUTSIDE_BACKGROUND_SCALE = 0.1;
 
 function ensureBirdTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
@@ -157,7 +159,8 @@ export class PathUI {
             wallTextureKey,
             backgroundTextureKey,
             outsideBackgroundLayerKeys,
-            outsideBackgroundEffect
+            outsideBackgroundEffect,
+            outsideBackgroundScale
         } = {}
     ) {
         this.scene = scene;
@@ -170,6 +173,10 @@ export class PathUI {
             ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
             : [];
         this.outsideBackgroundEffect = outsideBackgroundEffect || 'sparkles';
+        const requestedScale = Number.isFinite(outsideBackgroundScale)
+            ? outsideBackgroundScale
+            : DEFAULT_OUTSIDE_BACKGROUND_SCALE;
+        this.outsideBackgroundScale = Math.max(MIN_OUTSIDE_BACKGROUND_SCALE, requestedScale);
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -585,7 +592,9 @@ export class PathUI {
         const count = this.outsideBackgroundLayerKeys.length;
         const minFactor = 0.15;
         const maxFactor = 1;
-        const defaultScale = 2;
+        const defaultScale = Number.isFinite(this.outsideBackgroundScale)
+            ? this.outsideBackgroundScale
+            : DEFAULT_OUTSIDE_BACKGROUND_SCALE;
         const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
         const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
         const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
