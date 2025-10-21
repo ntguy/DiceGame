@@ -189,6 +189,7 @@ export const MAP_CONFIGS = [
             'outside_background_world3_7',
             'outside_background_world3_8',
             'outside_background_world3_9'
-        ]
+        ],
+        outsideBackgroundEffect: 'bats'
     }
 ];
