@@ -137,12 +137,24 @@ export class VictoryScreen {
             return;
         }
 
-        this.confettiManager.setDepth(1099);
+        this.confettiManager.setDepth(1101);
         this.confettiManager.setScrollFactor(0);
         this.confettiManager.setVisible(false);
         this.confettiManager.setActive(false);
 
-        this.confettiEmitter = this.confettiManager.createEmitter(emitterConfig);
+        const addEmitterFn = typeof this.confettiManager.addEmitter === 'function'
+            ? this.confettiManager.addEmitter
+            : (typeof this.confettiManager.createEmitter === 'function'
+                ? this.confettiManager.createEmitter
+                : null);
+
+        if (!addEmitterFn) {
+            this.confettiManager.destroy();
+            this.confettiManager = null;
+            return;
+        }
+
+        this.confettiEmitter = addEmitterFn.call(this.confettiManager, emitterConfig);
 
         if (!this.confettiEmitter) {
             this.confettiManager.destroy();
