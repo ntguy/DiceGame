@@ -6,8 +6,12 @@ import { callSceneMethod } from '../utils/SceneHelpers.js';
 const ZONE_BACKGROUND_TILE_SCALE = 2;
 
 export function setupZones(scene) {
-    const zoneWidth = CONSTANTS.DEFAULT_ZONE_WIDTH + 6;
-    const zoneHeight = 100;
+    const zoneWidth = scene && typeof scene.getZoneWidth === 'function'
+        ? scene.getZoneWidth({ includePadding: true })
+        : CONSTANTS.DEFAULT_ZONE_WIDTH + 6;
+    const zoneHeight = scene && typeof scene.getZoneHeight === 'function'
+        ? scene.getZoneHeight()
+        : 100;
     const zoneY = 350;
 
     const visuals = [];
@@ -35,6 +39,12 @@ export function setupZones(scene) {
 
     scene.defendZone = defendZone;
     scene.attackZone = attackZone;
+    scene.defendZoneBackground = defendBackground;
+    scene.attackZoneBackground = attackBackground;
+    scene.defendZoneRect = defendRect;
+    scene.attackZoneRect = attackRect;
+    scene.defendZoneLabel = defendLabel;
+    scene.attackZoneLabel = attackLabel;
     scene.defendZoneCenter = { x: defendZoneX, y: zoneY };
     scene.attackZoneCenter = { x: attackZoneX, y: zoneY };
 
@@ -45,6 +55,10 @@ export function setupZones(scene) {
     // After drawing the attack zone rectangle
     scene.attackHighlight = scene.add.rectangle(600, zoneY, zoneWidth, zoneHeight, 0xe74c3c, 0.3).setOrigin(0.5);
     scene.attackHighlight.setVisible(false);
+
+    if (typeof scene.updateZoneVisualLayout === 'function') {
+        scene.updateZoneVisualLayout();
+    }
 
     scene.zoneVisuals = visuals;
 }
@@ -90,8 +104,10 @@ export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     }
 
     // dynamic spacing so all dice fit evenly in the zone
-    const zoneWidth = CONSTANTS.DEFAULT_ZONE_WIDTH; // should match setupZones
-    const diceCount = slots.length; // 6 now
+    const zoneWidth = scene && typeof scene.getZoneWidth === 'function'
+        ? scene.getZoneWidth()
+        : CONSTANTS.DEFAULT_ZONE_WIDTH; // should match setupZones
+    const diceCount = Math.max(1, slots.length);
     const spacing = zoneWidth / diceCount; // space dice evenly
     die.x = baseX - zoneWidth/2 + spacing/2 + idx * spacing;
     die.y = y;

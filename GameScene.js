@@ -1,5 +1,5 @@
 import { CONSTANTS } from './config.js';
-import { createDie } from './objects/Dice.js';
+import { createDie, snapToGrid } from './objects/Dice.js';
 import { setupZones } from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
@@ -76,6 +76,8 @@ export class GameScene extends Phaser.Scene {
 
         // Game state
         this.dice = [];
+        this.defaultMaxDicePerZone = CONSTANTS.DICE_PER_SET;
+        this.maxDicePerZone = this.defaultMaxDicePerZone;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerMaxHealth = 100;
@@ -99,6 +101,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
+        this.pendingCrowdControlPlan = null;
         this.temporarilyDestroyedDice = [];
         this.timeBombStates = new Map();
         this.activeTimeBombResolveBonus = 0;
@@ -142,6 +145,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
+        this.pendingCrowdControlPlan = null;
 
         this.mapTitleText = null;
         this.mapSkipButton = null;
@@ -307,6 +311,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
+        this.pendingCrowdControlPlan = null;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerBlockValue = 0;
@@ -342,8 +347,8 @@ export class GameScene extends Phaser.Scene {
         // --- Dice arrays for zones ---
         this.defendDice = [];
         this.attackDice = [];
-        this.defendSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
-        this.attackSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
+        this.defendSlots = Array(this.getMaxDicePerZone()).fill(null);
+        this.attackSlots = Array(this.getMaxDicePerZone()).fill(null);
 
         // --- Zones ---
         setupZones(this);
@@ -434,7 +439,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     createZonePreviewTexts() {
-        const zoneWidth = CONSTANTS.DEFAULT_ZONE_WIDTH + 6;
+        const zoneWidth = this.getZoneWidth({ includePadding: true });
         const defendLeftX = (this.defendZoneCenter ? this.defendZoneCenter.x : 200) - zoneWidth / 2;
         const attackLeftX = (this.attackZoneCenter ? this.attackZoneCenter.x : 600) - zoneWidth / 2;
         const comboLineOffset = 145;
@@ -471,7 +476,180 @@ export class GameScene extends Phaser.Scene {
             }).setOrigin(0, 0.5);
         }
 
+        if (this.defendPreviewText) {
+            this.defendPreviewText.setPosition(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y);
+        }
+
+        if (this.defendComboText) {
+            this.defendComboText.setPosition(defendLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y);
+        }
+
+        if (this.attackPreviewText) {
+            this.attackPreviewText.setPosition(attackLeftX, CONSTANTS.RESOLVE_TEXT_Y);
+        }
+
+        if (this.attackComboText) {
+            this.attackComboText.setPosition(attackLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y);
+        }
+
         this.updateZonePreviewText();
+    }
+
+    getMaxDicePerZone() {
+        const base = Number.isFinite(this.maxDicePerZone)
+            ? Math.max(1, Math.floor(this.maxDicePerZone))
+            : this.defaultMaxDicePerZone;
+        return Math.min(CONSTANTS.DICE_PER_SET, base);
+    }
+
+    getZoneWidth({ includePadding = false } = {}) {
+        const baseWidth = CONSTANTS.DEFAULT_ZONE_WIDTH;
+        const ratio = this.getMaxDicePerZone() / CONSTANTS.DICE_PER_SET;
+        const clampedWidth = Math.max(180, baseWidth * ratio);
+        return includePadding ? clampedWidth + 6 : clampedWidth;
+    }
+
+    getZoneHeight() {
+        return 100;
+    }
+
+    resetZoneConstraints() {
+        this.maxDicePerZone = this.defaultMaxDicePerZone;
+        this.syncZoneSlotsWithMax();
+        this.updateZoneVisualLayout();
+        this.createZonePreviewTexts();
+    }
+
+    setMaxDicePerZone(maxDice) {
+        const clamped = Math.max(1, Math.min(CONSTANTS.DICE_PER_SET, Math.floor(Number(maxDice) || 0)));
+        const previous = this.getMaxDicePerZone();
+
+        if (clamped === previous) {
+            return;
+        }
+
+        this.maxDicePerZone = clamped;
+        this.syncZoneSlotsWithMax();
+        this.updateZoneVisualLayout();
+        this.createZonePreviewTexts();
+    }
+
+    syncZoneSlotsWithMax() {
+        this.adjustZoneForMax('defend');
+        this.adjustZoneForMax('attack');
+    }
+
+    adjustZoneForMax(zoneType) {
+        const slotsKey = zoneType === 'defend' ? 'defendSlots' : 'attackSlots';
+        const diceKey = zoneType === 'defend' ? 'defendDice' : 'attackDice';
+        const maxSlots = this.getMaxDicePerZone();
+
+        if (!Array.isArray(this[slotsKey])) {
+            this[slotsKey] = Array(maxSlots).fill(null);
+        }
+
+        if (!Array.isArray(this[diceKey])) {
+            this[diceKey] = [];
+        }
+
+        const slots = this[slotsKey];
+        const diceList = this[diceKey];
+
+        if (slots.length > maxSlots) {
+            const removed = slots.splice(maxSlots);
+            const diceToEject = removed.filter(die => !!die);
+
+            if (diceToEject.length > 0) {
+                const keptDice = diceList.filter(die => !diceToEject.includes(die));
+                diceList.length = 0;
+                keptDice.forEach(die => diceList.push(die));
+
+                diceToEject.forEach(die => {
+                    if (!die) {
+                        return;
+                    }
+                    snapToGrid(die, this.dice, this);
+                });
+            }
+        } else if (slots.length < maxSlots) {
+            while (slots.length < maxSlots) {
+                slots.push(null);
+            }
+        }
+
+        this.layoutZoneDice(zoneType);
+    }
+
+    layoutZoneDice(zoneType) {
+        const slots = zoneType === 'defend' ? this.defendSlots : this.attackSlots;
+        const center = zoneType === 'defend' ? this.defendZoneCenter : this.attackZoneCenter;
+
+        if (!Array.isArray(slots) || !center) {
+            return;
+        }
+
+        const zoneWidth = this.getZoneWidth();
+        const spacing = slots.length > 0 ? zoneWidth / slots.length : zoneWidth;
+
+        slots.forEach((die, index) => {
+            if (!die) {
+                return;
+            }
+
+            die.x = center.x - zoneWidth / 2 + spacing / 2 + index * spacing;
+            die.y = center.y;
+            die.setDepth(2);
+            die.currentZone = zoneType;
+            if (typeof die.updateFaceValueHighlight === 'function') {
+                die.updateFaceValueHighlight();
+            }
+        });
+
+        const diceKey = zoneType === 'defend' ? 'defendDice' : 'attackDice';
+        if (Array.isArray(this[diceKey])) {
+            const orderedDice = slots.filter(die => !!die);
+            const diceList = this[diceKey];
+            diceList.length = 0;
+            orderedDice.forEach(die => diceList.push(die));
+        }
+    }
+
+    updateZoneVisualLayout() {
+        const zoneWidthWithPadding = this.getZoneWidth({ includePadding: true });
+        const zoneHeight = this.getZoneHeight();
+
+        if (this.defendZone) {
+            this.defendZone.setSize(zoneWidthWithPadding, zoneHeight);
+        }
+        if (this.attackZone) {
+            this.attackZone.setSize(zoneWidthWithPadding, zoneHeight);
+        }
+
+        if (this.defendZoneBackground) {
+            this.defendZoneBackground.setSize(zoneWidthWithPadding, zoneHeight);
+            this.defendZoneBackground.setDisplaySize(zoneWidthWithPadding, zoneHeight);
+        }
+        if (this.attackZoneBackground) {
+            this.attackZoneBackground.setSize(zoneWidthWithPadding, zoneHeight);
+            this.attackZoneBackground.setDisplaySize(zoneWidthWithPadding, zoneHeight);
+        }
+
+        if (this.defendZoneRect) {
+            this.defendZoneRect.setSize(zoneWidthWithPadding, zoneHeight);
+        }
+        if (this.attackZoneRect) {
+            this.attackZoneRect.setSize(zoneWidthWithPadding, zoneHeight);
+        }
+
+        if (this.defendHighlight) {
+            this.defendHighlight.setSize(zoneWidthWithPadding, zoneHeight);
+        }
+        if (this.attackHighlight) {
+            this.attackHighlight.setSize(zoneWidthWithPadding, zoneHeight);
+        }
+
+        this.layoutZoneDice('defend');
+        this.layoutZoneDice('attack');
     }
 
     toggleMenu() {
@@ -979,6 +1157,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (isFirstRoll) {
+            this.applyCrowdControlPlan();
             this.applyPendingLocks();
             this.applyPendingWeaken();
             this.applyPendingNullify();
@@ -1393,6 +1572,93 @@ export class GameScene extends Phaser.Scene {
         this.unlockAllDice();
         this.clearAllWeakenedDice();
         this.clearAllNullifiedDice();
+    }
+
+    applyCrowdControlPlan() {
+        const plan = this.pendingCrowdControlPlan;
+        if (!plan) {
+            return;
+        }
+
+        const lockCount = Number.isFinite(plan.lock) ? Math.max(0, Math.floor(plan.lock)) : 0;
+        const nullifyCount = Number.isFinite(plan.nullify) ? Math.max(0, Math.floor(plan.nullify)) : 0;
+        const weakenCount = Number.isFinite(plan.weaken) ? Math.max(0, Math.floor(plan.weaken)) : 0;
+
+        if (lockCount <= 0 && nullifyCount <= 0 && weakenCount <= 0) {
+            this.pendingCrowdControlPlan = null;
+            return;
+        }
+
+        const diceInPlay = Array.isArray(this.dice) ? this.dice.filter(die => !!die) : [];
+        if (diceInPlay.length === 0) {
+            return;
+        }
+
+        const orderedDice = shuffleArray(diceInPlay);
+        const assignedDice = new Set();
+
+        const applyEffect = (count, applyFn) => {
+            if (count <= 0) {
+                return 0;
+            }
+
+            let applied = 0;
+            for (let i = 0; i < orderedDice.length && applied < count; i += 1) {
+                const die = orderedDice[i];
+                if (!die || assignedDice.has(die)) {
+                    continue;
+                }
+
+                if (applyFn(die)) {
+                    assignedDice.add(die);
+                    applied += 1;
+                }
+            }
+
+            return applied;
+        };
+
+        const locksApplied = applyEffect(lockCount, die => this.lockDie(die));
+        const nullifiedApplied = applyEffect(nullifyCount, die => this.nullifyDie(die));
+        const weakenedApplied = applyEffect(weakenCount, die => this.weakenDie(die));
+
+        if (locksApplied > 0) {
+            this.updateRollButtonState();
+        }
+
+        if (nullifiedApplied > 0 || weakenedApplied > 0) {
+            this.updateZonePreviewText();
+        }
+
+        plan.lock = Math.max(0, plan.lock - locksApplied);
+        plan.nullify = Math.max(0, plan.nullify - nullifiedApplied);
+        plan.weaken = Math.max(0, plan.weaken - weakenedApplied);
+
+        if (plan.lock <= 0 && plan.nullify <= 0 && plan.weaken <= 0) {
+            this.pendingCrowdControlPlan = null;
+        }
+    }
+
+    queueEnemyCrowdControl(action) {
+        if (!action) {
+            return;
+        }
+
+        const lockCount = Number.isFinite(action.lock) ? Math.max(0, Math.floor(action.lock)) : 0;
+        const nullifyCount = Number.isFinite(action.nullify) ? Math.max(0, Math.floor(action.nullify)) : 0;
+        const weakenCount = Number.isFinite(action.weaken) ? Math.max(0, Math.floor(action.weaken)) : 0;
+
+        if (lockCount <= 0 && nullifyCount <= 0 && weakenCount <= 0) {
+            return;
+        }
+
+        if (!this.pendingCrowdControlPlan) {
+            this.pendingCrowdControlPlan = { lock: 0, nullify: 0, weaken: 0 };
+        }
+
+        this.pendingCrowdControlPlan.lock += lockCount;
+        this.pendingCrowdControlPlan.nullify += nullifyCount;
+        this.pendingCrowdControlPlan.weaken += weakenCount;
     }
 
     queueEnemyLocks(count) {
@@ -3009,12 +3275,21 @@ export class GameScene extends Phaser.Scene {
                 this.queueEnemyNullify(action.count || 1);
             } else if (action.type === 'burn') {
                 this.applyPlayerBurn(action.value);
+            } else if (action.type === 'set_max_dice_per_zone') {
+                this.setMaxDicePerZone(action.value);
+                if (enemy && typeof enemy.onMaxDicePerZoneChanged === 'function') {
+                    enemy.onMaxDicePerZoneChanged(action.value);
+                }
+            } else if (action.type === 'crowd_control') {
+                this.queueEnemyCrowdControl(action);
             }
 
             if (this.isGameOver) {
                 break;
             }
         }
+
+        this.updateEnemyStatusText();
 
         if (this.isGameOver) {
             return;
@@ -3280,8 +3555,10 @@ export class GameScene extends Phaser.Scene {
         this.weakenedDice.clear();
         this.pendingNullifyCount = 0;
         this.nullifiedDice.clear();
+        this.pendingCrowdControlPlan = null;
         this.isFirstCombatTurn = true;
         this.prepperCarryoverRolls = 0;
+        this.resetZoneConstraints();
         this.resetGameState({ destroyDice: true });
         this.initializeTimeBombStatesForEncounter();
         this.resetEnemyBurn();
@@ -3295,6 +3572,12 @@ export class GameScene extends Phaser.Scene {
         if (enemy) {
             if (typeof enemy.onEncounterStart === 'function') {
                 enemy.onEncounterStart();
+            }
+            const desiredMaxDice = typeof enemy.getCurrentMaxDicePerZone === 'function'
+                ? enemy.getCurrentMaxDicePerZone()
+                : (typeof enemy.getMaxDicePerZone === 'function' ? enemy.getMaxDicePerZone() : null);
+            if (Number.isFinite(desiredMaxDice) && desiredMaxDice > 0) {
+                this.setMaxDicePerZone(desiredMaxDice);
             }
             if (this.testingModeEnabled) {
                 this.applyTestingModeToEnemy(enemy);
@@ -3706,6 +3989,7 @@ export class GameScene extends Phaser.Scene {
         this.destroyFacilityUI();
 
         this.inCombat = false;
+        this.pendingCrowdControlPlan = null;
         this.updateRollButtonState();
         this.updateMapTitleText();
         this.updateEnemyBurnUI();
@@ -3948,6 +4232,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.enemyManager.clearCurrentEnemy();
+        this.resetZoneConstraints();
         this.prepareNextEnemyMove();
         this.presentCustomDieReward();
     }
@@ -3968,6 +4253,8 @@ export class GameScene extends Phaser.Scene {
         this.updateEnemyStatusText();
 
         this.updateEnemyHealthUI();
+
+        this.resetZoneConstraints();
 
         if (this.pathUI) {
             this.pathUI.hide();
@@ -3991,8 +4278,8 @@ export class GameScene extends Phaser.Scene {
         this.dice = [];
         this.defendDice = [];
         this.attackDice = [];
-        this.defendSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
-        this.attackSlots = Array(CONSTANTS.DICE_PER_SET).fill(null);
+        this.defendSlots = Array(this.getMaxDicePerZone()).fill(null);
+        this.attackSlots = Array(this.getMaxDicePerZone()).fill(null);
 
         this.playerBlockValue = 0;
         this.rerollDefenseBonus = 0;
