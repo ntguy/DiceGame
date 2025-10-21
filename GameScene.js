@@ -280,6 +280,8 @@ export class GameScene extends Phaser.Scene {
         this.load.image('path_ladder_clean', './sprites/Ladder-clean.png');
         this.load.image('path_ladder_metal', './sprites/Ladder-metal.png');
         this.load.image('path_background', './sprites/Background.png');
+        this.load.image('path_background_bright', './sprites/BackgroundBright.png');
+        this.load.image('path_background_brightest', './sprites/BackgroundBrightest.png');
         this.load.image('outside_background_1', './sprites/Clouds 3/1.png');
         this.load.image('outside_background_2', './sprites/Clouds 3/2.png');
         this.load.image('outside_background_3', './sprites/Clouds 3/3.png');

@@ -144,6 +144,7 @@ export const MAP_CONFIGS = [
         createEnemySequence: () => createMapOneEnemySequence(),
         pathTextureKey: 'path_ladder_clean',
         wallTextureKey: 'wall2',
+        backgroundTextureKey: 'path_background_bright',
         outsideBackgroundLayerKeys: [
             'outside_background_1',
             'outside_background_2',
@@ -158,6 +159,7 @@ export const MAP_CONFIGS = [
         enemySequence: mapTwoEnemySequence,
         pathTextureKey: 'path_ladder_metal',
         wallTextureKey: 'wall',
+        backgroundTextureKey: 'path_background_brightest',
         outsideBackgroundLayerKeys: [
             'outside_background_world2_1',
             'outside_background_world2_2',
@@ -173,6 +175,7 @@ export const MAP_CONFIGS = [
         enemySequence: mapThreeEnemySequence,
         pathTextureKey: 'path_ladder',
         wallTextureKey: 'wall2',
+        backgroundTextureKey: 'path_background',
         outsideBackgroundLayerKeys: [
             'outside_background_1',
             'outside_background_2',
