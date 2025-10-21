@@ -1363,7 +1363,9 @@ export class PathUI {
             const offsetX = random(-halfWidth, halfWidth);
             const y = clamp(random(minY, maxY), minY, maxY);
             const bat = scene.add.sprite(baseX + offsetX, y, textureKey);
-            const baseScale = random(0.6, 1.05);
+            const minScale = 0.55;
+            const maxScale = 0.95;
+            const baseScale = random(minScale, maxScale);
             const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
             const depth = layerDepth + 0.001 + i * 0.0001;
             let isDestroyed = false;
@@ -1497,7 +1499,13 @@ export class PathUI {
             setFacing(facingDirection);
             bat.setScrollFactor(0);
             bat.setDepth(depth);
-            bat.setAlpha(random(0.55, 0.85));
+
+            const scaleRange = Math.max(0.0001, maxScale - minScale);
+            const scaleRatio = clamp((baseScale - minScale) / scaleRange, 0, 1);
+            const alphaBase = 0.75 + scaleRatio * 0.2;
+            const alphaJitter = 0.06;
+            const alpha = clamp(alphaBase + random(-alphaJitter, alphaJitter), 0.75, 0.96);
+            bat.setAlpha(alpha);
 
             this.outsideBackgroundContainer.add(bat);
 
