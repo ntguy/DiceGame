@@ -1425,6 +1425,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     presentCustomDieReward() {
+        const hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+        const hasAnotherMap = this.hasNextMap();
+        if (!hasPendingNodes && !hasAnotherMap) {
+            this.requestEnterMapStateAfterCombat();
+            return;
+        }
+
         if (this.diceRewardUI) {
             this.diceRewardUI.destroy();
             this.diceRewardUI = null;

@@ -462,7 +462,7 @@ export class BackpackUI {
             this.backdrop.setVisible(visible);
             if (visible) {
                 this.backdrop.setInteractive({ useHandCursor: false });
-            } else {
+            } else if (this.backdrop.scene) {
                 this.backdrop.disableInteractive();
             }
         }
