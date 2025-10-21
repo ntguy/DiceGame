@@ -695,6 +695,10 @@ export class PathUI {
                     isTileSprite: true
                 });
 
+                const visibleTop = spanTop;
+                const visibleBottom = spanTop + viewportHeight;
+                const visibleHeight = Math.max(1, visibleBottom - visibleTop);
+
                 if (this.outsideBackgroundEffect === 'birds') {
                     this.createOutsideBirds({
                         baseX,
@@ -708,7 +712,10 @@ export class PathUI {
                         coverageHeight,
                         tileWidth: width,
                         scrollFactor,
-                        layerDepth
+                        layerDepth,
+                        visibleTop,
+                        visibleBottom,
+                        visibleHeight
                     });
                 } else if (this.outsideBackgroundEffect === 'leaves') {
                     this.createOutsideLeaves({
@@ -716,7 +723,10 @@ export class PathUI {
                         coverageHeight,
                         tileWidth: width,
                         scrollFactor,
-                        layerDepth
+                        layerDepth,
+                        visibleTop,
+                        visibleBottom,
+                        visibleHeight
                     });
                 } else {
                     this.createOutsideSparkles({
@@ -774,9 +784,6 @@ export class PathUI {
             ? Phaser.Math.Between
             : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
 
-        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
-            ? coverageHeight
-            : ((scene.scale && scene.scale.height) || 0);
         const width = Number.isFinite(tileWidth) && tileWidth > 0
             ? tileWidth
             : (scene.scale && scene.scale.width) || 0;
@@ -858,10 +865,6 @@ export class PathUI {
         const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
             ? Phaser.Math.Between
             : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
-
-        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
-            ? coverageHeight
-            : ((scene.scale && scene.scale.height) || 0);
         const width = Number.isFinite(tileWidth) && tileWidth > 0
             ? tileWidth
             : (scene.scale && scene.scale.width) || 0;
@@ -911,7 +914,16 @@ export class PathUI {
         }
     }
 
-    createOutsideLeaves({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+    createOutsideLeaves({
+        baseX,
+        coverageHeight,
+        tileWidth,
+        scrollFactor,
+        layerDepth,
+        visibleTop,
+        visibleBottom,
+        visibleHeight
+    }) {
         const scene = this.scene;
         if (!scene || !this.outsideBackgroundContainer) {
             return;
@@ -931,22 +943,30 @@ export class PathUI {
         const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
             ? Phaser.Math.Between
             : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
-
-        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
-            ? coverageHeight
-            : ((scene.scale && scene.scale.height) || 0);
         const width = Number.isFinite(tileWidth) && tileWidth > 0
             ? tileWidth
             : (scene.scale && scene.scale.width) || 0;
         const halfWidth = width / 2;
-        const minY = clamp(safeCoverage * 0.72, CONSTANTS.HEADER_HEIGHT, safeCoverage);
-        const maxY = clamp(safeCoverage * 0.92, minY, safeCoverage);
-        const startX = baseX + halfWidth - Math.min(width * 0.08, 60);
-        const horizontalSpread = Math.min(width * 0.25, 180);
+        const safeVisibleTop = Number.isFinite(visibleTop)
+            ? visibleTop
+            : (Number.isFinite(visibleBottom)
+                ? visibleBottom - ((scene.scale && scene.scale.height) || 0)
+                : 0);
+        const safeVisibleBottom = Number.isFinite(visibleBottom)
+            ? visibleBottom
+            : safeVisibleTop + ((scene.scale && scene.scale.height) || 0);
+        const safeVisibleHeight = Number.isFinite(visibleHeight) && visibleHeight > 0
+            ? visibleHeight
+            : Math.max(1, safeVisibleBottom - safeVisibleTop);
+        const bottomBand = clamp(safeVisibleHeight * 0.3, 60, 240);
+        const minY = clamp(safeVisibleBottom - bottomBand, safeVisibleTop, safeVisibleBottom);
+        const maxY = clamp(safeVisibleBottom - Math.max(12, bottomBand * 0.2), minY, safeVisibleBottom);
+        const startX = baseX + halfWidth - Math.min(width * 0.12, 90);
+        const horizontalSpread = Math.min(width * 0.18, 140);
         const leafCount = 18;
 
         for (let i = 0; i < leafCount; i += 1) {
-            const offsetX = random(-horizontalSpread, 8);
+            const offsetX = random(-horizontalSpread, 12);
             const startY = clamp(random(minY, maxY), minY, maxY);
             const leaf = scene.add.image(startX + offsetX, startY, textureKey);
             const baseScale = random(0.42, 0.72);
