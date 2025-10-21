@@ -98,6 +98,7 @@ export class StatusTicianEnemy extends BaseEnemy {
         this.destroyNonComboActive = false;
         this.currentMaxDiceTarget = null;
         this.lastAppliedMaxDiceValue = this.defaultMaxDicePerZone;
+        this.pendingStatusChanges = [];
 
         this.setBasicStatus(this.chooseRandomBasicEffect(), 'basic');
         this.updateDerivedStatusEffects();
@@ -141,7 +142,7 @@ export class StatusTicianEnemy extends BaseEnemy {
             key: 'status_tician_gain_ultra',
             label: 'Algorithm Upload: Gain a random Ultra Status',
             createActions: () => {
-                this.addRandomUltraStatus({ excludeExisting: true });
+                this.queueStatusChange(() => this.addRandomUltraStatus({ excludeExisting: true }));
                 return [];
             }
         };
@@ -178,10 +179,12 @@ export class StatusTicianEnemy extends BaseEnemy {
             key,
             label,
             createActions: () => {
-                this.cycleBasicStatus('basic', { ensureDifferent: true });
-                const countSource = typeof getUltraCount === 'function' ? getUltraCount() : 1;
-                const count = Math.max(1, Number.isFinite(countSource) ? Math.floor(countSource) : 1);
-                this.cycleUltraStatuses(count, { ensureDifferent: true });
+                this.queueStatusChange(() => {
+                    this.cycleBasicStatus('basic', { ensureDifferent: true });
+                    const countSource = typeof getUltraCount === 'function' ? getUltraCount() : 1;
+                    const count = Math.max(1, Number.isFinite(countSource) ? Math.floor(countSource) : 1);
+                    this.cycleUltraStatuses(count, { ensureDifferent: true });
+                });
                 return [healAction(healValue)];
             }
         };
@@ -206,7 +209,7 @@ export class StatusTicianEnemy extends BaseEnemy {
             key: 'status_tician_upgrade_basic',
             label: 'Status Upgrade: Replace Basic with Basic+ Status',
             createActions: () => {
-                this.upgradeBasicStatus();
+                this.queueStatusChange(() => this.upgradeBasicStatus());
                 return [];
             }
         };
@@ -233,7 +236,7 @@ export class StatusTicianEnemy extends BaseEnemy {
             key: 'status_tician_gain_additional_ultra',
             label: 'Dual Uplink: Gain an additional Ultra Status',
             createActions: () => {
-                this.addAdditionalUltraStatus();
+                this.queueStatusChange(() => this.addAdditionalUltraStatus());
                 return [];
             }
         };
@@ -244,7 +247,7 @@ export class StatusTicianEnemy extends BaseEnemy {
             key: 'status_tician_enter_barrage',
             label: 'Barrage Initialization: Heal 20 + Enter Barrage Mode',
             createActions: () => {
-                this.enterBarrageMode();
+                this.queueStatusChange(() => this.enterBarrageMode());
                 return [healAction(20)];
             }
         };
@@ -278,6 +281,47 @@ export class StatusTicianEnemy extends BaseEnemy {
         }
 
         return move;
+    }
+
+    queueStatusChange(change) {
+        if (typeof change !== 'function') {
+            return;
+        }
+
+        if (!Array.isArray(this.pendingStatusChanges)) {
+            this.pendingStatusChanges = [];
+        }
+
+        this.pendingStatusChanges.push(change);
+    }
+
+    applyQueuedStatusChanges() {
+        if (!Array.isArray(this.pendingStatusChanges) || this.pendingStatusChanges.length === 0) {
+            return;
+        }
+
+        const queuedChanges = this.pendingStatusChanges.slice();
+        this.pendingStatusChanges.length = 0;
+
+        let didMutate = false;
+        for (const change of queuedChanges) {
+            if (typeof change !== 'function') {
+                continue;
+            }
+
+            const result = change();
+            if (result !== false) {
+                didMutate = true;
+            }
+        }
+
+        if (didMutate) {
+            this.updateDerivedStatusEffects();
+        }
+    }
+
+    onTurnFinished() {
+        this.applyQueuedStatusChanges();
     }
 
     buildStatusActions() {
@@ -464,7 +508,7 @@ export class StatusTicianEnemy extends BaseEnemy {
             return move;
         }
 
-        this.cycleAllStatuses({ ensureDifferent: true });
+        this.queueStatusChange(() => this.cycleAllStatuses({ ensureDifferent: true }));
 
         const move = {
             key: `status_tician_barrage_cycle_${this.barrageMoveCounter}`,
@@ -522,31 +566,32 @@ export class StatusTicianEnemy extends BaseEnemy {
     }
 
     getStatusDescription() {
-        const parts = [];
+        const lines = [];
 
         if (this.activeBasicStatus && this.activeBasicStatus.description) {
-            const prefix = this.activeBasicTier === 'basicPlus' ? 'Basic+:' : 'Basic:';
-            parts.push(`${prefix} ${this.activeBasicStatus.description}`);
+            const tierLabel = this.activeBasicTier === 'basicPlus' ? 'Basic+' : 'Basic';
+            lines.push(`${tierLabel}: ${this.activeBasicStatus.description}`);
         }
 
         if (this.activeUltraStatusIds.size > 0) {
-            const descriptions = Array.from(this.activeUltraStatusIds)
-                .map(id => ULTRA_STATUS_DEFINITIONS[id]?.description)
-                .filter(Boolean);
-            if (descriptions.length > 0) {
-                parts.push(`Ultra: ${descriptions.join(' | ')}`);
-            }
+            const orderedIds = ULTRA_STATUS_IDS.filter(id => this.activeUltraStatusIds.has(id));
+            orderedIds.forEach(id => {
+                const description = ULTRA_STATUS_DEFINITIONS[id]?.description;
+                if (description) {
+                    lines.push(`Ultra: ${description}`);
+                }
+            });
         }
 
         if (this.inBarrageMode) {
-            parts.push('Barrage Mode: Attack and Defense escalate each loop.');
+            lines.push('Barrage Mode: Attack and Defense escalate each loop.');
         }
 
-        if (parts.length === 0) {
+        if (lines.length === 0) {
             return '';
         }
 
-        return `Status: ${parts.join(' ')}`;
+        return `Status:\n${lines.join('\n')}`;
     }
 
     onPlayerReroll(count, enemyManager) {
