@@ -5,3 +5,4 @@ export const burnAction = (value) => ({ type: 'burn', value });
 export const lockAction = (count = 1) => ({ type: 'lock', count });
 export const weakenAction = (count = 1) => ({ type: 'weaken', count });
 export const nullifyAction = (count = 1) => ({ type: 'nullify', count });
+export const setMaxDicePerZoneAction = (value) => ({ type: 'set_max_dice_per_zone', value });

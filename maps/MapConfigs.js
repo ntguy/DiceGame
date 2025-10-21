@@ -9,6 +9,7 @@ import { StraightArrowEnemy } from '../enemies/StraightArrow.js';
 import { LockdownEnemy } from '../enemies/Lockdown.js';
 import { LeechEnemy } from '../enemies/Leech.js';
 import { AuditorEnemy } from '../enemies/Auditor.js';
+import { CompactorEnemy } from '../enemies/Compactor.js';
 
 const mapOneEnemyFactories = () => [
     new SlapperEnemy(),
@@ -96,7 +97,7 @@ const mapTwoEnemySequence = [
 const mapThreeEnemyFactories = () => [
     new LeechEnemy(),
     new AuditorEnemy(),
-    new InfernoEnemy(), // placeholder
+    new CompactorEnemy(),
     new LockdownEnemy(), // placeholder
     new LockdownEnemy() // placeholder
 ];
