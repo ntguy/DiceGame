@@ -7,10 +7,10 @@ const ZONE_BACKGROUND_TILE_SCALE = 2;
 
 export const ZONE_LABEL_OFFSET = 20;
 export const ZONE_LABEL_FONT_SIZE = 24;
-export const ZONE_AREA_PADDING_X = 40;
-export const ZONE_AREA_PADDING_TOP = 30;
+export const ZONE_AREA_PADDING_X = 20;
+export const ZONE_AREA_PADDING_TOP = 40;
 export const ZONE_AREA_PADDING_BOTTOM = 16;
-const ZONE_AREA_BACKGROUND_ALPHA = 0.5;
+const ZONE_AREA_BACKGROUND_ALPHA = 0.6;
 
 export function setupZones(scene) {
     const zoneWidth = scene && typeof scene.getZoneWidth === 'function'
