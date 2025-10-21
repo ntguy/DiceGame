@@ -58,6 +58,14 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
 const BAT_TEXTURE_KEY = 'outside_bat_sprite';
+const BAT_ANIMATION_KEY = 'outside_bat_flap';
+const BAT_FRAME_KEYS = [
+    `${BAT_TEXTURE_KEY}_wing_up`,
+    `${BAT_TEXTURE_KEY}_mid_up`,
+    `${BAT_TEXTURE_KEY}_mid_down`,
+    `${BAT_TEXTURE_KEY}_wing_down`
+];
+const BAT_FLAP_FRAME_RATE = 6;
 const WORLD3_OUTSIDE_BACKGROUND_ORDER = [1, 3, 6, 8, 2, 4, 5, 7, 9];
 const WORLD3_LAYER_TRIM_TOP = 30;
 const WORLD3_BASE_SCALE = 0.65;
@@ -333,43 +341,37 @@ function ensureBirdTexture(scene) {
     return BIRD_TEXTURE_KEY;
 }
 
-function ensureBatTexture(scene) {
-    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
-        return null;
-    }
-
-    if (scene.textures.exists(BAT_TEXTURE_KEY)) {
-        return BAT_TEXTURE_KEY;
-    }
-
-    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
-    const width = 36;
-    const height = 22;
+function drawBatFrame(graphics, width, height, {
+    outerYOffset = 0,
+    tipYOffset = 0,
+    innerYOffset = 0,
+    wingSpanScale = 1,
+    bodyScaleY = 1,
+    earTilt = 0
+} = {}) {
     const centerX = width / 2;
     const centerY = height / 2;
-    const wingSpan = width * 0.9;
+    const wingSpan = width * 0.9 * wingSpanScale;
     const wingDepth = height * 0.55;
     const bodyWidth = width * 0.28;
-    const bodyHeight = height * 0.6;
-
-    graphics.clear();
+    const bodyHeight = height * 0.6 * bodyScaleY;
 
     graphics.fillStyle(0x090909, 1);
     graphics.fillTriangle(
         centerX - wingSpan / 2,
-        centerY,
+        centerY + outerYOffset,
         centerX - wingSpan * 0.35,
-        centerY - wingDepth,
+        centerY - wingDepth + tipYOffset,
         centerX - bodyWidth / 2,
-        centerY + wingDepth * 0.3
+        centerY + wingDepth * 0.3 + innerYOffset
     );
     graphics.fillTriangle(
         centerX + wingSpan / 2,
-        centerY,
+        centerY + outerYOffset,
         centerX + wingSpan * 0.35,
-        centerY - wingDepth,
+        centerY - wingDepth + tipYOffset,
         centerX + bodyWidth / 2,
-        centerY + wingDepth * 0.3
+        centerY + wingDepth * 0.3 + innerYOffset
     );
 
     graphics.fillStyle(0x050505, 1);
@@ -378,28 +380,90 @@ function ensureBatTexture(scene) {
     graphics.fillStyle(0x0c0c0c, 1);
     graphics.fillTriangle(
         centerX - bodyWidth * 0.4,
-        centerY - bodyHeight * 0.45,
+        centerY - bodyHeight * 0.45 - earTilt,
         centerX - bodyWidth * 0.1,
-        centerY - bodyHeight * 0.95,
+        centerY - bodyHeight * 0.95 - earTilt,
         centerX - bodyWidth * 0.1,
-        centerY - bodyHeight * 0.25
+        centerY - bodyHeight * 0.25 - earTilt
     );
     graphics.fillTriangle(
         centerX + bodyWidth * 0.4,
-        centerY - bodyHeight * 0.45,
+        centerY - bodyHeight * 0.45 - earTilt,
         centerX + bodyWidth * 0.1,
-        centerY - bodyHeight * 0.95,
+        centerY - bodyHeight * 0.95 - earTilt,
         centerX + bodyWidth * 0.1,
-        centerY - bodyHeight * 0.25
+        centerY - bodyHeight * 0.25 - earTilt
     );
 
     graphics.fillStyle(0x1a1a1a, 1);
     graphics.fillEllipse(centerX, centerY + height * 0.05, bodyWidth * 0.6, bodyHeight * 0.55);
+}
 
-    graphics.generateTexture(BAT_TEXTURE_KEY, width, height);
-    graphics.destroy();
+function ensureBatTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
 
-    return BAT_TEXTURE_KEY;
+    const allFramesExist = BAT_FRAME_KEYS.every(key => scene.textures.exists(key));
+
+    if (!allFramesExist) {
+        const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+        const width = 36;
+        const height = 22;
+
+        const frameConfigs = [
+            {
+                key: BAT_FRAME_KEYS[0],
+                outerYOffset: -4,
+                tipYOffset: -8,
+                innerYOffset: -3,
+                wingSpanScale: 0.88,
+                earTilt: -0.3
+            },
+            {
+                key: BAT_FRAME_KEYS[1],
+                outerYOffset: -1,
+                tipYOffset: -3,
+                innerYOffset: -1,
+                wingSpanScale: 0.94
+            },
+            {
+                key: BAT_FRAME_KEYS[2],
+                outerYOffset: 2,
+                tipYOffset: 2,
+                innerYOffset: 2.2,
+                wingSpanScale: 1
+            },
+            {
+                key: BAT_FRAME_KEYS[3],
+                outerYOffset: 4.5,
+                tipYOffset: 6,
+                innerYOffset: 4.6,
+                wingSpanScale: 1.06,
+                earTilt: 0.25
+            }
+        ];
+
+        frameConfigs.forEach(config => {
+            graphics.clear();
+            drawBatFrame(graphics, width, height, config);
+            graphics.generateTexture(config.key, width, height);
+        });
+
+        graphics.destroy();
+    }
+
+    if (scene.anims && typeof scene.anims.exists === 'function' && !scene.anims.exists(BAT_ANIMATION_KEY)) {
+        scene.anims.create({
+            key: BAT_ANIMATION_KEY,
+            frames: BAT_FRAME_KEYS.map(key => ({ key })),
+            frameRate: BAT_FLAP_FRAME_RATE,
+            repeat: -1,
+            yoyo: true
+        });
+    }
+
+    return BAT_FRAME_KEYS[1];
 }
 
 function ensureSparkleTexture(scene) {
@@ -1292,31 +1356,43 @@ export class PathUI {
         const minY = CONSTANTS.HEADER_HEIGHT * 0.85;
         const maxY = safeCoverage * 0.28;
         const verticalJitter = safeCoverage * 0.12;
-        const easeOptions = [
-            'Sine.easeInOut',
-            'Quad.easeInOut',
-            'Cubic.easeInOut',
-            'Back.easeInOut'
-        ];
         const batCount = 14;
+        const horizontalRange = halfWidth * 0.55;
 
         for (let i = 0; i < batCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
             const y = clamp(random(minY, maxY), minY, maxY);
-            const bat = scene.add.image(baseX + offsetX, y, textureKey);
+            const bat = scene.add.sprite(baseX + offsetX, y, textureKey);
             const baseScale = random(0.6, 1.05);
             const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
             const depth = layerDepth + 0.001 + i * 0.0001;
             let isDestroyed = false;
             const tweenHolder = {
-                current: null,
+                flight: null,
+                flutter: null,
                 remove() {
                     isDestroyed = true;
-                    if (this.current && typeof this.current.remove === 'function') {
-                        this.current.remove();
+                    if (this.flight && typeof this.flight.remove === 'function') {
+                        this.flight.remove();
                     }
-                    this.current = null;
+                    if (this.flutter && typeof this.flutter.remove === 'function') {
+                        this.flutter.remove();
+                    }
+                    this.flight = null;
+                    this.flutter = null;
                 }
+            };
+
+            const flightState = { x: bat.x, y: bat.y, angle: 0 };
+            const flutterState = { offset: 0 };
+
+            const updateSpriteTransform = () => {
+                if (isDestroyed) {
+                    return;
+                }
+
+                bat.setPosition(flightState.x, flightState.y + flutterState.offset);
+                bat.setAngle(flightState.angle);
             };
 
             const setFacing = direction => {
@@ -1324,62 +1400,104 @@ export class PathUI {
                 bat.setScale(baseScale * clampedDirection, baseScale * 0.8);
             };
 
+            const flapTimeScale = random(0.92, 1.08);
+            const canPlayAnimation = bat.anims
+                && typeof bat.anims.play === 'function'
+                && scene.anims
+                && typeof scene.anims.exists === 'function'
+                && scene.anims.exists(BAT_ANIMATION_KEY);
+
+            if (canPlayAnimation) {
+                bat.anims.play(BAT_ANIMATION_KEY);
+                bat.anims.timeScale = flapTimeScale;
+            }
+
+            const flutterAmplitude = random(6, 11) * baseScale;
+            const flutterDuration = Math.max(140, Math.round(1000 / BAT_FLAP_FRAME_RATE));
+            flutterState.offset = random(-flutterAmplitude, flutterAmplitude);
+
+            if (scene.tweens && typeof scene.tweens.add === 'function') {
+                tweenHolder.flutter = scene.tweens.add({
+                    targets: flutterState,
+                    offset: {
+                        from: -flutterAmplitude,
+                        to: flutterAmplitude
+                    },
+                    duration: flutterDuration,
+                    ease: 'Sine.easeInOut',
+                    yoyo: true,
+                    repeat: -1,
+                    onUpdate: updateSpriteTransform
+                });
+
+                if (tweenHolder.flutter) {
+                    tweenHolder.flutter.timeScale = flapTimeScale;
+                }
+            }
+
+            flightState.angle = random(-10, 10);
+            updateSpriteTransform();
+
             const startErraticFlight = () => {
                 if (isDestroyed || !scene || !scene.tweens) {
                     return;
                 }
 
-                const targetX = baseX + random(-halfWidth, halfWidth);
+                const targetX = baseX + random(-horizontalRange, horizontalRange);
                 const baseTargetY = random(minY, maxY);
                 const targetY = clamp(
-                    baseTargetY + random(-verticalJitter, verticalJitter) * 0.35,
+                    baseTargetY + random(-verticalJitter, verticalJitter) * 0.6,
                     minY,
                     maxY
                 );
-                const newDirection = targetX >= bat.x ? 1 : -1;
-                const angleTarget = random(-18, 18);
-                const easeIndex = between(0, easeOptions.length - 1);
-                const ease = easeOptions[Math.max(0, Math.min(easeIndex, easeOptions.length - 1))] || 'Sine.easeInOut';
-                const duration = between(900, 1900);
-                const hold = between(80, 240);
-                const repeatDelay = between(60, 260);
+                const newDirection = targetX >= flightState.x ? 1 : -1;
+                const angleTarget = random(-14, 14);
+                const deltaX = Math.abs(targetX - flightState.x);
+                const deltaY = Math.abs(targetY - flightState.y);
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const maxDistance = Math.max(1, horizontalRange * 1.2);
+                const distanceRatio = clamp(distance / maxDistance, 0, 1);
+                const minDuration = 1650;
+                const maxDuration = 2650;
+                const duration = minDuration + (maxDuration - minDuration) * distanceRatio;
+                const hold = between(120, 220);
+                const repeatDelay = between(90, 210);
 
                 setFacing(newDirection);
 
                 const tween = scene.tweens.add({
-                    targets: bat,
+                    targets: flightState,
                     x: targetX,
                     y: targetY,
                     angle: angleTarget,
                     duration,
-                    ease,
+                    ease: 'Sine.easeInOut',
                     hold,
                     yoyo: true,
                     repeat: 0,
                     repeatDelay,
+                    onUpdate: updateSpriteTransform,
                     onYoyo: () => {
                         setFacing(-newDirection);
-                        if (!isDestroyed) {
-                            bat.setAngle(random(-12, 12));
-                        }
+                        flightState.angle = random(-8, 8);
+                        updateSpriteTransform();
                     },
                     onComplete: () => {
-                        tweenHolder.current = null;
+                        tweenHolder.flight = null;
                         if (!isDestroyed) {
                             startErraticFlight();
                         }
                     }
                 });
 
-                tween.timeScale = random(0.9, 1.45);
-                tweenHolder.current = tween;
+                tween.timeScale = random(0.9, 1.05);
+                tweenHolder.flight = tween;
             };
 
             setFacing(facingDirection);
             bat.setScrollFactor(0);
             bat.setDepth(depth);
             bat.setAlpha(random(0.55, 0.85));
-            bat.setAngle(random(-10, 10));
 
             this.outsideBackgroundContainer.add(bat);
 
