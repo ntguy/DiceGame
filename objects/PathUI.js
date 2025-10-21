@@ -159,15 +159,18 @@ export class PathUI {
         scene,
         pathManager,
         onSelect,
-        {
+        options = {}
+    ) {
+        const {
             connectionTextureKey,
             wallTextureKey,
             backgroundTextureKey,
             outsideBackgroundLayerKeys,
             outsideBackgroundEffect,
-            outsideBackgroundScale
-        } = {}
-    ) {
+            outsideBackgroundScale,
+            outsideBackgroundLayerOffsetMultiplier,
+            outsideBackgroundVerticalLift
+        } = options;
         this.scene = scene;
         this.pathManager = pathManager;
         this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
@@ -182,6 +185,14 @@ export class PathUI {
             ? outsideBackgroundScale
             : DEFAULT_OUTSIDE_BACKGROUND_SCALE;
         this.outsideBackgroundScale = Math.max(MIN_OUTSIDE_BACKGROUND_SCALE, requestedScale);
+        const requestedOffsetMultiplier = Number.isFinite(outsideBackgroundLayerOffsetMultiplier)
+            ? outsideBackgroundLayerOffsetMultiplier
+            : 1;
+        this.outsideBackgroundLayerOffsetMultiplier = Math.max(0, requestedOffsetMultiplier);
+        const requestedVerticalLift = Number.isFinite(outsideBackgroundVerticalLift)
+            ? outsideBackgroundVerticalLift
+            : 0;
+        this.outsideBackgroundVerticalLift = Math.min(Math.max(requestedVerticalLift, 0), 1);
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -718,10 +729,16 @@ export class PathUI {
 
             const spriteHeight = sourceHeight * defaultScale;
             const progress = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
-            const minOffset = viewportHeight * 0.12;
-            const maxOffset = viewportHeight * 0.45;
+            const layerOffsetMultiplier = Number.isFinite(this.outsideBackgroundLayerOffsetMultiplier)
+                ? this.outsideBackgroundLayerOffsetMultiplier
+                : 1;
+            const minOffset = viewportHeight * 0.12 * layerOffsetMultiplier;
+            const maxOffset = viewportHeight * 0.45 * layerOffsetMultiplier;
             const verticalOffset = lerp(minOffset, maxOffset, progress);
-            const verticalLift = Number.isFinite(viewportHeight) ? viewportHeight * 0.45 : 0;
+            const liftRatio = Number.isFinite(this.outsideBackgroundVerticalLift)
+                ? this.outsideBackgroundVerticalLift
+                : 0;
+            const verticalLift = Number.isFinite(viewportHeight) ? viewportHeight * liftRatio : 0;
             const spriteY = spanTop + spriteHeight / 2 + verticalOffset - verticalLift;
             const sprite = this.scene.add.image(baseX + horizontalOffset, spriteY, key);
             sprite.setOrigin(0.5, 0.5);

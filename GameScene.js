@@ -2945,6 +2945,12 @@ export class GameScene extends Phaser.Scene {
             && config.outsideBackgroundScale > 0
                 ? config.outsideBackgroundScale
                 : null;
+        const outsideBackgroundLayerOffsetMultiplier = config && Number.isFinite(config.outsideBackgroundLayerOffsetMultiplier)
+            ? config.outsideBackgroundLayerOffsetMultiplier
+            : null;
+        const outsideBackgroundVerticalLift = config && Number.isFinite(config.outsideBackgroundVerticalLift)
+            ? config.outsideBackgroundVerticalLift
+            : null;
 
         this.pathManager = new PathManager({
             enemySequence,
@@ -2961,7 +2967,9 @@ export class GameScene extends Phaser.Scene {
                 backgroundTextureKey,
                 outsideBackgroundLayerKeys,
                 outsideBackgroundEffect,
-                outsideBackgroundScale
+                outsideBackgroundScale,
+                outsideBackgroundLayerOffsetMultiplier,
+                outsideBackgroundVerticalLift
             }
         );
         this.currentPathNodeId = null;
