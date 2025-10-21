@@ -188,6 +188,6 @@ export const MAP_CONFIGS = [
             'outside_background_world3_8',
             'outside_background_world3_9'
         ],
-        outsideBackgroundScale: 2.25
+        outsideBackgroundScale: 0.65
     }
 ];
