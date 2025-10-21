@@ -32,6 +32,7 @@ import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRan
 import { computeDieContribution, doesDieActAsWildcardForCombo } from './dice/CustomDiceLogic.js';
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
 import { playDiceRollSounds } from './utils/SoundHelpers.js';
+import { VictoryScreen } from './objects/VictoryScreen.js';
 
 const SHOP_RELIC_COUNT = 3;
 
@@ -106,9 +107,11 @@ export class GameScene extends Phaser.Scene {
         this.timeBombStates = new Map();
         this.activeTimeBombResolveBonus = 0;
         this.gameOverManager = null;
+        this.victoryScreen = null;
         this.muteButton = null;
         this.isMuted = false;
         this.isGameOver = false;
+        this.isVictory = false;
         this.testingModeEnabled = false;
         this.pathManager = null;
         this.pathUI = null;
@@ -437,6 +440,9 @@ export class GameScene extends Phaser.Scene {
 
         this.gameOverManager = new GameOverManager(this);
         this.gameOverManager.create();
+
+        this.victoryScreen = new VictoryScreen(this);
+        this.victoryScreen.create();
 
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(110, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
@@ -4275,6 +4281,48 @@ export class GameScene extends Phaser.Scene {
         if (this.pathUI) {
             this.pathUI.hide();
         }
+
+        this.checkForVictoryCelebration();
+    }
+
+    checkForVictoryCelebration() {
+        if (this.isVictory) {
+            return;
+        }
+
+        const hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+        const hasRemainingMaps = this.hasNextMap();
+
+        if (!hasPendingNodes && !hasRemainingMaps) {
+            this.triggerVictoryCelebration();
+        }
+    }
+
+    triggerVictoryCelebration() {
+        if (this.isVictory) {
+            return;
+        }
+
+        this.isVictory = true;
+        this.isGameOver = true;
+
+        if (this.rollButton) {
+            setTextButtonEnabled(this.rollButton, false);
+        }
+
+        if (this.sortButton) {
+            setTextButtonEnabled(this.sortButton, false);
+        }
+
+        if (this.resolveButton) {
+            setTextButtonEnabled(this.resolveButton, false);
+        }
+
+        this.getDiceInPlay().forEach(die => die.disableInteractive());
+
+        if (this.victoryScreen) {
+            this.victoryScreen.show(() => this.restartGame());
+        }
     }
 
     applyStartOfTurnEffects() {
@@ -4590,6 +4638,10 @@ export class GameScene extends Phaser.Scene {
     restartGame() {
         if (this.gameOverManager) {
             this.gameOverManager.hide();
+        }
+
+        if (this.victoryScreen) {
+            this.victoryScreen.hide();
         }
 
         this.scene.restart({
