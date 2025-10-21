@@ -66,6 +66,7 @@ const BAT_FRAME_KEYS = [
     `${BAT_TEXTURE_KEY}_wing_down`
 ];
 const BAT_FLAP_FRAME_RATE = 6;
+const DROPLET_COLOR = 0x3a8dff;
 const WORLD3_OUTSIDE_BACKGROUND_ORDER = [1, 3, 6, 8, 2, 4, 5, 7, 9];
 const WORLD3_LAYER_TRIM_TOP = 30;
 const WORLD3_BASE_SCALE = 0.65;
@@ -536,6 +537,7 @@ export class PathUI {
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
         this.outsideBackgroundLayers = [];
+        this.outsideBackgroundEffectTimers = [];
         this.backgroundContainer = scene.add.container(0, 0);
         this.backgroundContainer.setDepth(PATH_DEPTHS.background);
         this.backgroundSprite = null;
@@ -712,6 +714,22 @@ export class PathUI {
         }
 
         this.outsideBackgroundLayers = [];
+
+        if (Array.isArray(this.outsideBackgroundEffectTimers)) {
+            this.outsideBackgroundEffectTimers.forEach(timer => {
+                if (!timer) {
+                    return;
+                }
+
+                if (typeof timer.remove === 'function') {
+                    timer.remove();
+                } else if (typeof timer.destroy === 'function') {
+                    timer.destroy();
+                }
+            });
+        }
+
+        this.outsideBackgroundEffectTimers = [];
 
         if (this.outsideBackgroundContainer && typeof this.outsideBackgroundContainer.removeAll === 'function') {
             this.outsideBackgroundContainer.removeAll(false);
@@ -1033,31 +1051,13 @@ export class PathUI {
                     isTileSprite: true
                 });
 
-                if (this.outsideBackgroundEffect === 'birds') {
-                    this.createOutsideBirds({
-                        baseX,
-                        coverageHeight,
-                        tileWidth: width,
-                        scrollFactor,
-                        layerDepth
-                    });
-                } else if (this.outsideBackgroundEffect === 'bats') {
-                    this.createOutsideBats({
-                        baseX,
-                        coverageHeight,
-                        tileWidth: width,
-                        scrollFactor,
-                        layerDepth
-                    });
-                } else {
-                    this.createOutsideSparkles({
-                        baseX,
-                        coverageHeight,
-                        tileWidth: width,
-                        scrollFactor,
-                        layerDepth
-                    });
-                }
+                this.createOutsideEffects({
+                    baseX,
+                    coverageHeight,
+                    tileWidth: width,
+                    scrollFactor,
+                    layerDepth
+                });
                 return;
             }
 
@@ -1191,31 +1191,13 @@ export class PathUI {
                     baseTileY: tileSprite.tilePositionY || 0,
                     scrollFactor
                 });
-                if (this.outsideBackgroundEffect === 'birds') {
-                    this.createOutsideBirds({
-                        baseX,
-                        coverageHeight,
-                        tileWidth,
-                        scrollFactor,
-                        layerDepth: depth
-                    });
-                } else if (this.outsideBackgroundEffect === 'bats') {
-                    this.createOutsideBats({
-                        baseX,
-                        coverageHeight,
-                        tileWidth,
-                        scrollFactor,
-                        layerDepth: depth
-                    });
-                } else {
-                    this.createOutsideSparkles({
-                        baseX,
-                        coverageHeight,
-                        tileWidth,
-                        scrollFactor,
-                        layerDepth: depth
-                    });
-                }
+                this.createOutsideEffects({
+                    baseX,
+                    coverageHeight,
+                    tileWidth,
+                    scrollFactor,
+                    layerDepth: depth
+                });
                 return;
             }
 
@@ -1238,6 +1220,33 @@ export class PathUI {
                 scrollFactor
             });
         });
+    }
+
+    createOutsideEffects({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const effect = typeof this.outsideBackgroundEffect === 'string'
+            ? this.outsideBackgroundEffect.toLowerCase()
+            : 'sparkles';
+
+        if (effect === 'birds') {
+            this.createOutsideBirds({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth });
+            return;
+        }
+
+        let handled = false;
+
+        if (effect === 'bats' || effect === 'bats_droplets') {
+            this.createOutsideBats({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth });
+            handled = true;
+        }
+
+        if (effect === 'droplets' || effect === 'bats_droplets') {
+            this.createOutsideDroplets({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth });
+            handled = true;
+        }
+
+        if (!handled) {
+            this.createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth });
+        }
     }
 
     createOutsideBirds({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
@@ -1520,6 +1529,142 @@ export class PathUI {
                 tween: tweenHolder
             });
         }
+    }
+
+    createOutsideDroplets({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const spawnMinY = CONSTANTS.HEADER_HEIGHT * 1.2;
+        const spawnMaxY = safeCoverage * 0.35;
+        const effectiveLayerDepth = layerDepth - 0.002;
+        const layerScrollFactor = Math.max(0.02, scrollFactor * 0.12);
+        const fadeStart = 0.7;
+
+        const spawnDroplet = () => {
+            if (!scene || !scene.add || !this.outsideBackgroundContainer || this.isDestroyed) {
+                return;
+            }
+
+            const offsetX = random(-halfWidth, halfWidth);
+            const startY = clamp(random(spawnMinY, spawnMaxY), spawnMinY, spawnMaxY);
+            const dropletHeight = random(10, 18);
+            const dropletWidth = dropletHeight * random(0.32, 0.48);
+            const alpha = random(0.35, 0.65);
+            const droplet = scene.add.rectangle(baseX + offsetX, startY, dropletWidth, dropletHeight, DROPLET_COLOR, alpha);
+            droplet.setOrigin(0.5, 0);
+            droplet.setScrollFactor(0);
+            droplet.setDepth(effectiveLayerDepth);
+            droplet.setAlpha(alpha);
+            droplet.setAngle(random(-6, 6));
+
+            this.outsideBackgroundContainer.add(droplet);
+
+            const layerEntry = {
+                sprite: droplet,
+                baseY: droplet.y - this.scrollY * layerScrollFactor,
+                scrollFactor: layerScrollFactor,
+                tween: null
+            };
+
+            this.outsideBackgroundLayers.push(layerEntry);
+
+            const fallDistance = safeCoverage * random(0.28, 0.48);
+            const fallState = { progress: 0 };
+            const startX = droplet.x;
+            const horizontalDrift = random(-10, 10);
+            const baseAlpha = droplet.alpha;
+            const duration = between(2600, 4200);
+
+            const updateDroplet = () => {
+                const progress = fallState.progress;
+                const newY = startY + fallDistance * progress;
+                const newX = startX + horizontalDrift * progress;
+                droplet.setPosition(newX, newY);
+                layerEntry.baseY = newY - this.scrollY * layerEntry.scrollFactor;
+
+                if (progress >= fadeStart) {
+                    const fadeProgress = (progress - fadeStart) / (1 - fadeStart);
+                    const clampedFade = Math.max(0, Math.min(1, fadeProgress));
+                    droplet.setAlpha(baseAlpha * (1 - clampedFade));
+                }
+            };
+
+            const tween = scene.tweens && typeof scene.tweens.add === 'function'
+                ? scene.tweens.add({
+                    targets: fallState,
+                    progress: 1,
+                    duration,
+                    ease: 'Sine.easeIn',
+                    delay: between(120, 600),
+                    onUpdate: updateDroplet,
+                    onComplete: () => {
+                        updateDroplet();
+                        if (droplet && typeof droplet.destroy === 'function') {
+                            droplet.destroy();
+                        }
+                    }
+                })
+                : null;
+
+            layerEntry.tween = tween;
+
+            droplet.once('destroy', () => {
+                const index = this.outsideBackgroundLayers.indexOf(layerEntry);
+                if (index !== -1) {
+                    this.outsideBackgroundLayers.splice(index, 1);
+                }
+                if (tween && typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+        };
+
+        const scheduleNext = () => {
+            if (!scene || !scene.time || !this.outsideBackgroundContainer || this.isDestroyed) {
+                return;
+            }
+
+            const delay = between(2800, 5200);
+            const timer = scene.time.delayedCall(delay, () => {
+                this.outsideBackgroundEffectTimers = this.outsideBackgroundEffectTimers.filter(active => active !== timer);
+                if (this.isDestroyed) {
+                    return;
+                }
+                spawnDroplet();
+                scheduleNext();
+            });
+
+            if (timer) {
+                this.outsideBackgroundEffectTimers.push(timer);
+            }
+        };
+
+        const initialDroplets = between(1, 2);
+        for (let i = 0; i < initialDroplets; i += 1) {
+            spawnDroplet();
+        }
+
+        scheduleNext();
     }
 
     createOutsideSparkles({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
