@@ -56,6 +56,7 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
+const DROPLET_TEXTURE_KEY = 'outside_water_droplet';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
 const BAT_TEXTURE_KEY = 'outside_bat_sprite';
 const BAT_ANIMATION_KEY = 'outside_bat_flap';
@@ -488,6 +489,34 @@ function ensureSparkleTexture(scene) {
     graphics.destroy();
 
     return SPARKLE_TEXTURE_KEY;
+}
+
+function ensureDropletTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(DROPLET_TEXTURE_KEY)) {
+        return DROPLET_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const width = 6;
+    const height = 12;
+    const centerX = width / 2;
+    const baseY = height * 0.55;
+
+    graphics.fillStyle(0x245b9b, 1);
+    graphics.fillEllipse(centerX, baseY, width * 0.55, height * 0.9);
+    graphics.fillStyle(0x58a6f3, 1);
+    graphics.fillEllipse(centerX, height * 0.32, width * 0.35, height * 0.55);
+    graphics.fillStyle(0xb9ddff, 0.9);
+    graphics.fillEllipse(centerX - width * 0.15, height * 0.25, width * 0.2, height * 0.22);
+
+    graphics.generateTexture(DROPLET_TEXTURE_KEY, width, height);
+    graphics.destroy();
+
+    return DROPLET_TEXTURE_KEY;
 }
 
 function blendColor(base, mix, amount = 0.5) {
@@ -1049,6 +1078,21 @@ export class PathUI {
                         scrollFactor,
                         layerDepth
                     });
+                    this.createOutsideDroplets({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
+                } else if (this.outsideBackgroundEffect === 'droplets') {
+                    this.createOutsideDroplets({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
                 } else {
                     this.createOutsideSparkles({
                         baseX,
@@ -1201,6 +1245,21 @@ export class PathUI {
                     });
                 } else if (this.outsideBackgroundEffect === 'bats') {
                     this.createOutsideBats({
+                        baseX,
+                        coverageHeight,
+                        tileWidth,
+                        scrollFactor,
+                        layerDepth: depth
+                    });
+                    this.createOutsideDroplets({
+                        baseX,
+                        coverageHeight,
+                        tileWidth,
+                        scrollFactor,
+                        layerDepth: depth
+                    });
+                } else if (this.outsideBackgroundEffect === 'droplets') {
+                    this.createOutsideDroplets({
                         baseX,
                         coverageHeight,
                         tileWidth,
@@ -1592,6 +1651,116 @@ export class PathUI {
                 scrollFactor: Math.max(0.04, scrollFactor * 0.15),
                 tween
             });
+        }
+    }
+
+    createOutsideDroplets({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureDropletTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const minY = CONSTANTS.HEADER_HEIGHT * 0.6;
+        const maxY = safeCoverage * 0.5;
+        const minFall = safeCoverage * 0.18;
+        const maxFall = safeCoverage * 0.28;
+        const dropletCount = 12;
+        const baseDepth = (Number.isFinite(layerDepth) ? layerDepth : PATH_DEPTHS.outsideBackground) - 0.01;
+
+        for (let i = 0; i < dropletCount; i += 1) {
+            const droplet = scene.add.image(baseX, minY, textureKey);
+            droplet.setScrollFactor(0);
+            droplet.setDepth(baseDepth - i * 0.0001);
+            this.outsideBackgroundContainer.add(droplet);
+
+            const layerEntry = {
+                sprite: droplet,
+                baseY: droplet.y,
+                scrollFactor: Math.max(0.02, scrollFactor * 0.12),
+                tween: null
+            };
+
+            const updateBase = () => {
+                layerEntry.baseY = droplet.y - this.scrollY * layerEntry.scrollFactor;
+            };
+
+            const initializeDroplet = () => {
+                const offsetX = random(-halfWidth, halfWidth);
+                const startY = clamp(random(minY, maxY), minY, maxY);
+                const scale = random(0.65, 1.05);
+                const alpha = random(0.35, 0.7);
+                droplet.setPosition(baseX + offsetX, startY);
+                droplet.setScale(scale);
+                droplet.setAlpha(alpha);
+                updateBase();
+                return startY;
+            };
+
+            const initialY = initializeDroplet();
+            const initialAlpha = droplet.alpha;
+            const initialDrift = random(-8, 8);
+            const initialFall = random(minFall, maxFall);
+            const initialDuration = between(2600, 4200);
+            const initialDelay = between(0, 2200);
+            const initialRepeatDelay = between(1400, 3200);
+
+            const tween = scene.tweens.add({
+                targets: droplet,
+                x: droplet.x + initialDrift,
+                y: initialY + initialFall,
+                alpha: { from: initialAlpha, to: 0 },
+                duration: initialDuration,
+                ease: 'Sine.easeIn',
+                delay: initialDelay,
+                repeat: -1,
+                repeatDelay: initialRepeatDelay,
+                onStart: tweenInstance => {
+                    tweenInstance.timeScale = random(0.85, 1.1);
+                    updateBase();
+                },
+                onUpdate: updateBase,
+                onRepeat: tweenInstance => {
+                    const startY = initializeDroplet();
+                    const fallDistance = random(minFall, maxFall);
+                    const drift = random(-8, 8);
+                    tweenInstance.updateTo('x', droplet.x + drift, true);
+                    tweenInstance.updateTo('y', startY + fallDistance, true);
+                    tweenInstance.updateTo('alpha', 0, true);
+                    tweenInstance.timeScale = random(0.85, 1.15);
+                    tweenInstance.repeatDelay = between(1400, 3200);
+                }
+            });
+
+            droplet.once('destroy', () => {
+                if (tween && typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+
+            layerEntry.tween = tween;
+            this.outsideBackgroundLayers.push(layerEntry);
         }
     }
 
