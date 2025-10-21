@@ -55,8 +55,15 @@ const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
+const NEAR_BASE_OUTSIDE_BACKGROUND_LAYER_KEYS = new Set([
+    'outside_background_world3_3',
+    'outside_background_world3_6',
+    'outside_background_world3_8'
+]);
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
+const DEFAULT_OUTSIDE_BACKGROUND_SCALE = 2;
+const MIN_OUTSIDE_BACKGROUND_SCALE = 0.1;
 
 function ensureBirdTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
@@ -157,7 +164,8 @@ export class PathUI {
             wallTextureKey,
             backgroundTextureKey,
             outsideBackgroundLayerKeys,
-            outsideBackgroundEffect
+            outsideBackgroundEffect,
+            outsideBackgroundScale
         } = {}
     ) {
         this.scene = scene;
@@ -170,6 +178,10 @@ export class PathUI {
             ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
             : [];
         this.outsideBackgroundEffect = outsideBackgroundEffect || 'sparkles';
+        const requestedScale = Number.isFinite(outsideBackgroundScale)
+            ? outsideBackgroundScale
+            : DEFAULT_OUTSIDE_BACKGROUND_SCALE;
+        this.outsideBackgroundScale = Math.max(MIN_OUTSIDE_BACKGROUND_SCALE, requestedScale);
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -585,7 +597,9 @@ export class PathUI {
         const count = this.outsideBackgroundLayerKeys.length;
         const minFactor = 0.15;
         const maxFactor = 1;
-        const defaultScale = 2;
+        const defaultScale = Number.isFinite(this.outsideBackgroundScale)
+            ? this.outsideBackgroundScale
+            : DEFAULT_OUTSIDE_BACKGROUND_SCALE;
         const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
         const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
         const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
@@ -602,6 +616,25 @@ export class PathUI {
         const lerp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Linear === 'function'
             ? Phaser.Math.Linear
             : (start, end, t) => start + (end - start) * t;
+
+        const baseDepth = PATH_DEPTHS.outsideBackground;
+        let regularDepthIndex = 1;
+        let specialDepthIndex = 0;
+
+        const getLayerDepth = (key, isBaseLayer = false) => {
+            if (isBaseLayer) {
+                return baseDepth;
+            }
+
+            if (NEAR_BASE_OUTSIDE_BACKGROUND_LAYER_KEYS.has(key)) {
+                specialDepthIndex += 1;
+                return baseDepth + specialDepthIndex * 0.001;
+            }
+
+            const depth = baseDepth + regularDepthIndex * 0.01;
+            regularDepthIndex += 1;
+            return depth;
+        };
 
         this.outsideBackgroundLayerKeys.forEach((key, index) => {
             if (!key || !textures || typeof textures.exists !== 'function' || !textures.exists(key)) {
@@ -648,7 +681,7 @@ export class PathUI {
                 tileSprite.setOrigin(0.5, 0.5);
                 tileSprite.setTileScale(defaultScale, defaultScale);
                 tileSprite.setScrollFactor(0);
-                const layerDepth = PATH_DEPTHS.outsideBackground + index * 0.01;
+                const layerDepth = getLayerDepth(key, true);
                 tileSprite.setDepth(layerDepth);
                 tileSprite.setPosition(Math.round(tileSprite.x), Math.round(tileSprite.y));
 
@@ -688,12 +721,14 @@ export class PathUI {
             const minOffset = viewportHeight * 0.12;
             const maxOffset = viewportHeight * 0.45;
             const verticalOffset = lerp(minOffset, maxOffset, progress);
-            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100;
+            const verticalLift = Number.isFinite(viewportHeight) ? viewportHeight * 0.45 : 0;
+            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - verticalLift;
             const sprite = this.scene.add.image(baseX + horizontalOffset, spriteY, key);
             sprite.setOrigin(0.5, 0.5);
             sprite.setScale(defaultScale);
             sprite.setScrollFactor(0);
-            sprite.setDepth(PATH_DEPTHS.outsideBackground + index * 0.01);
+            const layerDepth = getLayerDepth(key);
+            sprite.setDepth(layerDepth);
             sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
 
             this.outsideBackgroundContainer.add(sprite);
@@ -701,7 +736,8 @@ export class PathUI {
             this.outsideBackgroundLayers.push({
                 sprite,
                 baseY: sprite.y,
-                scrollFactor
+                scrollFactor,
+                depth: layerDepth
             });
         });
     }

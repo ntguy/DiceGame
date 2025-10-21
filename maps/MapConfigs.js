@@ -178,10 +178,16 @@ export const MAP_CONFIGS = [
         wallTextureKey: 'wall2',
         backgroundTextureKey: 'path_background',
         outsideBackgroundLayerKeys: [
-            'outside_background_1',
-            'outside_background_2',
-            'outside_background_3',
-            'outside_background_4'
-        ]
+            'outside_background_world3_1',
+            'outside_background_world3_2',
+            'outside_background_world3_3',
+            'outside_background_world3_4',
+            'outside_background_world3_5',
+            'outside_background_world3_6',
+            'outside_background_world3_7',
+            'outside_background_world3_8',
+            'outside_background_world3_9'
+        ],
+        outsideBackgroundScale: 0.65
     }
 ];
