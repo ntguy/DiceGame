@@ -167,7 +167,7 @@ export const MAP_CONFIGS = [
             'outside_background_world2_3',
             'outside_background_world2_4'
         ],
-        outsideBackgroundEffect: 'birds'
+        outsideBackgroundEffect: 'birds_and_leaves'
     },
     {
         id: 'map-3',

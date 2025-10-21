@@ -57,6 +57,7 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
+const LEAF_TEXTURE_KEY = 'outside_leaf_particle';
 
 function ensureBirdTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
@@ -133,6 +134,40 @@ function ensureSparkleTexture(scene) {
     graphics.destroy();
 
     return SPARKLE_TEXTURE_KEY;
+}
+
+function ensureLeafTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(LEAF_TEXTURE_KEY)) {
+        return LEAF_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const width = 28;
+    const height = 18;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    graphics.clear();
+    graphics.fillStyle(0xcbe7b2, 1);
+    graphics.fillEllipse(centerX - width * 0.1, centerY, width * 0.8, height * 0.9);
+    graphics.fillStyle(0xa6d492, 1);
+    graphics.fillEllipse(centerX + width * 0.05, centerY * 0.95, width * 0.55, height * 0.7);
+    graphics.fillStyle(0x7fbf77, 1);
+    graphics.fillEllipse(centerX, centerY + height * 0.05, width * 0.35, height * 0.45);
+    graphics.lineStyle(2, 0x4f7f4a, 0.9);
+    graphics.beginPath();
+    graphics.moveTo(centerX - width * 0.35, centerY + height * 0.05);
+    graphics.lineTo(centerX + width * 0.45, centerY - height * 0.05);
+    graphics.strokePath();
+
+    graphics.generateTexture(LEAF_TEXTURE_KEY, width, height);
+    graphics.destroy();
+
+    return LEAF_TEXTURE_KEY;
 }
 
 function blendColor(base, mix, amount = 0.5) {
@@ -663,7 +698,11 @@ export class PathUI {
                     isTileSprite: true
                 });
 
-                if (this.outsideBackgroundEffect === 'birds') {
+                const effect = this.outsideBackgroundEffect;
+                const shouldCreateBirds = effect === 'birds' || effect === 'birds_and_leaves';
+                const shouldCreateLeaves = effect === 'leaves' || effect === 'birds_and_leaves';
+
+                if (shouldCreateBirds) {
                     this.createOutsideBirds({
                         baseX,
                         coverageHeight,
@@ -671,7 +710,19 @@ export class PathUI {
                         scrollFactor,
                         layerDepth
                     });
-                } else {
+                }
+
+                if (shouldCreateLeaves) {
+                    this.createOutsideLeaves({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
+                }
+
+                if (!shouldCreateBirds && !shouldCreateLeaves) {
                     this.createOutsideSparkles({
                         baseX,
                         coverageHeight,
@@ -786,6 +837,104 @@ export class PathUI {
                 sprite: bird,
                 baseY: bird.y,
                 scrollFactor: Math.max(0.04, scrollFactor * 0.15),
+                tween
+            });
+        }
+    }
+
+    createOutsideLeaves({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureLeafTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const minY = clamp(safeCoverage * 0.68, CONSTANTS.HEADER_HEIGHT, safeCoverage);
+        const maxY = clamp(safeCoverage * 0.92, CONSTANTS.HEADER_HEIGHT, safeCoverage);
+        const cornerX = baseX + halfWidth - width * 0.12;
+        const leavesCount = 14;
+
+        for (let i = 0; i < leavesCount; i += 1) {
+            const startX = cornerX + random(-40, 40);
+            const startY = clamp(random(minY, maxY), minY, maxY);
+            const leaf = scene.add.image(startX, startY, textureKey);
+            const baseScale = random(0.32, 0.52);
+            const baseAlpha = random(0.45, 0.85);
+            const baseAngle = random(-30, 30);
+            const depth = layerDepth + 0.002 + i * 0.0001;
+
+            leaf.setScale(baseScale);
+            leaf.setAlpha(baseAlpha);
+            leaf.setAngle(baseAngle);
+            leaf.setScrollFactor(0);
+            leaf.setDepth(depth);
+
+            this.outsideBackgroundContainer.add(leaf);
+
+            let driftX = random(-160, -110);
+            let driftY = random(-60, -25);
+            let spin = random(-140, 140);
+            const duration = between(3200, 5200);
+            const delay = between(0, 1600);
+
+            const tween = scene.tweens.add({
+                targets: leaf,
+                x: leaf.x + driftX,
+                y: leaf.y + driftY,
+                angle: leaf.angle + spin,
+                duration,
+                repeat: -1,
+                delay,
+                ease: 'Sine.easeInOut',
+                onRepeat: () => {
+                    leaf.x = cornerX + random(-40, 40);
+                    leaf.y = clamp(random(minY, maxY), minY, maxY);
+                    leaf.setAlpha(random(0.45, 0.85));
+                    leaf.setAngle(random(-30, 30));
+
+                    driftX = random(-160, -110);
+                    driftY = random(-60, -25);
+                    spin = random(-140, 140);
+
+                    if (tween && typeof tween.updateTo === 'function') {
+                        tween.updateTo('x', leaf.x + driftX, true);
+                        tween.updateTo('y', leaf.y + driftY, true);
+                        tween.updateTo('angle', leaf.angle + spin, true);
+                    }
+                }
+            });
+
+            leaf.once('destroy', () => {
+                if (tween && typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+
+            this.outsideBackgroundLayers.push({
+                sprite: leaf,
+                baseY: leaf.y,
+                scrollFactor: Math.max(0.04, scrollFactor * 0.2),
                 tween
             });
         }
