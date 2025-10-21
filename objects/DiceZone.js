@@ -13,6 +13,9 @@ export function setupZones(scene) {
         ? scene.getZoneHeight()
         : 100;
     const zoneY = 350;
+    const backgroundTextureKey = scene && typeof scene.getZoneBackgroundTextureKey === 'function'
+        ? scene.getZoneBackgroundTextureKey()
+        : 'path_background';
 
     const visuals = [];
 
@@ -21,7 +24,7 @@ export function setupZones(scene) {
     const attackZoneX = 600;
 
     const defendZone = scene.add.zone(defendZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
-    const defendBackground = scene.add.tileSprite(defendZoneX, zoneY, zoneWidth, zoneHeight, 'path_background')
+    const defendBackground = scene.add.tileSprite(defendZoneX, zoneY, zoneWidth, zoneHeight, backgroundTextureKey)
         .setOrigin(0.5)
         .setTileScale(ZONE_BACKGROUND_TILE_SCALE, ZONE_BACKGROUND_TILE_SCALE);
     const defendRect = scene.add.rectangle(defendZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0x3498db);
@@ -30,7 +33,7 @@ export function setupZones(scene) {
 
     // --- Attack zone ---
     const attackZone = scene.add.zone(attackZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);
-    const attackBackground = scene.add.tileSprite(attackZoneX, zoneY, zoneWidth, zoneHeight, 'path_background')
+    const attackBackground = scene.add.tileSprite(attackZoneX, zoneY, zoneWidth, zoneHeight, backgroundTextureKey)
         .setOrigin(0.5)
         .setTileScale(ZONE_BACKGROUND_TILE_SCALE, ZONE_BACKGROUND_TILE_SCALE);
     const attackRect = scene.add.rectangle(attackZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0xe74c3c);

@@ -265,6 +265,7 @@ export class GameScene extends Phaser.Scene {
         this.maps = Array.isArray(MAP_CONFIGS) ? [...MAP_CONFIGS] : [];
         this.currentMapIndex = -1;
         this.currentMapConfig = null;
+        this.currentZoneBackgroundTextureKey = null;
 
         this.mapTitleText = null;
     }
@@ -413,6 +414,7 @@ export class GameScene extends Phaser.Scene {
         this.updateEnemyBurnUI();
         const mapLoaded = this.loadMap(0);
         if (!mapLoaded) {
+            const fallbackBackgroundTextureKey = this.getBackgroundTextureKeyForConfig(null);
             this.pathManager = new PathManager({
                 allowUpgradeNodes: true,
                 upgradeNodeMinEnemyIndex: 1
@@ -424,10 +426,11 @@ export class GameScene extends Phaser.Scene {
                 {
                     connectionTextureKey: this.getPathTextureKeyForConfig(null),
                     wallTextureKey: this.getWallTextureKeyForConfig(null),
-                    backgroundTextureKey: this.getBackgroundTextureKeyForConfig(null),
+                    backgroundTextureKey: fallbackBackgroundTextureKey,
                     outsideBackgroundEffect: null
                 }
             );
+            this.updateZoneBackgroundTexture(fallbackBackgroundTextureKey);
             this.updateEnemyHealthUI();
             this.prepareNextEnemyMove();
         }
@@ -2878,6 +2881,97 @@ export class GameScene extends Phaser.Scene {
         return null;
     }
 
+    getZoneBackgroundTextureKey() {
+        const textures = this.textures;
+        const defaultKey = 'path_background';
+        const seen = new Set();
+        const candidates = [];
+
+        if (typeof this.currentZoneBackgroundTextureKey === 'string') {
+            candidates.push(this.currentZoneBackgroundTextureKey);
+        }
+
+        if (this.currentMapConfig && typeof this.currentMapConfig.backgroundTextureKey === 'string') {
+            candidates.push(this.currentMapConfig.backgroundTextureKey);
+        }
+
+        candidates.push(defaultKey);
+
+        for (const key of candidates) {
+            if (!key || seen.has(key)) {
+                continue;
+            }
+            seen.add(key);
+
+            if (!textures || typeof textures.exists !== 'function') {
+                return key;
+            }
+
+            if (textures.exists(key)) {
+                return key;
+            }
+        }
+
+        return null;
+    }
+
+    updateZoneBackgroundTexture(textureKey) {
+        const textures = this.textures;
+        const seen = new Set();
+        const candidates = [];
+
+        if (typeof textureKey === 'string') {
+            candidates.push(textureKey);
+        }
+
+        if (this.currentMapConfig && typeof this.currentMapConfig.backgroundTextureKey === 'string') {
+            candidates.push(this.currentMapConfig.backgroundTextureKey);
+        }
+
+        if (typeof this.currentZoneBackgroundTextureKey === 'string') {
+            candidates.push(this.currentZoneBackgroundTextureKey);
+        }
+
+        candidates.push('path_background');
+
+        let resolvedKey = null;
+
+        for (const key of candidates) {
+            if (!key || seen.has(key)) {
+                continue;
+            }
+            seen.add(key);
+
+            if (!textures || typeof textures.exists !== 'function') {
+                resolvedKey = key;
+                break;
+            }
+
+            if (textures.exists(key)) {
+                resolvedKey = key;
+                break;
+            }
+        }
+
+        this.currentZoneBackgroundTextureKey = resolvedKey;
+
+        const applyTexture = sprite => {
+            if (!sprite || !resolvedKey || typeof sprite.setTexture !== 'function') {
+                return;
+            }
+
+            const scaleX = typeof sprite.tileScaleX === 'number' ? sprite.tileScaleX : null;
+            const scaleY = typeof sprite.tileScaleY === 'number' ? sprite.tileScaleY : null;
+            sprite.setTexture(resolvedKey);
+            if (scaleX !== null && scaleY !== null && typeof sprite.setTileScale === 'function') {
+                sprite.setTileScale(scaleX, scaleY);
+            }
+        };
+
+        applyTexture(this.defendZoneBackground);
+        applyTexture(this.attackZoneBackground);
+    }
+
     getOutsideBackgroundLayerKeysForConfig(config) {
         const textures = this.textures;
         const result = [];
@@ -2948,6 +3042,8 @@ export class GameScene extends Phaser.Scene {
         const outsideBackgroundEffect = config && typeof config.outsideBackgroundEffect === 'string'
             ? config.outsideBackgroundEffect
             : null;
+
+        this.updateZoneBackgroundTexture(backgroundTextureKey);
 
         this.pathManager = new PathManager({
             enemySequence,
