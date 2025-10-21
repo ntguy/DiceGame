@@ -101,6 +101,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
+        this.pendingCrowdControlPlan = null;
         this.temporarilyDestroyedDice = [];
         this.timeBombStates = new Map();
         this.activeTimeBombResolveBonus = 0;
@@ -144,6 +145,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
+        this.pendingCrowdControlPlan = null;
 
         this.mapTitleText = null;
         this.mapSkipButton = null;
@@ -303,6 +305,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingWeakenCount = 0;
         this.nullifiedDice = new Set();
         this.pendingNullifyCount = 0;
+        this.pendingCrowdControlPlan = null;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerBlockValue = 0;
@@ -1147,6 +1150,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (isFirstRoll) {
+            this.applyCrowdControlPlan();
             this.applyPendingLocks();
             this.applyPendingWeaken();
             this.applyPendingNullify();
@@ -1561,6 +1565,93 @@ export class GameScene extends Phaser.Scene {
         this.unlockAllDice();
         this.clearAllWeakenedDice();
         this.clearAllNullifiedDice();
+    }
+
+    applyCrowdControlPlan() {
+        const plan = this.pendingCrowdControlPlan;
+        if (!plan) {
+            return;
+        }
+
+        const lockCount = Number.isFinite(plan.lock) ? Math.max(0, Math.floor(plan.lock)) : 0;
+        const nullifyCount = Number.isFinite(plan.nullify) ? Math.max(0, Math.floor(plan.nullify)) : 0;
+        const weakenCount = Number.isFinite(plan.weaken) ? Math.max(0, Math.floor(plan.weaken)) : 0;
+
+        if (lockCount <= 0 && nullifyCount <= 0 && weakenCount <= 0) {
+            this.pendingCrowdControlPlan = null;
+            return;
+        }
+
+        const diceInPlay = Array.isArray(this.dice) ? this.dice.filter(die => !!die) : [];
+        if (diceInPlay.length === 0) {
+            return;
+        }
+
+        const orderedDice = shuffleArray(diceInPlay);
+        const assignedDice = new Set();
+
+        const applyEffect = (count, applyFn) => {
+            if (count <= 0) {
+                return 0;
+            }
+
+            let applied = 0;
+            for (let i = 0; i < orderedDice.length && applied < count; i += 1) {
+                const die = orderedDice[i];
+                if (!die || assignedDice.has(die)) {
+                    continue;
+                }
+
+                if (applyFn(die)) {
+                    assignedDice.add(die);
+                    applied += 1;
+                }
+            }
+
+            return applied;
+        };
+
+        const locksApplied = applyEffect(lockCount, die => this.lockDie(die));
+        const nullifiedApplied = applyEffect(nullifyCount, die => this.nullifyDie(die));
+        const weakenedApplied = applyEffect(weakenCount, die => this.weakenDie(die));
+
+        if (locksApplied > 0) {
+            this.updateRollButtonState();
+        }
+
+        if (nullifiedApplied > 0 || weakenedApplied > 0) {
+            this.updateZonePreviewText();
+        }
+
+        plan.lock = Math.max(0, plan.lock - locksApplied);
+        plan.nullify = Math.max(0, plan.nullify - nullifiedApplied);
+        plan.weaken = Math.max(0, plan.weaken - weakenedApplied);
+
+        if (plan.lock <= 0 && plan.nullify <= 0 && plan.weaken <= 0) {
+            this.pendingCrowdControlPlan = null;
+        }
+    }
+
+    queueEnemyCrowdControl(action) {
+        if (!action) {
+            return;
+        }
+
+        const lockCount = Number.isFinite(action.lock) ? Math.max(0, Math.floor(action.lock)) : 0;
+        const nullifyCount = Number.isFinite(action.nullify) ? Math.max(0, Math.floor(action.nullify)) : 0;
+        const weakenCount = Number.isFinite(action.weaken) ? Math.max(0, Math.floor(action.weaken)) : 0;
+
+        if (lockCount <= 0 && nullifyCount <= 0 && weakenCount <= 0) {
+            return;
+        }
+
+        if (!this.pendingCrowdControlPlan) {
+            this.pendingCrowdControlPlan = { lock: 0, nullify: 0, weaken: 0 };
+        }
+
+        this.pendingCrowdControlPlan.lock += lockCount;
+        this.pendingCrowdControlPlan.nullify += nullifyCount;
+        this.pendingCrowdControlPlan.weaken += weakenCount;
     }
 
     queueEnemyLocks(count) {
@@ -3175,6 +3266,8 @@ export class GameScene extends Phaser.Scene {
                 this.applyPlayerBurn(action.value);
             } else if (action.type === 'set_max_dice_per_zone') {
                 this.setMaxDicePerZone(action.value);
+            } else if (action.type === 'crowd_control') {
+                this.queueEnemyCrowdControl(action);
             }
 
             if (this.isGameOver) {
@@ -3448,6 +3541,7 @@ export class GameScene extends Phaser.Scene {
         this.weakenedDice.clear();
         this.pendingNullifyCount = 0;
         this.nullifiedDice.clear();
+        this.pendingCrowdControlPlan = null;
         this.isFirstCombatTurn = true;
         this.prepperCarryoverRolls = 0;
         this.resetZoneConstraints();
@@ -3881,6 +3975,7 @@ export class GameScene extends Phaser.Scene {
         this.destroyFacilityUI();
 
         this.inCombat = false;
+        this.pendingCrowdControlPlan = null;
         this.updateRollButtonState();
         this.updateMapTitleText();
         this.updateEnemyBurnUI();

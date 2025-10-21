@@ -2,16 +2,14 @@ import { BaseEnemy } from './BaseEnemy.js';
 import {
     attackAction,
     burnAction,
+    crowdControlAction,
     defendAction,
     healAction,
-    lockAction,
-    nullifyAction,
-    weakenAction,
     setMaxDicePerZoneAction
 } from './EnemyActions.js';
 
 const DEFAULT_MAX_DICE = 5;
-const REDUCED_MAX_DICE = 4;
+const ZONAL_CRUSH_MAX_VALUES = [4, 3];
 const BASE_ATTACK_VALUE = 15;
 const FINAL_ATTACK_VALUE = 20;
 const BASE_DEFEND_VALUE = 15;
@@ -26,7 +24,6 @@ export class CompactorEnemy extends BaseEnemy {
         super({ name: 'The Compactor', maxHealth: 123 });
 
         this.currentMaxDicePerZone = DEFAULT_MAX_DICE;
-        this.reducedMaxDicePerZone = REDUCED_MAX_DICE;
         this.defendValue = BASE_DEFEND_VALUE;
         this.healValue = BASE_HEAL_VALUE;
         this.loopCount = 0;
@@ -38,10 +35,10 @@ export class CompactorEnemy extends BaseEnemy {
     buildMoves() {
         const moves = [
             this.createPressMove(),
-            this.createZonalCrushMove(this.zonalCrushKeys[0]),
+            this.createZonalCrushMove(this.zonalCrushKeys[0], ZONAL_CRUSH_MAX_VALUES[0]),
             this.createScorchMove(),
             this.createCrowdControlMove(),
-            this.createZonalCrushMove(this.zonalCrushKeys[1]),
+            this.createZonalCrushMove(this.zonalCrushKeys[1], ZONAL_CRUSH_MAX_VALUES[1]),
             this.createFinalSmashMove()
         ];
 
@@ -59,20 +56,20 @@ export class CompactorEnemy extends BaseEnemy {
         };
     }
 
-    createZonalCrushMove(key) {
+    createZonalCrushMove(key, targetMax) {
         if (!key) {
             return null;
         }
 
         return {
             key,
-            label: 'Zonal Crush: Max 4 Dice Per Zone',
+            label: () => `Zonal Crush: Max ${targetMax} Dice Per Zone`,
             createActions: () => {
-                this.currentMaxDicePerZone = this.reducedMaxDicePerZone;
+                this.currentMaxDicePerZone = targetMax;
                 // Remove this move after it executes
                 this.moves = this.moves.filter(move => move.key !== key);
                 this.moveIndex = Math.max(0, this.moveIndex - 1);
-                return [setMaxDicePerZoneAction(this.reducedMaxDicePerZone)];
+                return [setMaxDicePerZoneAction(targetMax)];
             }
         };
     }
@@ -92,10 +89,12 @@ export class CompactorEnemy extends BaseEnemy {
         return {
             key: 'compactor_crowd_control',
             label: () => `Crushing Grip: Lock ${CROWD_CONTROL_COUNT} Dice + Nullify ${CROWD_CONTROL_COUNT} Dice + Weaken ${CROWD_CONTROL_COUNT} Dice`,
-            actions: [
-                lockAction(CROWD_CONTROL_COUNT),
-                nullifyAction(CROWD_CONTROL_COUNT),
-                weakenAction(CROWD_CONTROL_COUNT)
+            createActions: () => [
+                crowdControlAction({
+                    lock: CROWD_CONTROL_COUNT,
+                    nullify: CROWD_CONTROL_COUNT,
+                    weaken: CROWD_CONTROL_COUNT
+                })
             ]
         };
     }
