@@ -1,4 +1,5 @@
 import { GameScene } from './GameScene.js';
+import { StartScene } from './StartScene.js';
 
 const GAME_WIDTH = 1100;
 const HEADER_HEIGHT = 40;
@@ -37,7 +38,7 @@ export const config = {
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     backgroundColor: "#222",
-    scene: [GameScene],
+    scene: [StartScene, GameScene],
     render: {
         pixelArt: true,
         antialias: false
