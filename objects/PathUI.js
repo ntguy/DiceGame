@@ -57,6 +57,7 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
+const LEAF_TEXTURE_KEY = 'outside_leaf_sprite';
 
 function ensureBirdTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
@@ -109,6 +110,37 @@ function ensureBirdTexture(scene) {
     graphics.destroy();
 
     return BIRD_TEXTURE_KEY;
+}
+
+function ensureLeafTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(LEAF_TEXTURE_KEY)) {
+        return LEAF_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const width = 26;
+    const height = 16;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    graphics.clear();
+    graphics.fillStyle(0x7fab54, 1);
+    graphics.fillEllipse(centerX, centerY, width * 0.9, height * 0.6);
+    graphics.fillStyle(0x60853a, 1);
+    graphics.fillEllipse(centerX + width * 0.12, centerY, width * 0.55, height * 0.38);
+    graphics.lineStyle(1, 0x3f5d23, 0.9);
+    graphics.beginPath();
+    graphics.moveTo(centerX - width * 0.35, centerY);
+    graphics.lineTo(centerX + width * 0.4, centerY);
+    graphics.strokePath();
+    graphics.generateTexture(LEAF_TEXTURE_KEY, width, height);
+    graphics.destroy();
+
+    return LEAF_TEXTURE_KEY;
 }
 
 function ensureSparkleTexture(scene) {
@@ -671,6 +703,21 @@ export class PathUI {
                         scrollFactor,
                         layerDepth
                     });
+                    this.createOutsideLeaves({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
+                } else if (this.outsideBackgroundEffect === 'leaves') {
+                    this.createOutsideLeaves({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
                 } else {
                     this.createOutsideSparkles({
                         baseX,
@@ -859,6 +906,87 @@ export class PathUI {
                 sprite: sparkle,
                 baseY: sparkle.y,
                 scrollFactor: Math.max(0.04, scrollFactor * 0.15),
+                tween
+            });
+        }
+    }
+
+    createOutsideLeaves({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureLeafTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const minY = clamp(safeCoverage * 0.72, CONSTANTS.HEADER_HEIGHT, safeCoverage);
+        const maxY = clamp(safeCoverage * 0.92, minY, safeCoverage);
+        const startX = baseX + halfWidth - Math.min(width * 0.08, 60);
+        const horizontalSpread = Math.min(width * 0.25, 180);
+        const leafCount = 18;
+
+        for (let i = 0; i < leafCount; i += 1) {
+            const offsetX = random(-horizontalSpread, 8);
+            const startY = clamp(random(minY, maxY), minY, maxY);
+            const leaf = scene.add.image(startX + offsetX, startY, textureKey);
+            const baseScale = random(0.42, 0.72);
+            const flip = random(0, 1) < 0.5 ? -1 : 1;
+            leaf.setScale(baseScale * flip, baseScale);
+            leaf.setScrollFactor(0);
+            leaf.setDepth(layerDepth + 0.0015 + i * 0.00005);
+            leaf.setAlpha(random(0.55, 0.85));
+            leaf.setAngle(random(-18, 12));
+
+            this.outsideBackgroundContainer.add(leaf);
+
+            const travelDistance = random(80, 150);
+            const verticalShift = random(-22, -8);
+            const rotationAmount = random(-18, 24);
+            const duration = between(3200, 5200);
+            const delay = between(0, 2200);
+
+            const tween = scene.tweens.add({
+                targets: leaf,
+                x: leaf.x - travelDistance,
+                y: leaf.y + verticalShift,
+                angle: leaf.angle + rotationAmount,
+                duration,
+                delay,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+
+            leaf.once('destroy', () => {
+                if (tween && typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+
+            this.outsideBackgroundLayers.push({
+                sprite: leaf,
+                baseY: leaf.y,
+                scrollFactor: Math.max(0.035, scrollFactor * 0.12),
                 tween
             });
         }
