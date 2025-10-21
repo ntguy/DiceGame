@@ -65,7 +65,6 @@ export class CompactorEnemy extends BaseEnemy {
             key,
             label: () => `Zonal Crush: Max ${targetMax} Dice Per Zone`,
             createActions: () => {
-                this.currentMaxDicePerZone = targetMax;
                 // Remove this move after it executes
                 this.moves = this.moves.filter(move => move.key !== key);
                 this.moveIndex = Math.max(0, this.moveIndex - 1);
@@ -127,5 +126,11 @@ export class CompactorEnemy extends BaseEnemy {
 
     getCurrentMaxDicePerZone() {
         return this.currentMaxDicePerZone;
+    }
+
+    onMaxDicePerZoneChanged(newMax) {
+        if (Number.isFinite(newMax)) {
+            this.currentMaxDicePerZone = newMax;
+        }
     }
 }

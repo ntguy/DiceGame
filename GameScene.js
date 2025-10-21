@@ -3266,6 +3266,9 @@ export class GameScene extends Phaser.Scene {
                 this.applyPlayerBurn(action.value);
             } else if (action.type === 'set_max_dice_per_zone') {
                 this.setMaxDicePerZone(action.value);
+                if (enemy && typeof enemy.onMaxDicePerZoneChanged === 'function') {
+                    enemy.onMaxDicePerZoneChanged(action.value);
+                }
             } else if (action.type === 'crowd_control') {
                 this.queueEnemyCrowdControl(action);
             }
