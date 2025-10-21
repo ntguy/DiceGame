@@ -66,6 +66,7 @@ const BAT_FRAME_KEYS = [
     `${BAT_TEXTURE_KEY}_wing_down`
 ];
 const BAT_FLAP_FRAME_RATE = 6;
+const RAIN_TEXTURE_KEY = 'outside_rain_drop';
 const WORLD3_OUTSIDE_BACKGROUND_ORDER = [1, 3, 6, 8, 2, 4, 5, 7, 9];
 const WORLD3_LAYER_TRIM_TOP = 30;
 const WORLD3_BASE_SCALE = 0.65;
@@ -488,6 +489,24 @@ function ensureSparkleTexture(scene) {
     graphics.destroy();
 
     return SPARKLE_TEXTURE_KEY;
+}
+
+function ensureRainTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(RAIN_TEXTURE_KEY)) {
+        return RAIN_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    graphics.fillStyle(0x6fb7ff, 0.95);
+    graphics.fillRoundedRect(1, 0, 4, 14, 2);
+    graphics.generateTexture(RAIN_TEXTURE_KEY, 6, 14);
+    graphics.destroy();
+
+    return RAIN_TEXTURE_KEY;
 }
 
 function blendColor(base, mix, amount = 0.5) {
@@ -1049,6 +1068,13 @@ export class PathUI {
                         scrollFactor,
                         layerDepth
                     });
+                } else if (this.outsideBackgroundEffect === 'rain') {
+                    this.createOutsideRain({
+                        baseX,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
                 } else {
                     this.createOutsideSparkles({
                         baseX,
@@ -1203,6 +1229,13 @@ export class PathUI {
                     this.createOutsideBats({
                         baseX,
                         coverageHeight,
+                        tileWidth,
+                        scrollFactor,
+                        layerDepth: depth
+                    });
+                } else if (this.outsideBackgroundEffect === 'rain') {
+                    this.createOutsideRain({
+                        baseX,
                         tileWidth,
                         scrollFactor,
                         layerDepth: depth
@@ -1593,6 +1626,44 @@ export class PathUI {
                 tween
             });
         }
+    }
+
+    createOutsideRain({ baseX, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureRainTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const particles = scene.add.particles(textureKey);
+        particles.setPosition(baseX, CONSTANTS.HEADER_HEIGHT);
+        particles.setScrollFactor(0);
+        particles.setDepth(layerDepth + 0.005);
+
+        particles.createEmitter({
+            x: { min: -width / 2, max: width / 2 },
+            y: 0,
+            lifespan: 1200,
+            speedY: { min: 520, max: 640 },
+            scale: { start: 0.6, end: 0.6 },
+            alpha: { start: 0.7, end: 0 },
+            frequency: 70,
+            quantity: 4
+        });
+
+        this.outsideBackgroundContainer.add(particles);
+        this.outsideBackgroundLayers.push({
+            sprite: particles,
+            baseY: particles.y,
+            scrollFactor: Math.max(0.05, Number.isFinite(scrollFactor) ? scrollFactor * 0.3 : 0.1)
+        });
     }
 
     getNodePosition(node) {
