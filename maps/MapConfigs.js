@@ -10,6 +10,7 @@ import { LockdownEnemy } from '../enemies/Lockdown.js';
 import { LeechEnemy } from '../enemies/Leech.js';
 import { AuditorEnemy } from '../enemies/Auditor.js';
 import { CompactorEnemy } from '../enemies/Compactor.js';
+import { StatusTicianEnemy } from '../enemies/StatusTician.js';
 
 const mapOneEnemyFactories = () => [
     new SlapperEnemy(),
@@ -99,7 +100,8 @@ const mapThreeEnemyFactories = () => [
     new AuditorEnemy(),
     new CompactorEnemy(),
     new LockdownEnemy(), // placeholder
-    new LockdownEnemy() // placeholder
+    new LockdownEnemy(), // placeholder
+    new StatusTicianEnemy()
 ];
 
 const mapThreeEnemySequence = [

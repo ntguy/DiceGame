@@ -68,7 +68,7 @@ export function createDie(scene, slotIndex, blueprint) {
     container.wildBaseValueText = wildBaseValueText;
 
     container.showWildBaseValueOverlay = function(value) {
-        if (!this.wildBaseValueText) {
+        if (!this.wildBaseValueText || !this.wildBaseValueText.scene) {
             return;
         }
         this.wildBaseValueText.setText(`${value}`);
@@ -80,7 +80,7 @@ export function createDie(scene, slotIndex, blueprint) {
     };
 
     container.hideWildBaseValueOverlay = function() {
-        if (this.wildBaseValueText) {
+        if (this.wildBaseValueText && this.wildBaseValueText.scene) {
             this.wildBaseValueText.setVisible(false);
         }
     };
