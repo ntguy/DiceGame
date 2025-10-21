@@ -190,13 +190,9 @@ export function createDie(scene, slotIndex, blueprint) {
     };
 
     container.updateVisualState = function() {
-        const dieAlpha = this.isWeakened ? 0.5 : 1;
+        const dieAlpha = this.isWeakened ? 0.4 : 1;
 
-        if (this.isLocked) {
-            this.bg.fillColor = 0x5b2c6f;
-        } else {
-            this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
-        }
+        this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
         this.bg.setAlpha(dieAlpha);
 
         if (Array.isArray(this.pips)) {
