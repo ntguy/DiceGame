@@ -414,33 +414,33 @@ function ensureBatTexture(scene) {
         const frameConfigs = [
             {
                 key: BAT_FRAME_KEYS[0],
-                outerYOffset: -4,
-                tipYOffset: -8,
-                innerYOffset: -3,
-                wingSpanScale: 0.88,
-                earTilt: -0.3
+                outerYOffset: -6,
+                tipYOffset: -11,
+                innerYOffset: -4.5,
+                wingSpanScale: 0.82,
+                earTilt: -0.45
             },
             {
                 key: BAT_FRAME_KEYS[1],
-                outerYOffset: -1,
-                tipYOffset: -3,
-                innerYOffset: -1,
-                wingSpanScale: 0.94
+                outerYOffset: -2,
+                tipYOffset: -5,
+                innerYOffset: -1.6,
+                wingSpanScale: 0.9
             },
             {
                 key: BAT_FRAME_KEYS[2],
-                outerYOffset: 2,
-                tipYOffset: 2,
-                innerYOffset: 2.2,
-                wingSpanScale: 1
+                outerYOffset: 2.6,
+                tipYOffset: 3.2,
+                innerYOffset: 2.8,
+                wingSpanScale: 1.04
             },
             {
                 key: BAT_FRAME_KEYS[3],
-                outerYOffset: 4.5,
-                tipYOffset: 6,
-                innerYOffset: 4.6,
-                wingSpanScale: 1.06,
-                earTilt: 0.25
+                outerYOffset: 6.5,
+                tipYOffset: 8.5,
+                innerYOffset: 5.9,
+                wingSpanScale: 1.12,
+                earTilt: 0.35
             }
         ];
 
@@ -1355,9 +1355,9 @@ export class PathUI {
         const halfWidth = width / 2;
         const minY = CONSTANTS.HEADER_HEIGHT * 0.85;
         const maxY = safeCoverage * 0.28;
-        const verticalJitter = safeCoverage * 0.12;
+        const verticalJitter = safeCoverage * 0.08;
         const batCount = 14;
-        const horizontalRange = halfWidth * 0.55;
+        const horizontalRange = halfWidth * 0.68;
 
         for (let i = 0; i < batCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
@@ -1412,7 +1412,7 @@ export class PathUI {
                 bat.anims.timeScale = flapTimeScale;
             }
 
-            const flutterAmplitude = random(6, 11) * baseScale;
+            const flutterAmplitude = random(4, 7) * baseScale;
             const flutterDuration = Math.max(140, Math.round(1000 / BAT_FLAP_FRAME_RATE));
             flutterState.offset = random(-flutterAmplitude, flutterAmplitude);
 
@@ -1446,7 +1446,7 @@ export class PathUI {
                 const targetX = baseX + random(-horizontalRange, horizontalRange);
                 const baseTargetY = random(minY, maxY);
                 const targetY = clamp(
-                    baseTargetY + random(-verticalJitter, verticalJitter) * 0.6,
+                    baseTargetY + random(-verticalJitter, verticalJitter) * 0.35,
                     minY,
                     maxY
                 );
@@ -1457,8 +1457,8 @@ export class PathUI {
                 const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
                 const maxDistance = Math.max(1, horizontalRange * 1.2);
                 const distanceRatio = clamp(distance / maxDistance, 0, 1);
-                const minDuration = 1650;
-                const maxDuration = 2650;
+                const minDuration = 1900;
+                const maxDuration = 3150;
                 const duration = minDuration + (maxDuration - minDuration) * distanceRatio;
                 const hold = between(120, 220);
                 const repeatDelay = between(90, 210);
@@ -1490,7 +1490,7 @@ export class PathUI {
                     }
                 });
 
-                tween.timeScale = random(0.9, 1.05);
+                tween.timeScale = random(0.86, 0.97);
                 tweenHolder.flight = tween;
             };
 
