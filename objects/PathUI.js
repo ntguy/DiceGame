@@ -57,7 +57,228 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
+const WORLD3_OUTSIDE_BACKGROUND_ORDER = [1, 3, 6, 8, 2, 4, 5, 7, 9];
+const WORLD3_LAYER_TRIM_TOP = 30;
+const WORLD3_BASE_SCALE = 0.65;
+const WORLD3_FRONT_SCALE_BONUS = 0.01;
+const WORLD3_SCROLL_MULTIPLIER = 0.4;
+const WORLD3_MIN_SCROLL_FACTOR = 0;
+const WORLD3_MAX_SCROLL_FACTOR = 1;
+const WORLD3_MIN_VERTICAL_OFFSET_RATIO = 0.4;
+const WORLD3_MAX_VERTICAL_OFFSET_RATIO = 0.5;
+const WORLD3_BASELINE_ADJUSTMENT_RATIO = 0.5;
+const WORLD3_TILE_OFFSET_RATIO = 0.08;
+const WORLD3_TOP_STRETCH_INTENSITY = 0.55;
+const WORLD3_BOTTOM_STRETCH_INTENSITY = 0.75;
+const WORLD3_STRETCH_POWER = 2.4;
+const WORLD3_STRETCH_SEGMENTS = 5;
+const WORLD3_TRIMMED_LAYER_INDICES = new Set([3, 6, 8]);
 
+function isNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+
+function clampNumber(value, min, max, fallback = min) {
+    if (!isNumber(value)) {
+        return fallback;
+    }
+
+    if (typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function') {
+        return Phaser.Math.Clamp(value, min, max);
+    }
+
+    return Math.min(Math.max(value, min), max);
+}
+
+function formatNumberForKey(value) {
+    if (!isNumber(value)) {
+        return '0';
+    }
+    return String(Math.round(value * 1000));
+}
+
+function extractWorld3LayerIndex(key) {
+    if (typeof key !== 'string') {
+        return null;
+    }
+
+    const match = key.match(/world3_(\d+)/i);
+    if (!match) {
+        return null;
+    }
+
+    const parsed = Number(match[1]);
+    return Number.isNaN(parsed) ? null : parsed;
+}
+
+function isWorld3BackgroundKey(key) {
+    return typeof key === 'string' && key.toLowerCase().includes('world3');
+}
+
+function reorderWorld3LayerKeys(keys) {
+    if (!Array.isArray(keys) || keys.length === 0) {
+        return [];
+    }
+
+    const unique = new Set();
+    const keyedByIndex = new Map();
+    keys.forEach(key => {
+        if (typeof key !== 'string' || unique.has(key)) {
+            return;
+        }
+
+        unique.add(key);
+        const index = extractWorld3LayerIndex(key);
+        if (index !== null && !keyedByIndex.has(index)) {
+            keyedByIndex.set(index, key);
+        }
+    });
+
+    const ordered = [];
+    WORLD3_OUTSIDE_BACKGROUND_ORDER.forEach(orderIndex => {
+        if (keyedByIndex.has(orderIndex)) {
+            ordered.push(keyedByIndex.get(orderIndex));
+            keyedByIndex.delete(orderIndex);
+        }
+    });
+
+    keys.forEach(key => {
+        if (!ordered.includes(key)) {
+            ordered.push(key);
+        }
+    });
+
+    return ordered;
+}
+
+function createStretchedTexture(scene, key, {
+    trimTop = 0,
+    trimBottom = 0,
+    topIntensity = WORLD3_TOP_STRETCH_INTENSITY,
+    bottomIntensity = WORLD3_BOTTOM_STRETCH_INTENSITY,
+    stretchPower = WORLD3_STRETCH_POWER,
+    segmentCount = WORLD3_STRETCH_SEGMENTS
+} = {}) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (!scene.textures.exists(key)) {
+        return null;
+    }
+
+    const texture = scene.textures.get(key);
+    if (!texture || typeof texture.getSourceImage !== 'function') {
+        return null;
+    }
+
+    const sourceImage = texture.getSourceImage();
+    if (!sourceImage) {
+        return null;
+    }
+
+    const sourceWidth = Math.max(1, Math.round(sourceImage.width || 1));
+    const rawSourceHeight = Math.max(1, Math.round(sourceImage.height || 1));
+    const safeTrimTop = clampNumber(trimTop, 0, rawSourceHeight - 1, 0);
+    const safeTrimBottom = clampNumber(trimBottom, 0, rawSourceHeight - safeTrimTop - 1, 0);
+    const availableHeight = Math.max(1, rawSourceHeight - safeTrimTop - safeTrimBottom);
+    const segments = Math.max(1, Math.round(segmentCount));
+    const topAmount = Math.max(0, topIntensity);
+    const bottomAmount = Math.max(0, bottomIntensity);
+    const power = Math.max(0.1, stretchPower);
+
+    const segmentSourceHeights = [];
+    const destHeights = [];
+    let accumulatedHeight = 0;
+
+    for (let index = 0; index < segments; index += 1) {
+        const startRatio = index / segments;
+        const endRatio = (index + 1) / segments;
+        const startY = safeTrimTop + Math.floor(availableHeight * startRatio);
+        const endY = safeTrimTop + Math.floor(availableHeight * endRatio);
+        const segmentSourceHeight = Math.max(1, endY - startY);
+        segmentSourceHeights.push({ startY, height: segmentSourceHeight });
+
+        const midpoint = (index + 0.5) / segments;
+        const topWeight = Math.pow(Math.max(0, 1 - midpoint), power);
+        const bottomWeight = Math.pow(Math.max(0, midpoint), power);
+        const localStretch = 1 + (topWeight * topAmount) + (bottomWeight * bottomAmount);
+        const destHeight = Math.max(1, Math.round(segmentSourceHeight * localStretch));
+        destHeights.push(destHeight);
+        accumulatedHeight += destHeight;
+    }
+
+    const outputHeight = Math.max(1, Math.round(accumulatedHeight));
+    const formattedKey = [
+        safeTrimTop,
+        safeTrimBottom,
+        formatNumberForKey(topAmount),
+        formatNumberForKey(bottomAmount),
+        formatNumberForKey(power),
+        segments,
+        outputHeight
+    ].join('_');
+    const stretchedKey = `${key}__stretched_${formattedKey}`;
+
+    if (scene.textures.exists(stretchedKey)) {
+        const cachedTexture = scene.textures.get(stretchedKey);
+        const cachedSource = cachedTexture && typeof cachedTexture.getSourceImage === 'function'
+            ? cachedTexture.getSourceImage()
+            : null;
+        const cachedWidth = cachedSource && cachedSource.width ? cachedSource.width : sourceWidth;
+        const cachedHeight = cachedSource && cachedSource.height ? cachedSource.height : outputHeight;
+        return {
+            key: stretchedKey,
+            width: cachedWidth,
+            height: cachedHeight
+        };
+    }
+
+    if (typeof scene.textures.createCanvas !== 'function') {
+        return null;
+    }
+
+    const canvasTexture = scene.textures.createCanvas(stretchedKey, sourceWidth, outputHeight);
+    const context = canvasTexture && typeof canvasTexture.getContext === 'function'
+        ? canvasTexture.getContext()
+        : null;
+
+    if (!context) {
+        if (canvasTexture && typeof canvasTexture.destroy === 'function') {
+            canvasTexture.destroy();
+        }
+        return null;
+    }
+
+    context.clearRect(0, 0, sourceWidth, outputHeight);
+
+    let drawY = 0;
+    segmentSourceHeights.forEach(({ startY, height }, index) => {
+        const destHeight = destHeights[index];
+        context.drawImage(
+            sourceImage,
+            0,
+            startY,
+            sourceWidth,
+            height,
+            0,
+            drawY,
+            sourceWidth,
+            destHeight
+        );
+        drawY += destHeight;
+    });
+
+    if (typeof canvasTexture.refresh === 'function') {
+        canvasTexture.refresh();
+    }
+
+    return {
+        key: stretchedKey,
+        width: sourceWidth,
+        height: outputHeight
+    };
+}
 function ensureBirdTexture(scene) {
     if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
         return null;
@@ -166,10 +387,17 @@ export class PathUI {
         this.connectionTextureKey = connectionTextureKey || 'path_ladder';
         this.wallTextureKey = wallTextureKey || null;
         this.backgroundTextureKey = backgroundTextureKey || 'path_background';
-        this.outsideBackgroundLayerKeys = Array.isArray(outsideBackgroundLayerKeys)
+        const normalizedBackgroundKeys = Array.isArray(outsideBackgroundLayerKeys)
             ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
             : [];
+        this.usingWorld3Backgrounds = normalizedBackgroundKeys.some(isWorld3BackgroundKey);
+        this.outsideBackgroundLayerKeys = this.usingWorld3Backgrounds
+            ? reorderWorld3LayerKeys(normalizedBackgroundKeys)
+            : normalizedBackgroundKeys;
         this.outsideBackgroundEffect = outsideBackgroundEffect || 'sparkles';
+        this.outsideBackgroundScrollMultiplier = this.usingWorld3Backgrounds
+            ? WORLD3_SCROLL_MULTIPLIER
+            : OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER;
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -581,11 +809,19 @@ export class PathUI {
             return;
         }
 
+        if (this.usingWorld3Backgrounds) {
+            this.createWorld3OutsideBackgroundSprites({ top, bottom, height, centerY });
+            return;
+        }
+
         const textures = this.scene && this.scene.textures;
         const count = this.outsideBackgroundLayerKeys.length;
         const minFactor = 0.15;
         const maxFactor = 1;
         const defaultScale = 2;
+        const baseScrollMultiplier = isNumber(this.outsideBackgroundScrollMultiplier)
+            ? this.outsideBackgroundScrollMultiplier
+            : OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER;
         const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
         const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
         const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
@@ -611,8 +847,8 @@ export class PathUI {
             const t = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
             const baseScrollFactor = count > 1 ? lerp(minFactor, maxFactor, t) : maxFactor;
             const slowdownMultiplier = index === 0
-                ? OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER * FARTHEST_OUTSIDE_LAYER_MULTIPLIER
-                : OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER;
+                ? baseScrollMultiplier * FARTHEST_OUTSIDE_LAYER_MULTIPLIER
+                : baseScrollMultiplier;
             const scrollFactor = baseScrollFactor * slowdownMultiplier;
             const texture = textures.get(key);
             const source = texture && typeof texture.getSourceImage === 'function' ? texture.getSourceImage() : null;
@@ -698,6 +934,137 @@ export class PathUI {
 
             this.outsideBackgroundContainer.add(sprite);
 
+            this.outsideBackgroundLayers.push({
+                sprite,
+                baseY: sprite.y,
+                scrollFactor
+            });
+        });
+    }
+
+    createWorld3OutsideBackgroundSprites({ top, bottom, height, centerY }) {
+        if (!Array.isArray(this.outsideBackgroundLayerKeys) || this.outsideBackgroundLayerKeys.length === 0) {
+            return;
+        }
+
+        const scene = this.scene;
+        const textures = scene && scene.textures;
+        if (!textures || typeof textures.exists !== 'function') {
+            return;
+        }
+
+        const count = this.outsideBackgroundLayerKeys.length;
+        const baseX = scene && scene.scale ? scene.scale.width / 2 : 0;
+        const sceneHeight = scene && scene.scale ? scene.scale.height : 0;
+        const spanHeight = Number.isFinite(height) ? height : sceneHeight;
+        const spanTop = Number.isFinite(top)
+            ? top
+            : (Number.isFinite(centerY) ? centerY - spanHeight / 2 : -spanHeight / 2);
+        const viewportHeight = sceneHeight > 0 ? sceneHeight : spanHeight;
+        const coverageHeight = Math.max(spanHeight, sceneHeight) + viewportHeight * 0.85;
+        const baselineOffset = viewportHeight * WORLD3_BASELINE_ADJUSTMENT_RATIO;
+        const tileOffset = viewportHeight * WORLD3_TILE_OFFSET_RATIO;
+        const minOffset = viewportHeight * WORLD3_MIN_VERTICAL_OFFSET_RATIO;
+        const maxOffset = viewportHeight * WORLD3_MAX_VERTICAL_OFFSET_RATIO;
+        const baseScrollMultiplier = isNumber(this.outsideBackgroundScrollMultiplier)
+            ? this.outsideBackgroundScrollMultiplier
+            : WORLD3_SCROLL_MULTIPLIER;
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const lerp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Linear === 'function'
+            ? Phaser.Math.Linear
+            : (start, end, t) => start + (end - start) * t;
+
+        this.outsideBackgroundLayerKeys.forEach((key, index) => {
+            if (!key || !textures.exists(key)) {
+                return;
+            }
+
+            const texture = textures.get(key);
+            if (!texture || typeof texture.getSourceImage !== 'function') {
+                return;
+            }
+
+            const sourceImage = texture.getSourceImage();
+            if (!sourceImage) {
+                return;
+            }
+
+            const layerNumber = extractWorld3LayerIndex(key);
+            const shouldTrimTop = layerNumber !== null && WORLD3_TRIMMED_LAYER_INDICES.has(layerNumber);
+            const trimTop = shouldTrimTop ? WORLD3_LAYER_TRIM_TOP : 0;
+            const stretched = createStretchedTexture(scene, key, { trimTop });
+
+            let displayKey = key;
+            let displayWidth = Math.max(1, sourceImage.width || 1);
+            let displayHeight = Math.max(1, sourceImage.height || 1);
+            let cropTop = trimTop;
+            let applyCrop = trimTop > 0;
+
+            if (stretched && stretched.key && textures.exists(stretched.key)) {
+                displayKey = stretched.key;
+                displayWidth = Math.max(1, stretched.width || displayWidth);
+                displayHeight = Math.max(1, stretched.height || displayHeight);
+                cropTop = 0;
+                applyCrop = false;
+            } else if (applyCrop) {
+                displayHeight = Math.max(1, displayHeight - trimTop);
+            }
+
+            const progress = count > 1 ? clamp(index / (count - 1), 0, 1) : 1;
+            const scale = WORLD3_BASE_SCALE + progress * WORLD3_FRONT_SCALE_BONUS;
+            const baseScrollFactor = count > 1
+                ? lerp(WORLD3_MIN_SCROLL_FACTOR, WORLD3_MAX_SCROLL_FACTOR, progress)
+                : WORLD3_MAX_SCROLL_FACTOR;
+            const slowdownMultiplier = index === 0
+                ? baseScrollMultiplier * FARTHEST_OUTSIDE_LAYER_MULTIPLIER
+                : baseScrollMultiplier;
+            const scrollFactor = baseScrollFactor * slowdownMultiplier;
+            const verticalOffset = lerp(minOffset, maxOffset, progress);
+            const depth = PATH_DEPTHS.outsideBackground + index * 0.01;
+
+            if (index === 0) {
+                const tileWidth = displayWidth * scale;
+                const tileHeight = Math.max(coverageHeight, displayHeight * scale);
+                const tileY = spanTop + tileHeight / 2 - baselineOffset + tileOffset;
+                const tileSprite = scene.add.tileSprite(
+                    baseX,
+                    tileY,
+                    tileWidth,
+                    tileHeight,
+                    displayKey
+                );
+                tileSprite.setOrigin(0.5, 0.5);
+                tileSprite.setTileScale(scale, scale);
+                tileSprite.setScrollFactor(0);
+                tileSprite.setDepth(depth);
+                tileSprite.setPosition(Math.round(tileSprite.x), Math.round(tileSprite.y));
+
+                this.outsideBackgroundContainer.add(tileSprite);
+                this.outsideBackgroundLayers.push({
+                    sprite: tileSprite,
+                    baseY: tileSprite.y,
+                    baseTileX: tileSprite.tilePositionX || 0,
+                    baseTileY: tileSprite.tilePositionY || 0,
+                    scrollFactor
+                });
+                return;
+            }
+
+            const spriteHeight = displayHeight * scale;
+            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - baselineOffset;
+            const sprite = scene.add.image(baseX, spriteY, displayKey);
+            sprite.setOrigin(0.5, 0.5);
+            if (applyCrop && typeof sprite.setCrop === 'function') {
+                sprite.setCrop(0, cropTop, displayWidth, displayHeight);
+            }
+            sprite.setScale(scale);
+            sprite.setScrollFactor(0);
+            sprite.setDepth(depth);
+            sprite.setPosition(Math.round(sprite.x), Math.round(sprite.y));
+
+            this.outsideBackgroundContainer.add(sprite);
             this.outsideBackgroundLayers.push({
                 sprite,
                 baseY: sprite.y,
