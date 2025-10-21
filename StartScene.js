@@ -47,10 +47,10 @@ export class StartScene extends Phaser.Scene {
     constructor() {
         super({ key: 'StartScene' });
 
-        this.dieSize = 20;
+        this.dieSize = 22;
         this.dieSpacing = 2;
-        this.letterSpacing = 10;
-        this.lineSpacing = this.dieSize + this.dieSpacing * 2;
+        this.letterSpacing = 12;
+        this.lineSpacing = this.dieSize * 0.8;
         this.titleDice = [];
     }
 
@@ -62,13 +62,21 @@ export class StartScene extends Phaser.Scene {
         const { width } = this.scale;
         this.titleDice.length = 0;
 
-        const phrase = 'DROP+ROLL';
-        const phraseWidth = this.getWordWidth(phrase);
-        const startX = (width - phraseWidth) / 2;
-        const titleY = 140;
-        this.createDiceWord(phrase, startX, titleY);
+        const lines = ['DROP', '+', 'ROLL'];
+        const titleY = 120;
+        const letterHeight = this.getLetterHeight();
 
-        const button = this.add.text(width / 2, titleY + this.lineSpacing * 4.5, 'PLAY', {
+        lines.forEach((line, index) => {
+            const lineWidth = this.getWordWidth(line);
+            const startX = (width - lineWidth) / 2;
+            const lineY = titleY + index * (letterHeight + this.lineSpacing);
+            this.createDiceWord(line, startX, lineY);
+        });
+
+        const lastLineBottom = titleY + (lines.length - 1) * (letterHeight + this.lineSpacing) + letterHeight;
+        const buttonY = lastLineBottom + this.dieSize * 3;
+
+        const button = this.add.text(width / 2, buttonY, 'PLAY', {
             fontFamily: 'monospace',
             fontSize: '48px',
             color: '#ffffff',
@@ -101,6 +109,16 @@ export class StartScene extends Phaser.Scene {
                     }
                 });
             });
+    }
+
+    getLetterHeight() {
+        const sample = LETTER_PATTERNS.D;
+        if (!sample || sample.length === 0) {
+            return this.dieSize;
+        }
+
+        const rows = sample.length;
+        return rows * (this.dieSize + this.dieSpacing) - this.dieSpacing;
     }
 
     getWordWidth(word) {
@@ -206,7 +224,7 @@ export class StartScene extends Phaser.Scene {
         this.tweens.add({
             targets: container,
             alpha: 1,
-            duration: Phaser.Math.Between(500, 1200),
+            duration: Phaser.Math.Between(750, 1800),
             delay: Phaser.Math.Between(0, 300),
             ease: 'Sine.easeOut'
         });
