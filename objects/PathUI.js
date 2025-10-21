@@ -1353,19 +1353,19 @@ export class PathUI {
             ? tileWidth
             : (scene.scale && scene.scale.width) || 0;
         const halfWidth = width / 2;
-        const minY = CONSTANTS.HEADER_HEIGHT * 0.85;
-        const maxY = safeCoverage * 0.28;
-        const verticalJitter = safeCoverage * 0.08;
-        const batCount = 14;
-        const horizontalRange = halfWidth * 0.68;
+        const minY = CONSTANTS.HEADER_HEIGHT * 4;
+        const maxY = safeCoverage * 0.3;
+        const verticalJitter = safeCoverage * 0.06;
+        const batCount = 18;
+        const horizontalRange = halfWidth * 0.6;
 
         for (let i = 0; i < batCount; i += 1) {
             const offsetX = random(-halfWidth, halfWidth);
             const y = clamp(random(minY, maxY), minY, maxY);
             const bat = scene.add.sprite(baseX + offsetX, y, textureKey);
-            const minScale = 0.55;
-            const maxScale = 0.95;
-            const baseScale = random(minScale, maxScale);
+            const minScale = 0.40;
+            const maxScale = 0.70;
+            const baseScale = 0.55;
             const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
             const depth = layerDepth + 0.001 + i * 0.0001;
             let isDestroyed = false;
@@ -1397,9 +1397,11 @@ export class PathUI {
                 bat.setAngle(flightState.angle);
             };
 
+            const batScale = random(minScale, maxScale);
+
             const setFacing = direction => {
                 const clampedDirection = direction < 0 ? -1 : 1;
-                bat.setScale(baseScale * clampedDirection, baseScale * 0.8);
+                bat.setScale(batScale * clampedDirection, batScale * 0.8);
             };
 
             const flapTimeScale = random(0.92, 1.08);
@@ -1448,7 +1450,7 @@ export class PathUI {
                 const targetX = baseX + random(-horizontalRange, horizontalRange);
                 const baseTargetY = random(minY, maxY);
                 const targetY = clamp(
-                    baseTargetY + random(-verticalJitter, verticalJitter) * 0.35,
+                    baseTargetY + random(-verticalJitter, verticalJitter) * 0.25,
                     minY,
                     maxY
                 );
@@ -1459,11 +1461,11 @@ export class PathUI {
                 const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
                 const maxDistance = Math.max(1, horizontalRange * 1.2);
                 const distanceRatio = clamp(distance / maxDistance, 0, 1);
-                const minDuration = 1900;
-                const maxDuration = 3150;
+                const minDuration = 4000;
+                const maxDuration = 9000;
                 const duration = minDuration + (maxDuration - minDuration) * distanceRatio;
-                const hold = between(120, 220);
-                const repeatDelay = between(90, 210);
+                const hold = between(100, 2200);
+                const repeatDelay = between(400, 2000);
 
                 setFacing(newDirection);
 
@@ -1500,12 +1502,7 @@ export class PathUI {
             bat.setScrollFactor(0);
             bat.setDepth(depth);
 
-            const scaleRange = Math.max(0.0001, maxScale - minScale);
-            const scaleRatio = clamp((baseScale - minScale) / scaleRange, 0, 1);
-            const alphaBase = 0.75 + scaleRatio * 0.2;
-            const alphaJitter = 0.06;
-            const alpha = clamp(alphaBase + random(-alphaJitter, alphaJitter), 0.75, 0.96);
-            bat.setAlpha(alpha);
+            bat.setAlpha(batScale + 0.1);
 
             this.outsideBackgroundContainer.add(bat);
 
