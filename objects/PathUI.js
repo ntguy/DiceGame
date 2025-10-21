@@ -52,6 +52,8 @@ const WHEEL_SCROLL_MULTIPLIER = 0.5;
 const SCROLL_INPUT_MULTIPLIER = 0.5;
 const OUTSIDE_BACKGROUND_SCROLL_MULTIPLIER = 0.25;
 const FARTHEST_OUTSIDE_LAYER_MULTIPLIER = 0.6;
+const DEFAULT_OUTSIDE_BACKGROUND_SCALE = 2;
+const DEFAULT_OUTSIDE_BACKGROUND_PADDING = { top: 0, bottom: 0 };
 const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
     outside_background_2: -350
 };
@@ -157,7 +159,9 @@ export class PathUI {
             wallTextureKey,
             backgroundTextureKey,
             outsideBackgroundLayerKeys,
-            outsideBackgroundEffect
+            outsideBackgroundEffect,
+            outsideBackgroundScale,
+            outsideBackgroundPadding
         } = {}
     ) {
         this.scene = scene;
@@ -170,6 +174,21 @@ export class PathUI {
             ? outsideBackgroundLayerKeys.filter(key => typeof key === 'string' && key.length > 0)
             : [];
         this.outsideBackgroundEffect = outsideBackgroundEffect || 'sparkles';
+        const requestedBackgroundScale = Number.isFinite(outsideBackgroundScale)
+            ? outsideBackgroundScale
+            : DEFAULT_OUTSIDE_BACKGROUND_SCALE;
+        this.outsideBackgroundScale = Math.max(0.1, requestedBackgroundScale);
+        const requestedPadding = outsideBackgroundPadding || DEFAULT_OUTSIDE_BACKGROUND_PADDING;
+        const paddingTop = Number.isFinite(requestedPadding.top)
+            ? requestedPadding.top
+            : DEFAULT_OUTSIDE_BACKGROUND_PADDING.top;
+        const paddingBottom = Number.isFinite(requestedPadding.bottom)
+            ? requestedPadding.bottom
+            : DEFAULT_OUTSIDE_BACKGROUND_PADDING.bottom;
+        this.outsideBackgroundPadding = {
+            top: Math.max(0, paddingTop),
+            bottom: Math.max(0, paddingBottom)
+        };
 
         this.outsideBackgroundContainer = scene.add.container(0, 0);
         this.outsideBackgroundContainer.setDepth(PATH_DEPTHS.outsideBackground);
@@ -585,7 +604,9 @@ export class PathUI {
         const count = this.outsideBackgroundLayerKeys.length;
         const minFactor = 0.15;
         const maxFactor = 1;
-        const defaultScale = 2;
+        const defaultScale = Number.isFinite(this.outsideBackgroundScale)
+            ? this.outsideBackgroundScale
+            : DEFAULT_OUTSIDE_BACKGROUND_SCALE;
         const baseX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
         const defaultY = this.scene && this.scene.scale ? this.scene.scale.height / 2 : 0;
         const sceneHeight = this.scene && this.scene.scale ? this.scene.scale.height : 0;
@@ -593,7 +614,13 @@ export class PathUI {
         const spanTop = Number.isFinite(top)
             ? top
             : (Number.isFinite(centerY) ? centerY - spanHeight / 2 : defaultY - spanHeight / 2);
-        const coverageHeight = Math.max(spanHeight, sceneHeight) + sceneHeight;
+        const topPadding = Number.isFinite(this.outsideBackgroundPadding.top)
+            ? this.outsideBackgroundPadding.top
+            : DEFAULT_OUTSIDE_BACKGROUND_PADDING.top;
+        const bottomPadding = Number.isFinite(this.outsideBackgroundPadding.bottom)
+            ? this.outsideBackgroundPadding.bottom
+            : DEFAULT_OUTSIDE_BACKGROUND_PADDING.bottom;
+        const coverageHeight = Math.max(spanHeight, sceneHeight) + sceneHeight + topPadding + bottomPadding;
         const viewportHeight = Number.isFinite(sceneHeight) && sceneHeight > 0 ? sceneHeight : spanHeight;
 
         const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
@@ -623,7 +650,7 @@ export class PathUI {
             if (index === 0) {
                 const width = sourceWidth * defaultScale;
                 const tileHeight = Math.max(coverageHeight, sourceHeight * defaultScale);
-                const tileY = spanTop + tileHeight / 2;
+                const tileY = spanTop - topPadding + tileHeight / 2;
                 let tileFrameKey = null;
 
                 if (texture && typeof texture.has === 'function' && typeof texture.add === 'function') {
@@ -688,7 +715,28 @@ export class PathUI {
             const minOffset = viewportHeight * 0.12;
             const maxOffset = viewportHeight * 0.45;
             const verticalOffset = lerp(minOffset, maxOffset, progress);
-            const spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100;
+            let spriteY = spanTop + spriteHeight / 2 + verticalOffset - 100;
+            const desiredBottom = Number.isFinite(bottom) ? bottom + bottomPadding : null;
+            const desiredTop = Number.isFinite(spanTop) ? spanTop - topPadding : null;
+            const halfHeight = spriteHeight / 2;
+            if (Number.isFinite(desiredBottom)) {
+                const spriteBottom = spriteY + halfHeight;
+                if (spriteBottom < desiredBottom) {
+                    spriteY += desiredBottom - spriteBottom;
+                }
+            }
+            if (Number.isFinite(desiredTop)) {
+                const spriteTop = spriteY - halfHeight;
+                if (spriteTop > desiredTop) {
+                    spriteY -= spriteTop - desiredTop;
+                    if (Number.isFinite(desiredBottom)) {
+                        const spriteBottom = spriteY + halfHeight;
+                        if (spriteBottom < desiredBottom) {
+                            spriteY += desiredBottom - spriteBottom;
+                        }
+                    }
+                }
+            }
             const sprite = this.scene.add.image(baseX + horizontalOffset, spriteY, key);
             sprite.setOrigin(0.5, 0.5);
             sprite.setScale(defaultScale);

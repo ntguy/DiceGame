@@ -294,6 +294,15 @@ export class GameScene extends Phaser.Scene {
         this.load.image('outside_background_world2_2', './sprites/World2/2.png');
         this.load.image('outside_background_world2_3', './sprites/World2/3.png');
         this.load.image('outside_background_world2_4', './sprites/World2/4.png');
+        this.load.image('outside_background_world3_1', './sprites/World3/1.png');
+        this.load.image('outside_background_world3_2', './sprites/World3/2.png');
+        this.load.image('outside_background_world3_3', './sprites/World3/3.png');
+        this.load.image('outside_background_world3_4', './sprites/World3/4.png');
+        this.load.image('outside_background_world3_5', './sprites/World3/5.png');
+        this.load.image('outside_background_world3_6', './sprites/World3/6.png');
+        this.load.image('outside_background_world3_7', './sprites/World3/7.png');
+        this.load.image('outside_background_world3_8', './sprites/World3/8.png');
+        this.load.image('outside_background_world3_9', './sprites/World3/9.png');
         this.load.image('wall', './sprites/Wall.png');
         this.load.image('wall2', './sprites/Wall2.png');
         this.load.image('wall_highlight_center', './sprites/BrightWallCenter.png');
@@ -2932,6 +2941,14 @@ export class GameScene extends Phaser.Scene {
         const outsideBackgroundEffect = config && typeof config.outsideBackgroundEffect === 'string'
             ? config.outsideBackgroundEffect
             : null;
+        const outsideBackgroundScale = config && Number.isFinite(config.outsideBackgroundScale)
+            ? config.outsideBackgroundScale
+            : null;
+        const outsideBackgroundPadding = config
+            && config.outsideBackgroundPadding
+            && typeof config.outsideBackgroundPadding === 'object'
+            ? { ...config.outsideBackgroundPadding }
+            : null;
 
         this.pathManager = new PathManager({
             enemySequence,
@@ -2947,7 +2964,9 @@ export class GameScene extends Phaser.Scene {
                 wallTextureKey,
                 backgroundTextureKey,
                 outsideBackgroundLayerKeys,
-                outsideBackgroundEffect
+                outsideBackgroundEffect,
+                outsideBackgroundScale,
+                outsideBackgroundPadding
             }
         );
         this.currentPathNodeId = null;
