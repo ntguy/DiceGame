@@ -2573,7 +2573,9 @@ export class GameScene extends Phaser.Scene {
 
             die.disableInteractive();
             die.setDepth(10);
-            die.setAlpha(die.isWeakened ? 0.5 : 1);
+            if (typeof die.updateVisualState === 'function') {
+                die.updateVisualState();
+            }
 
             const inZone = this.defendDice.includes(die) || this.attackDice.includes(die);
 

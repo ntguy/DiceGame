@@ -30,13 +30,15 @@ export function createDie(scene, slotIndex, blueprint) {
         this.isFaceValueHighlighted = shouldHighlight;
     };
 
-    const lockOverlay = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE + 12, CONSTANTS.DIE_SIZE + 12, 0x8e44ad, 0.35)
-        .setOrigin(0.5)
-        .setStrokeStyle(3, 0xf1c40f, 0.8)
-        .setVisible(false)
-        .setAngle(8);
-    container.add(lockOverlay);
-    container.lockOverlay = lockOverlay;
+    const lockIndicator = scene.add.text(0, -CONSTANTS.DIE_SIZE / 2 - 16, '🔒', {
+        fontSize: '28px',
+        color: '#f1c40f',
+        stroke: '#000000',
+        strokeThickness: 4,
+        align: 'center',
+    }).setOrigin(0.5).setVisible(false);
+    container.add(lockIndicator);
+    container.lockIndicator = lockIndicator;
 
     container.value = 1;
     container.selected = false;
@@ -74,8 +76,8 @@ export function createDie(scene, slotIndex, blueprint) {
         this.wildBaseValueText.setText(`${value}`);
         this.wildBaseValueText.setVisible(true);
         this.bringToTop(this.wildBaseValueText);
-        if (this.lockOverlay) {
-            this.bringToTop(this.lockOverlay);
+        if (this.lockIndicator) {
+            this.bringToTop(this.lockIndicator);
         }
     };
 
@@ -188,14 +190,32 @@ export function createDie(scene, slotIndex, blueprint) {
     };
 
     container.updateVisualState = function() {
-        if (this.isLocked) {
-            this.bg.fillColor = 0x5b2c6f;
-            this.lockOverlay.setVisible(true);
-        } else {
-            this.lockOverlay.setVisible(false);
-            this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
+        const dieAlpha = this.isWeakened ? 0.4 : 1;
+
+        this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
+        this.bg.setAlpha(dieAlpha);
+
+        if (Array.isArray(this.pips)) {
+            this.pips.forEach(pip => {
+                if (pip && typeof pip.setAlpha === 'function') {
+                    pip.setAlpha(dieAlpha);
+                }
+            });
         }
-        this.setAlpha(this.isWeakened ? 0.5 : 1);
+
+        if (this.wildBaseValueText) {
+            if (typeof this.wildBaseValueText.baseAlpha !== 'number') {
+                this.wildBaseValueText.baseAlpha = this.wildBaseValueText.alpha;
+            }
+            this.wildBaseValueText.setAlpha(this.wildBaseValueText.baseAlpha * dieAlpha);
+        }
+
+        if (this.lockIndicator) {
+            this.lockIndicator.setVisible(this.isLocked);
+            if (this.isLocked) {
+                this.bringToTop(this.lockIndicator);
+            }
+        }
         const isBomb = this.dieBlueprint && this.dieBlueprint.id === 'bomb';
         const hasSceneLookup = isBomb && scene && typeof scene.getTimeBombStateByUid === 'function';
         const bombState = hasSceneLookup ? scene.getTimeBombStateByUid(this.dieBlueprint.uid) : null;
@@ -298,6 +318,7 @@ function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue
     pipPositions.forEach(([dx, dy]) => {
         const pip = scene.add.circle(dx, dy, 6, pipColor);
         container.add(pip);
+        pip.setAlpha(container.isWeakened ? 0.5 : 1);
         container.pips.push(pip);
     });
 
@@ -305,8 +326,8 @@ function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue
         container.updateFaceValueHighlight();
     }
 
-    if (container.lockOverlay) {
-        container.bringToTop(container.lockOverlay);
+    if (container.lockIndicator) {
+        container.bringToTop(container.lockIndicator);
     }
     if (container.wildBaseValueText) {
         container.bringToTop(container.wildBaseValueText);
