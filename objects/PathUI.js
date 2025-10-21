@@ -57,6 +57,7 @@ const OUTSIDE_BACKGROUND_LAYER_HORIZONTAL_OFFSETS = {
 };
 const SPARKLE_TEXTURE_KEY = 'outside_star_sparkle';
 const BIRD_TEXTURE_KEY = 'outside_bird_sprite';
+const BAT_TEXTURE_KEY = 'outside_bat_sprite';
 const WORLD3_OUTSIDE_BACKGROUND_ORDER = [1, 3, 6, 8, 2, 4, 5, 7, 9];
 const WORLD3_LAYER_TRIM_TOP = 30;
 const WORLD3_BASE_SCALE = 0.65;
@@ -330,6 +331,75 @@ function ensureBirdTexture(scene) {
     graphics.destroy();
 
     return BIRD_TEXTURE_KEY;
+}
+
+function ensureBatTexture(scene) {
+    if (!scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+        return null;
+    }
+
+    if (scene.textures.exists(BAT_TEXTURE_KEY)) {
+        return BAT_TEXTURE_KEY;
+    }
+
+    const graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+    const width = 36;
+    const height = 22;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const wingSpan = width * 0.9;
+    const wingDepth = height * 0.55;
+    const bodyWidth = width * 0.28;
+    const bodyHeight = height * 0.6;
+
+    graphics.clear();
+
+    graphics.fillStyle(0x090909, 1);
+    graphics.fillTriangle(
+        centerX - wingSpan / 2,
+        centerY,
+        centerX - wingSpan * 0.35,
+        centerY - wingDepth,
+        centerX - bodyWidth / 2,
+        centerY + wingDepth * 0.3
+    );
+    graphics.fillTriangle(
+        centerX + wingSpan / 2,
+        centerY,
+        centerX + wingSpan * 0.35,
+        centerY - wingDepth,
+        centerX + bodyWidth / 2,
+        centerY + wingDepth * 0.3
+    );
+
+    graphics.fillStyle(0x050505, 1);
+    graphics.fillEllipse(centerX, centerY + height * 0.05, bodyWidth, bodyHeight);
+
+    graphics.fillStyle(0x0c0c0c, 1);
+    graphics.fillTriangle(
+        centerX - bodyWidth * 0.4,
+        centerY - bodyHeight * 0.45,
+        centerX - bodyWidth * 0.1,
+        centerY - bodyHeight * 0.95,
+        centerX - bodyWidth * 0.1,
+        centerY - bodyHeight * 0.25
+    );
+    graphics.fillTriangle(
+        centerX + bodyWidth * 0.4,
+        centerY - bodyHeight * 0.45,
+        centerX + bodyWidth * 0.1,
+        centerY - bodyHeight * 0.95,
+        centerX + bodyWidth * 0.1,
+        centerY - bodyHeight * 0.25
+    );
+
+    graphics.fillStyle(0x1a1a1a, 1);
+    graphics.fillEllipse(centerX, centerY + height * 0.05, bodyWidth * 0.6, bodyHeight * 0.55);
+
+    graphics.generateTexture(BAT_TEXTURE_KEY, width, height);
+    graphics.destroy();
+
+    return BAT_TEXTURE_KEY;
 }
 
 function ensureSparkleTexture(scene) {
@@ -907,6 +977,14 @@ export class PathUI {
                         scrollFactor,
                         layerDepth
                     });
+                } else if (this.outsideBackgroundEffect === 'bats') {
+                    this.createOutsideBats({
+                        baseX,
+                        coverageHeight,
+                        tileWidth: width,
+                        scrollFactor,
+                        layerDepth
+                    });
                 } else {
                     this.createOutsideSparkles({
                         baseX,
@@ -1049,6 +1127,31 @@ export class PathUI {
                     baseTileY: tileSprite.tilePositionY || 0,
                     scrollFactor
                 });
+                if (this.outsideBackgroundEffect === 'birds') {
+                    this.createOutsideBirds({
+                        baseX,
+                        coverageHeight,
+                        tileWidth,
+                        scrollFactor,
+                        layerDepth: depth
+                    });
+                } else if (this.outsideBackgroundEffect === 'bats') {
+                    this.createOutsideBats({
+                        baseX,
+                        coverageHeight,
+                        tileWidth,
+                        scrollFactor,
+                        layerDepth: depth
+                    });
+                } else {
+                    this.createOutsideSparkles({
+                        baseX,
+                        coverageHeight,
+                        tileWidth,
+                        scrollFactor,
+                        layerDepth: depth
+                    });
+                }
                 return;
             }
 
@@ -1154,6 +1257,144 @@ export class PathUI {
                 baseY: bird.y,
                 scrollFactor: Math.max(0.04, scrollFactor * 0.15),
                 tween
+            });
+        }
+    }
+
+    createOutsideBats({ baseX, coverageHeight, tileWidth, scrollFactor, layerDepth }) {
+        const scene = this.scene;
+        if (!scene || !this.outsideBackgroundContainer) {
+            return;
+        }
+
+        const textureKey = ensureBatTexture(scene);
+        if (!textureKey) {
+            return;
+        }
+
+        const clamp = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Clamp === 'function'
+            ? Phaser.Math.Clamp
+            : (value, min, max) => Math.min(Math.max(value, min), max);
+        const random = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.FloatBetween === 'function'
+            ? Phaser.Math.FloatBetween
+            : (min, max) => min + Math.random() * (max - min);
+        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
+            ? Phaser.Math.Between
+            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
+
+        const safeCoverage = Number.isFinite(coverageHeight) && coverageHeight > 0
+            ? coverageHeight
+            : ((scene.scale && scene.scale.height) || 0);
+        const width = Number.isFinite(tileWidth) && tileWidth > 0
+            ? tileWidth
+            : (scene.scale && scene.scale.width) || 0;
+        const halfWidth = width / 2;
+        const minY = CONSTANTS.HEADER_HEIGHT * 0.85;
+        const maxY = safeCoverage * 0.28;
+        const verticalJitter = safeCoverage * 0.12;
+        const easeOptions = [
+            'Sine.easeInOut',
+            'Quad.easeInOut',
+            'Cubic.easeInOut',
+            'Back.easeInOut'
+        ];
+        const batCount = 14;
+
+        for (let i = 0; i < batCount; i += 1) {
+            const offsetX = random(-halfWidth, halfWidth);
+            const y = clamp(random(minY, maxY), minY, maxY);
+            const bat = scene.add.image(baseX + offsetX, y, textureKey);
+            const baseScale = random(0.6, 1.05);
+            const facingDirection = random(0, 1) < 0.5 ? -1 : 1;
+            const depth = layerDepth + 0.001 + i * 0.0001;
+            let isDestroyed = false;
+            const tweenHolder = {
+                current: null,
+                remove() {
+                    isDestroyed = true;
+                    if (this.current && typeof this.current.remove === 'function') {
+                        this.current.remove();
+                    }
+                    this.current = null;
+                }
+            };
+
+            const setFacing = direction => {
+                const clampedDirection = direction < 0 ? -1 : 1;
+                bat.setScale(baseScale * clampedDirection, baseScale * 0.8);
+            };
+
+            const startErraticFlight = () => {
+                if (isDestroyed || !scene || !scene.tweens) {
+                    return;
+                }
+
+                const targetX = baseX + random(-halfWidth, halfWidth);
+                const baseTargetY = random(minY, maxY);
+                const targetY = clamp(
+                    baseTargetY + random(-verticalJitter, verticalJitter) * 0.35,
+                    minY,
+                    maxY
+                );
+                const newDirection = targetX >= bat.x ? 1 : -1;
+                const angleTarget = random(-18, 18);
+                const easeIndex = between(0, easeOptions.length - 1);
+                const ease = easeOptions[Math.max(0, Math.min(easeIndex, easeOptions.length - 1))] || 'Sine.easeInOut';
+                const duration = between(900, 1900);
+                const hold = between(80, 240);
+                const repeatDelay = between(60, 260);
+
+                setFacing(newDirection);
+
+                const tween = scene.tweens.add({
+                    targets: bat,
+                    x: targetX,
+                    y: targetY,
+                    angle: angleTarget,
+                    duration,
+                    ease,
+                    hold,
+                    yoyo: true,
+                    repeat: 0,
+                    repeatDelay,
+                    onYoyo: () => {
+                        setFacing(-newDirection);
+                        if (!isDestroyed) {
+                            bat.setAngle(random(-12, 12));
+                        }
+                    },
+                    onComplete: () => {
+                        tweenHolder.current = null;
+                        if (!isDestroyed) {
+                            startErraticFlight();
+                        }
+                    }
+                });
+
+                tween.timeScale = random(0.9, 1.45);
+                tweenHolder.current = tween;
+            };
+
+            setFacing(facingDirection);
+            bat.setScrollFactor(0);
+            bat.setDepth(depth);
+            bat.setAlpha(random(0.55, 0.85));
+            bat.setAngle(random(-10, 10));
+
+            this.outsideBackgroundContainer.add(bat);
+
+            bat.once('destroy', () => {
+                isDestroyed = true;
+                tweenHolder.remove();
+            });
+
+            startErraticFlight();
+
+            this.outsideBackgroundLayers.push({
+                sprite: bat,
+                baseY: bat.y,
+                scrollFactor: Math.max(0.06, scrollFactor * 0.2),
+                tween: tweenHolder
             });
         }
     }
