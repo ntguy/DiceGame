@@ -86,8 +86,27 @@ export class LockdownEnemy extends BaseEnemy {
         return `Status: Gains ${value} Defense per rerolled die.`;
     }
 
-    onPlayerReroll(count, enemyManager) {
+    onPlayerReroll(eventOrCount, legacyEnemyManager) {
+        const event = (eventOrCount && typeof eventOrCount === 'object')
+            ? eventOrCount
+            : { count: eventOrCount, enemyManager: legacyEnemyManager };
+
+        const {
+            count = 0,
+            enemyManager,
+            isInitialRoll = false,
+            scene = null
+        } = event || {};
+
         if (!enemyManager || count <= 0) {
+            return;
+        }
+
+        if (isInitialRoll) {
+            return;
+        }
+
+        if (scene && scene.rollsRemaining === scene.rollsRemainingAtTurnStart) {
             return;
         }
 

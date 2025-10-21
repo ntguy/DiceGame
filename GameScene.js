@@ -952,7 +952,12 @@ export class GameScene extends Phaser.Scene {
 
         const enemy = this.enemyManager.getCurrentEnemy();
         if (enemy && typeof enemy.onPlayerReroll === 'function') {
-            enemy.onPlayerReroll(count, this.enemyManager);
+            enemy.onPlayerReroll({
+                count,
+                enemyManager: this.enemyManager,
+                scene: this,
+                isInitialRoll: false
+            });
             this.refreshEnemyIntentText();
             this.updateEnemyStatusText();
         }
