@@ -17,6 +17,7 @@ import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
 import { TowerOfTenUI } from './objects/TowerOfTenUI.js';
 import { RelicUIManager } from './objects/RelicUI.js';
+import { VictoryScreen } from './objects/VictoryScreen.js';
 import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
 import { BeefyRelic } from './relics/BeefyRelic.js';
 import { FamilyRelic } from './relics/FamilyRelic.js';
@@ -106,6 +107,8 @@ export class GameScene extends Phaser.Scene {
         this.timeBombStates = new Map();
         this.activeTimeBombResolveBonus = 0;
         this.gameOverManager = null;
+        this.victoryScreen = null;
+        this.hasShownVictoryScreen = false;
         this.muteButton = null;
         this.isMuted = false;
         this.isGameOver = false;
@@ -437,6 +440,9 @@ export class GameScene extends Phaser.Scene {
 
         this.gameOverManager = new GameOverManager(this);
         this.gameOverManager.create();
+
+        this.victoryScreen = new VictoryScreen(this);
+        this.victoryScreen.create();
 
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(110, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
@@ -4275,6 +4281,12 @@ export class GameScene extends Phaser.Scene {
         if (this.pathUI) {
             this.pathUI.hide();
         }
+
+        const hasPendingNodes = this.pathManager ? this.pathManager.hasPendingNodes() : false;
+        const hasAnotherMap = this.hasNextMap();
+        if (!hasPendingNodes && !hasAnotherMap) {
+            this.triggerVictory();
+        }
     }
 
     applyStartOfTurnEffects() {
@@ -4561,13 +4573,7 @@ export class GameScene extends Phaser.Scene {
         enemy._testingModePreviousHealth = null;
     }
 
-    triggerGameOver() {
-        if (this.isGameOver) {
-            return;
-        }
-
-        this.isGameOver = true;
-
+    disableEndStateControls() {
         if (this.rollButton) {
             setTextButtonEnabled(this.rollButton, false);
         }
@@ -4581,6 +4587,31 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.getDiceInPlay().forEach(die => die.disableInteractive());
+    }
+
+    triggerVictory() {
+        if (this.isGameOver || this.hasShownVictoryScreen) {
+            return;
+        }
+
+        this.isGameOver = true;
+        this.hasShownVictoryScreen = true;
+
+        this.disableEndStateControls();
+
+        if (this.victoryScreen) {
+            this.victoryScreen.show({ onPlayAgain: () => this.restartGame() });
+        }
+    }
+
+    triggerGameOver() {
+        if (this.isGameOver) {
+            return;
+        }
+
+        this.isGameOver = true;
+
+        this.disableEndStateControls();
 
         if (this.gameOverManager) {
             this.gameOverManager.show(() => this.restartGame());
@@ -4591,6 +4622,13 @@ export class GameScene extends Phaser.Scene {
         if (this.gameOverManager) {
             this.gameOverManager.hide();
         }
+
+        if (this.victoryScreen) {
+            this.victoryScreen.hide();
+        }
+
+        this.hasShownVictoryScreen = false;
+        this.isGameOver = false;
 
         this.scene.restart({
             isMuted: this.isMuted,
