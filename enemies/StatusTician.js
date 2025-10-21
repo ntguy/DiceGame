@@ -583,10 +583,6 @@ export class StatusTicianEnemy extends BaseEnemy {
             });
         }
 
-        if (this.inBarrageMode) {
-            lines.push('Barrage Mode: Attack and Defense escalate each loop.');
-        }
-
         return lines.join('\n');
     }
 
