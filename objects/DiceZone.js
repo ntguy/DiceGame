@@ -8,7 +8,8 @@ const ZONE_BACKGROUND_TILE_SCALE = 2;
 export const ZONE_LABEL_OFFSET = 20;
 export const ZONE_LABEL_FONT_SIZE = 24;
 export const ZONE_AREA_PADDING_X = 40;
-export const ZONE_AREA_PADDING_Y = 30;
+export const ZONE_AREA_PADDING_TOP = 30;
+export const ZONE_AREA_PADDING_BOTTOM = 16;
 const ZONE_AREA_BACKGROUND_ALPHA = 0.5;
 
 export function setupZones(scene) {
@@ -33,8 +34,8 @@ export function setupZones(scene) {
     const zoneAreaWidth = Math.abs(attackZoneX - defendZoneX) + zoneWidth + ZONE_AREA_PADDING_X * 2;
     const zoneTop = zoneY - zoneHeight / 2;
     const zoneBottom = zoneY + zoneHeight / 2;
-    const zoneAreaTop = zoneTop - ZONE_LABEL_OFFSET - (ZONE_LABEL_FONT_SIZE / 2) - ZONE_AREA_PADDING_Y;
-    const zoneAreaBottom = zoneBottom + ZONE_AREA_PADDING_Y;
+    const zoneAreaTop = zoneTop - ZONE_LABEL_OFFSET - (ZONE_LABEL_FONT_SIZE / 2) - ZONE_AREA_PADDING_TOP;
+    const zoneAreaBottom = zoneBottom + ZONE_AREA_PADDING_BOTTOM;
     const zoneAreaHeight = zoneAreaBottom - zoneAreaTop;
     const zoneAreaCenterY = zoneAreaTop + zoneAreaHeight / 2;
 

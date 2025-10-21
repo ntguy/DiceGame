@@ -3,7 +3,8 @@ import { createDie, snapToGrid } from './objects/Dice.js';
 import {
     setupZones,
     ZONE_AREA_PADDING_X,
-    ZONE_AREA_PADDING_Y,
+    ZONE_AREA_PADDING_TOP,
+    ZONE_AREA_PADDING_BOTTOM,
     ZONE_LABEL_FONT_SIZE,
     ZONE_LABEL_OFFSET
 } from './objects/DiceZone.js';
@@ -675,8 +676,8 @@ export class GameScene extends Phaser.Scene {
             const zoneCenterY = this.defendZoneCenter.y;
             const zoneTop = zoneCenterY - zoneHeight / 2;
             const zoneBottom = zoneCenterY + zoneHeight / 2;
-            const zoneAreaTop = zoneTop - ZONE_LABEL_OFFSET - (ZONE_LABEL_FONT_SIZE / 2) - ZONE_AREA_PADDING_Y;
-            const zoneAreaBottom = zoneBottom + ZONE_AREA_PADDING_Y;
+            const zoneAreaTop = zoneTop - ZONE_LABEL_OFFSET - (ZONE_LABEL_FONT_SIZE / 2) - ZONE_AREA_PADDING_TOP;
+            const zoneAreaBottom = zoneBottom + ZONE_AREA_PADDING_BOTTOM;
             const zoneAreaHeight = zoneAreaBottom - zoneAreaTop;
             const zoneAreaCenterY = zoneAreaTop + zoneAreaHeight / 2;
 
