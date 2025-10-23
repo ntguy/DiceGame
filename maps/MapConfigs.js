@@ -89,6 +89,11 @@ const mapTwoEnemySequence = [
     },
     {
         enemyIndex: 3,
+        rewardGold: 180,
+        label: 'Battle'
+    },
+    {
+        enemyIndex: 4,
         rewardGold: 220,
         label: 'Boss',
         isBoss: true
