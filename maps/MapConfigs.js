@@ -66,7 +66,7 @@ const mapTwoEnemyFactories = () => [
     new WallopEnemy(),
     new WeakenerEnemy(),
     new StraightArrowEnemy(),
-    new InfernoEnemy(), // placeholder
+    new LeechEnemy(), // placeholder
     new LockdownEnemy()
 ];
 
@@ -99,7 +99,6 @@ const mapThreeEnemyFactories = () => [
     new LeechEnemy(),
     new AuditorEnemy(),
     new CompactorEnemy(),
-    new LockdownEnemy(), // placeholder
     new LockdownEnemy(), // placeholder
     new StatusTicianEnemy()
 ];
