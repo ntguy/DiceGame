@@ -72,7 +72,11 @@ export function doesDieFaceValueTriggerRule(die, { zone } = {}) {
         case 'medicine':
             return faceValue >= 1 && faceValue <= 3;
         case 'flameout':
-            return faceValue > 0 && (isUpgraded || faceValue <= 4);
+            if (faceValue <= 0) {
+                return false;
+            }
+            const flameoutThreshold = isUpgraded ? 5 : 3;
+            return faceValue >= 1 && faceValue <= flameoutThreshold;
         case 'demolition': {
             const threshold = isUpgraded ? 3 : 2;
             return faceValue >= 1 && faceValue <= threshold;
@@ -133,7 +137,7 @@ export function rollCustomDieValue(scene, die) {
         case 'lucky':
             // Lucky die: skew odds toward higher rolls when upgraded.
             if (isUpgraded) {
-                return rollWeighted([1, 1, 2, 1, 1, 2]);
+                return Phaser.Math.Between(0, 1) === 0 ? 1 : 6;
             }
             return rollWeighted([2, 1, 1, 1, 1, 2]);
         default:
@@ -246,8 +250,9 @@ function getPostResolutionEffects({ die, zone }) {
 
     if (definition.id === 'flameout') {
         // Flameout die: cleanses burn when rolled low or upgraded.
-        const shouldCleanse = isUpgraded || (faceValue >= 1 && faceValue <= 4);
-        if (shouldCleanse && faceValue > 0) {
+        const threshold = isUpgraded ? 5 : 3;
+        const shouldCleanse = faceValue >= 1 && faceValue <= threshold;
+        if (shouldCleanse) {
             effects.push(context => {
                 const { scene } = context || {};
                 callSceneMethod(scene, 'reducePlayerBurn', faceValue);
