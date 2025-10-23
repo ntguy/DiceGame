@@ -7,7 +7,7 @@ export class StraightSudsRelic extends Relic {
             name: 'Straight Suds',
             description: 'Penta and Sex Straight cleanse all dice of curses.',
             icon: '🧼',
-            cost: 95
+            cost: 150
         });
     }
 

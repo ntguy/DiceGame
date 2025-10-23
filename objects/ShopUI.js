@@ -121,7 +121,7 @@ export class ShopUI {
                 nameText.setAlpha(0.9);
                 descText.setAlpha(0.9);
             } else if (capacityFull) {
-                disableButton('Max Relics');
+                disableButton(`Buy (${relic.cost}g)`);
             } else if (!relic.canAfford) {
                 buttonText.setText('Not enough gold');
                 buttonBg.setFillStyle(0x2c173a, 0.6);
@@ -185,7 +185,7 @@ export class ShopUI {
 
     createCapacityMessage() {
         const messageY = PANEL_HEIGHT / 2 - 90;
-        const text = this.scene.add.text(0, messageY, 'Discard a relic from your pack to make space.', {
+        const text = this.scene.add.text(0, messageY, 'Sell a relic from your pack to make space.', {
             fontSize: '18px',
             color: '#f9e79f'
         }).setOrigin(0.5);
