@@ -13,8 +13,8 @@ export class WeakenerEnemy extends BaseEnemy {
         this.moves = [
             {
                 key: 'weakener_mass_weaken',
-                label: 'Enervating Wave: Weaken 6 Dice',
-                actions: [weakenAction(6)]
+                label: 'Enervating Wave: Weaken 4 Dice',
+                actions: [weakenAction(4)]
             },
             {
                 key: 'weakener_attack',
