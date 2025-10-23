@@ -7,7 +7,7 @@ export class PrepperRelic extends Relic {
             name: 'Prepper',
             description: 'Spare rolls carry over between turns. +1 roll on first turn.',
             icon: '🧻',
-            cost: 100
+            cost: 150
         });
     }
 

@@ -93,8 +93,8 @@ const DEFINITIONS = [
         id: 'bomb',
         name: 'Time Bomb',
         emoji: '💣',
-        description: 'Unused turn: countdown -1. At 0: +25 ⚔️ once.',
-        upgradeDescription: 'Unused turn: countdown -1. At 0: +35 ⚔️ once.',
+        description: 'Unused turn: countdown -1. At 0: +20 ⚔️ once.',
+        upgradeDescription: 'Unused turn: countdown -1. At 0: +30 ⚔️ once.',
         allowedZones: ['attack', 'defend']
     }
 ];

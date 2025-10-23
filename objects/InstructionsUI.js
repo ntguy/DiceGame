@@ -95,8 +95,8 @@ const PAGES = [
                 keywords: [{ phrase: 'Relics', color: KEYWORD_COLOR }, { phrase: 'shops', color: KEYWORD_COLOR }, { phrase: 'bosses', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Carry up to 6 relics at once. Discard within your pack to make room for new finds.',
-                keywords: [{ phrase: '6', color: KEYWORD_COLOR }, { phrase: 'Discard', color: KEYWORD_COLOR }]
+                text: 'Carry up to 6 relics at once. Sell within your pack to make room for new finds.',
+                keywords: [{ phrase: '6', color: KEYWORD_COLOR }, { phrase: 'Sell', color: KEYWORD_COLOR }]
             },
             {
                 text: 'Tap a relic icon during battle for a reminder of its effect.',

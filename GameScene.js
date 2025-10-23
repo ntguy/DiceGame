@@ -1335,6 +1335,7 @@ export class GameScene extends Phaser.Scene {
 
         this.refreshBackpackContents();
         this.updateZonePreviewText();
+        this.addGold(50);
         this.refreshShopInterface();
 
         return true;
@@ -2121,7 +2122,7 @@ export class GameScene extends Phaser.Scene {
             if (state.countdown === 0 && !state.detonated) {
                 state.detonated = true;
                 stateChanged = true;
-                const bonus = state.isUpgraded ? 35 : 25;
+                const bonus = state.isUpgraded ? 30 : 20;
                 totalBonus += bonus;
                 detonatedStates.push({ uid, bonus });
             }

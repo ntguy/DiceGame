@@ -356,7 +356,7 @@ export class BackpackUI {
             .setStrokeStyle(2, DISCARD_BUTTON_STROKE_COLOR, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonLabel = this.scene.add.text(centerX, buttonY, 'Discard Relic', {
+        const buttonLabel = this.scene.add.text(centerX, buttonY, 'Sell (50g)', {
             fontSize: '20px',
             color: DISCARD_BUTTON_TEXT_COLOR,
             fontStyle: 'bold'
