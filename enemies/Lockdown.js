@@ -234,12 +234,7 @@ export class LockdownEnemy extends BaseEnemy {
     getIntentDescription(move) {
         const components = Array.isArray(move.intentComponents) ? move.intentComponents : [];
         const title = move.intentTitle || 'Move';
-        const { description, baseDefenseTotal, defenseBonus } = this.buildIntentLabelData(title, components, { includeDefenseBonus: true });
-
-        if (baseDefenseTotal > 0 && defenseBonus > 0) {
-            const totalDefense = baseDefenseTotal + defenseBonus;
-            return `${description}\nReroll Bonus: +${defenseBonus} Defense (Total ${totalDefense})`;
-        }
+        const { description } = this.buildIntentLabelData(title, components, { includeDefenseBonus: true });
 
         return description;
     }
