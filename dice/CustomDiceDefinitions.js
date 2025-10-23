@@ -45,8 +45,8 @@ const DEFINITIONS = [
         id: 'flameout',
         name: 'Flame-Out',
         emoji: '🧯',
-        description: 'FV=1-4: cleanse burn by FV.',
-        upgradeDescription: 'Cleanse burn by FV.',
+        description: 'FV=1-3: cleanse burn by FV.',
+        upgradeDescription: 'FV=1-5: cleanse burn by FV.',
         allowedZones: ['attack', 'defend']
     },
     {
@@ -86,7 +86,7 @@ const DEFINITIONS = [
         name: 'Call me Biased',
         emoji: '⚖️',
         description: 'Double chance to roll a 1 or a 6.',
-        upgradeDescription: 'Double chance to roll a 3 or 6.',
+        upgradeDescription: 'Always rolls a 1 or 6.',
         allowedZones: ['attack', 'defend']
     },
     {
