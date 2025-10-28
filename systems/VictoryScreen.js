@@ -1,9 +1,13 @@
+import { applyTextButtonStyle, setTextButtonEnabled } from '../objects/ui/ButtonStyles.js';
+
 export class VictoryScreen {
     constructor(scene) {
         this.scene = scene;
         this.container = null;
         this.background = null;
         this.messageText = null;
+        this.playAgainButton = null;
+        this.hasPlayedSound = false;
     }
 
     create() {
@@ -25,10 +29,41 @@ export class VictoryScreen {
 
         const message = "Congratulations Dicemaster! Your masterful rolling has helped you drop through every level of the dice tower. Thank you for defeating the mighty Status-tician, restoring freedom to the kingdom.";
 
-        this.messageText = this.scene.add.text(width / 2, height / 2, message, style);
+        this.messageText = this.scene.add.text(width / 2, height / 2 - 40, message, style);
         this.messageText.setOrigin(0.5);
 
-        this.container.add([this.background, this.messageText]);
+        this.playAgainButton = this.scene.add.text(width / 2, height / 2 + 120, 'PLAY AGAIN', {
+            fontSize: '36px',
+            color: '#1b1300',
+            padding: { x: 32, y: 18 }
+        }).setOrigin(0.5);
+
+        applyTextButtonStyle(this.playAgainButton, {
+            baseColor: '#f1c40f',
+            textColor: '#1b1300',
+            hoverBlend: 0.14,
+            pressBlend: 0.25,
+            disabledBlend: 0.45,
+            enabledAlpha: 1,
+            disabledAlpha: 0.45
+        });
+        setTextButtonEnabled(this.playAgainButton, true);
+
+        this.playAgainButton.on('pointerdown', () => {
+            if (!this.playAgainButton.input || !this.playAgainButton.input.enabled) {
+                return;
+            }
+
+            setTextButtonEnabled(this.playAgainButton, false, { disabledAlpha: 0.6 });
+
+            if (typeof window !== 'undefined' && window.location && typeof window.location.reload === 'function') {
+                window.location.reload();
+            } else if (this.scene && this.scene.scene && typeof this.scene.scene.restart === 'function') {
+                this.scene.scene.restart();
+            }
+        });
+
+        this.container.add([this.background, this.messageText, this.playAgainButton]);
 
         this.hide();
     }
@@ -46,12 +81,21 @@ export class VictoryScreen {
         this.container.setActive(true);
         this.container.setAlpha(0);
 
+        if (this.playAgainButton) {
+            setTextButtonEnabled(this.playAgainButton, true);
+        }
+
         this.scene.tweens.add({
             targets: this.container,
             alpha: 1,
             duration: 400,
             ease: 'Quad.easeOut'
         });
+
+        if (!this.hasPlayedSound && this.scene && this.scene.sound && typeof this.scene.sound.play === 'function') {
+            this.scene.sound.play('towerOfTenWin', { volume: 0.9 });
+            this.hasPlayedSound = true;
+        }
     }
 
     hide() {
@@ -65,6 +109,10 @@ export class VictoryScreen {
 
         if (this.background) {
             this.background.disableInteractive();
+        }
+
+        if (this.playAgainButton) {
+            setTextButtonEnabled(this.playAgainButton, false);
         }
     }
 }
