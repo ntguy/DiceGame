@@ -3103,6 +3103,18 @@ export class GameScene extends Phaser.Scene {
         return nextIndex >= 0 && nextIndex < this.maps.length;
     }
 
+    isOnFinalMap() {
+        if (!Array.isArray(this.maps) || this.maps.length === 0) {
+            return false;
+        }
+
+        if (!Number.isFinite(this.currentMapIndex)) {
+            return false;
+        }
+
+        return this.currentMapIndex === this.maps.length - 1;
+    }
+
     advanceToNextMapIfAvailable() {
         if (!this.hasNextMap()) {
             return false;
@@ -4353,6 +4365,7 @@ export class GameScene extends Phaser.Scene {
         this.prepareNextEnemyMove();
 
         const defeatedFinalBoss = defeatedNode && defeatedNode.isBoss
+            && this.isOnFinalMap()
             && (!this.pathManager || !this.pathManager.hasPendingNodes());
 
         if (defeatedFinalBoss) {
