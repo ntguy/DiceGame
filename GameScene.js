@@ -32,6 +32,7 @@ import { MAX_CUSTOM_DICE, SELECTABLE_CUSTOM_DICE_IDS, createDieBlueprint, getRan
 import { computeDieContribution, doesDieActAsWildcardForCombo } from './dice/CustomDiceLogic.js';
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
 import { playDiceRollSounds } from './utils/SoundHelpers.js';
+import { VictoryScreen } from './systems/VictoryScreen.js';
 
 const SHOP_RELIC_COUNT = 3;
 
@@ -106,6 +107,7 @@ export class GameScene extends Phaser.Scene {
         this.timeBombStates = new Map();
         this.activeTimeBombResolveBonus = 0;
         this.gameOverManager = null;
+        this.victoryScreen = null;
         this.muteButton = null;
         this.isMuted = false;
         this.isGameOver = false;
@@ -440,6 +442,9 @@ export class GameScene extends Phaser.Scene {
 
         this.gameOverManager = new GameOverManager(this);
         this.gameOverManager.create();
+
+        this.victoryScreen = new VictoryScreen(this);
+        this.victoryScreen.create();
 
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(110, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
@@ -4346,6 +4351,18 @@ export class GameScene extends Phaser.Scene {
         this.enemyManager.clearCurrentEnemy();
         this.resetZoneConstraints();
         this.prepareNextEnemyMove();
+
+        const defeatedFinalBoss = defeatedNode && defeatedNode.isBoss
+            && (!this.pathManager || !this.pathManager.hasPendingNodes());
+
+        if (defeatedFinalBoss) {
+            if (this.pathUI) {
+                this.pathUI.hide();
+            }
+            this.triggerVictoryScreen();
+            return;
+        }
+
         this.presentCustomDieReward();
     }
 
@@ -4655,6 +4672,32 @@ export class GameScene extends Phaser.Scene {
 
         enemy._testingModeApplied = false;
         enemy._testingModePreviousHealth = null;
+    }
+
+    triggerVictoryScreen() {
+        if (this.isGameOver) {
+            return;
+        }
+
+        this.isGameOver = true;
+
+        if (this.rollButton) {
+            setTextButtonEnabled(this.rollButton, false);
+        }
+
+        if (this.sortButton) {
+            setTextButtonEnabled(this.sortButton, false);
+        }
+
+        if (this.resolveButton) {
+            setTextButtonEnabled(this.resolveButton, false);
+        }
+
+        this.getDiceInPlay().forEach(die => die.disableInteractive());
+
+        if (this.victoryScreen) {
+            this.victoryScreen.show();
+        }
     }
 
     triggerGameOver() {
