@@ -29,8 +29,8 @@ const DEFINITIONS = [
         id: 'bonk',
         name: 'Bonk',
         emoji: '🦴',
-        description: 'In No Combo: FV of 6.',
-        upgradeDescription: 'In No Combo: FV of 8.',
+        description: 'In No Combo: FV of 7.',
+        upgradeDescription: 'In No Combo: FV of 9.',
         allowedZones: ['attack', 'defend']
     },
     {

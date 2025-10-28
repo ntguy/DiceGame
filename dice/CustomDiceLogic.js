@@ -165,7 +165,7 @@ function getBaseFaceContribution({ die, zone, comboType }) {
         case 'bonk':
             // Bonk die: guarantees strong value with no combo.
             if (comboType === 'No combo') {
-                return isUpgraded ? 8 : 6;
+                return isUpgraded ? 9 : 7;
             }
             return baseFace;
         default:
