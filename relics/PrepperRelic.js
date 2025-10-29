@@ -5,7 +5,7 @@ export class PrepperRelic extends Relic {
         super({
             id: 'prepper',
             name: 'Prepper',
-            description: 'Spare rolls carry over between turns. +1 roll on first turn.',
+            description: 'Rolls carry over between turns. +1 roll on first turn.',
             icon: '🧻',
             cost: 150
         });
