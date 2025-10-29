@@ -387,6 +387,7 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.setBounds(0, -CONSTANTS.HEADER_HEIGHT, this.scale.width, this.scale.height + CONSTANTS.HEADER_HEIGHT);
         this.cameras.main.setScroll(0, -CONSTANTS.HEADER_HEIGHT);
         createHeaderUI(this);
+        this.updateGoldUI();
 
         // --- Dice arrays for zones ---
         this.defendDice = [];
@@ -418,12 +419,6 @@ export class GameScene extends Phaser.Scene {
         // --- Health bar ---
         this.healthBar = setupHealthBar(this);
         this.updateHealthUI();
-
-        this.goldText = this.add.text(20, this.healthBar.text.y + 28, '', {
-            fontSize: '20px',
-            color: '#f1c40f'
-        });
-        this.updateGoldUI();
 
         this.updateMapTitleText();
 
@@ -4758,7 +4753,7 @@ export class GameScene extends Phaser.Scene {
 
         if (this.mapTitleText) {
             const hasText = this.mapTitleText.text && this.mapTitleText.text.length > 0;
-            this.mapTitleText.setVisible(isMapView && hasText);
+            this.mapTitleText.setVisible(hasText);
         }
 
         if (this.enemyHealthBar) {
