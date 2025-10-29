@@ -50,8 +50,8 @@ const DEFINITIONS = [
         allowedZones: ['attack', 'defend']
     },
     {
-        id: 'firecracker',
-        name: 'Firecracker',
+        id: 'cherrybomb',
+        name: 'Cherry Bomb',
         emoji: '🧨',
         description: 'FV=1-2: Burn enemy 2.',
         upgradeDescription: 'FV=1-2: Burn enemy 3.',
