@@ -3,7 +3,7 @@ import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { CONSTANTS } from '../config.js';
 
 const PANEL_WIDTH = 880;
-const PANEL_HEIGHT = 520;
+const PANEL_HEIGHT = 540;
 const CARD_WIDTH = 250;
 const CARD_HEIGHT = 260;
 const CARD_GAP = 24;
@@ -69,6 +69,10 @@ export class BossRelicRewardUI {
     }
 
     renderChoices() {
+        if (this.isDestroyed || !this.container) {
+            return;
+        }
+
         this.cardContainers.forEach(container => container.destroy(true));
         this.cardContainers = [];
 
@@ -204,21 +208,51 @@ export class BossRelicRewardUI {
     }
 
     createCapacityText() {
-        const text = this.scene.add.text(0, CAPACITY_TEXT_Y, this.getCapacityLabel(), {
+        const text = this.scene.add.text(0, CAPACITY_TEXT_Y, '', {
             fontSize: '18px',
-            color: '#f9e79f'
+            color: '#f9e79f',
+            align: 'center'
         }).setOrigin(0.5);
 
         this.capacityText = text;
         this.container.add(text);
+        this.updateCapacityText();
     }
 
     getCapacityLabel() {
         const { current, max } = this.capacity;
         if (typeof max === 'number' && max > 0) {
-            return `Relic Slots: ${Math.min(current, max)} / ${max}`;
+            const label = `Relic Slots: ${Math.min(current, max)} / ${max}`;
+            if (this.isCapacityFull()) {
+                return `${label}\nSell a relic from your pack to make space.`;
+            }
+            return label;
         }
         return 'Relic Slots: --';
+    }
+
+    updateCapacityText() {
+        if (this.capacityText) {
+            this.capacityText.setText(this.getCapacityLabel());
+        }
+    }
+
+    updateCapacity(capacity = {}) {
+        if (this.isDestroyed) {
+            return;
+        }
+
+        if (capacity && typeof capacity === 'object') {
+            if (typeof capacity.currentCount === 'number') {
+                this.capacity.current = capacity.currentCount;
+            }
+            if (typeof capacity.maxCount === 'number') {
+                this.capacity.max = capacity.maxCount;
+            }
+        }
+
+        this.updateCapacityText();
+        this.renderChoices();
     }
 
     createContinueButton() {

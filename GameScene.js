@@ -227,6 +227,12 @@ export class GameScene extends Phaser.Scene {
         this.bossRelicRewardUI = null;
     }
 
+    updateBossRelicRewardCapacity() {
+        if (this.bossRelicRewardUI && typeof this.bossRelicRewardUI.updateCapacity === 'function') {
+            this.bossRelicRewardUI.updateCapacity(this.getRelicCapacityState());
+        }
+    }
+
     resetMenuState() {
         if (this.instructionsUI && typeof this.instructionsUI.destroy === 'function') {
             this.instructionsUI.destroy();
@@ -910,6 +916,7 @@ export class GameScene extends Phaser.Scene {
         if (this.backpackUI) {
             this.backpackUI.refreshContent();
         }
+        this.updateBossRelicRewardCapacity();
     }
 
     update() {
