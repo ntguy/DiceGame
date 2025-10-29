@@ -67,7 +67,7 @@ export function doesDieFaceValueTriggerRule(die, { zone } = {}) {
         : (typeof die.value === 'number' ? die.value : 0);
 
     switch (definition.id) {
-        case 'firecracker':
+        case 'cherrybomb':
             return faceValue >= 1 && faceValue <= 2;
         case 'medicine':
             return faceValue >= 1 && faceValue <= 3;
@@ -228,8 +228,8 @@ function getPreResolutionEffects({ die, zone }) {
         }
     }
 
-    if (definition.id === 'firecracker') {
-        // Firecracker die: applies burn to the enemy before resolution when rolled low.
+    if (definition.id === 'cherrybomb') {
+        // Cherry Bomb die: applies burn to the enemy before resolution when rolled low.
         const shouldIgnite = faceValue >= 1 && faceValue <= 2;
         if (shouldIgnite) {
             const burnAmount = isUpgraded ? 3 : 2;

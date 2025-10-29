@@ -7,7 +7,15 @@ const COLUMN_GAP = 24;
 const ROW_VERTICAL_SPACING = 28;
 const ROW_HORIZONTAL_PADDING = 28;
 const DICE_SLOT_SIZE = 74;
-const RELIC_SLOT_RADIUS = 34;
+const BASE_RELIC_SLOT_RADIUS = 34;
+const COMPACT_RELIC_SLOT_RADIUS = 30;
+const BASE_RELIC_SLOT_MIN_SPACING = 18;
+const COMPACT_RELIC_SLOT_MIN_SPACING = 14;
+const BASE_RELIC_LABEL_FONT_SIZE = '16px';
+const COMPACT_RELIC_LABEL_FONT_SIZE = '14px';
+const BASE_RELIC_LABEL_WRAP_PADDING = 12;
+const COMPACT_RELIC_LABEL_WRAP_PADDING = 10;
+const COMPACT_RELIC_THRESHOLD = 7;
 
 const DICE_SECTION_BACKGROUND_COLOR = 0x1a2b3a;
 const RELIC_SECTION_BACKGROUND_COLOR = 0x2e1a38;
@@ -105,7 +113,9 @@ export class BackpackUI {
         const availableHeight = panelBottom - panelTop;
         const sectionHeight = (availableHeight - ROW_VERTICAL_SPACING);
         const diceHeight = Math.max(DICE_SLOT_SIZE + 28, sectionHeight * 0.4);
-        const relicHeight = Math.max(RELIC_SLOT_RADIUS * 2 + 52, sectionHeight * 0.4);
+        const initialRelicSlotCount = this.getDesiredRelicSlotCount();
+        const { radius: initialRelicRadius } = this.getRelicSlotVisualSettings(initialRelicSlotCount);
+        const relicHeight = Math.max(initialRelicRadius * 2 + 52, sectionHeight * 0.4);
         const diceCenterY = panelTop + ROW_VERTICAL_SPACING + diceHeight / 2;
         const relicCenterY = diceCenterY + diceHeight / 2 + ROW_VERTICAL_SPACING + relicHeight / 2;
 
@@ -295,6 +305,17 @@ export class BackpackUI {
         return CONSTANTS.RELIC_MAX_SLOTS;
     }
 
+    getRelicSlotVisualSettings(slotCount = this.getDesiredRelicSlotCount()) {
+        const count = Math.max(0, Math.floor(slotCount));
+        const useCompactLayout = count >= COMPACT_RELIC_THRESHOLD;
+        return {
+            radius: useCompactLayout ? COMPACT_RELIC_SLOT_RADIUS : BASE_RELIC_SLOT_RADIUS,
+            minSpacing: useCompactLayout ? COMPACT_RELIC_SLOT_MIN_SPACING : BASE_RELIC_SLOT_MIN_SPACING,
+            labelFontSize: useCompactLayout ? COMPACT_RELIC_LABEL_FONT_SIZE : BASE_RELIC_LABEL_FONT_SIZE,
+            labelWrapPadding: useCompactLayout ? COMPACT_RELIC_LABEL_WRAP_PADDING : BASE_RELIC_LABEL_WRAP_PADDING
+        };
+    }
+
     ensureRelicSlotCount() {
         const desiredCount = this.getDesiredRelicSlotCount();
         this.rebuildRelicSlots(desiredCount);
@@ -330,17 +351,18 @@ export class BackpackUI {
         }
 
         const { centerX, centerY, width } = this.relicSectionConfig;
+        const { radius, minSpacing, labelFontSize, labelWrapPadding } = this.getRelicSlotVisualSettings(count);
         const slotAreaWidth = width - ROW_HORIZONTAL_PADDING * 2;
         const slotSpacing = count > 1
-            ? Math.max(18, (slotAreaWidth - RELIC_SLOT_RADIUS * 2 * count) / (count - 1))
+            ? Math.max(minSpacing, (slotAreaWidth - radius * 2 * count) / (count - 1))
             : 0;
-        const startX = centerX - slotAreaWidth / 2 + RELIC_SLOT_RADIUS;
+        const startX = centerX - slotAreaWidth / 2 + radius;
 
         this.relicSlots = Array.from({ length: count }, (_, index) => {
-            const x = startX + index * (RELIC_SLOT_RADIUS * 2 + slotSpacing);
+            const x = startX + index * (radius * 2 + slotSpacing);
             const slotContainer = this.scene.add.container(x, centerY);
 
-            const slotBackground = this.scene.add.circle(0, 0, RELIC_SLOT_RADIUS, RELIC_SLOT_EMPTY_FILL_COLOR, 0.9)
+            const slotBackground = this.scene.add.circle(0, 0, radius, RELIC_SLOT_EMPTY_FILL_COLOR, 0.9)
                 .setStrokeStyle(2, RELIC_SLOT_STROKE_COLOR, 0.3)
                 .setInteractive({ useHandCursor: true });
 
@@ -349,11 +371,11 @@ export class BackpackUI {
                 color: '#ffffff'
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, RELIC_SLOT_RADIUS + 16, '', {
-                fontSize: '16px',
+            const labelText = this.scene.add.text(0, radius + 16, '', {
+                fontSize: labelFontSize,
                 color: INFO_SUBTEXT_COLOR,
                 align: 'center',
-                wordWrap: { width: RELIC_SLOT_RADIUS * 2 + 12 }
+                wordWrap: { width: radius * 2 + labelWrapPadding }
             }).setOrigin(0.5, 0);
 
             slotBackground.on('pointerup', () => {
