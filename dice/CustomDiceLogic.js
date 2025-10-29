@@ -93,7 +93,13 @@ export function getDieAllowedZones(dieOrBlueprint) {
     const id = typeof dieOrBlueprint === 'string'
         ? dieOrBlueprint
         : (dieOrBlueprint && dieOrBlueprint.id);
+    const isUpgraded = typeof dieOrBlueprint === 'object' && !!dieOrBlueprint?.isUpgraded;
     const definition = getCustomDieDefinitionById(id);
+
+    if (isUpgraded && (id === 'sword' || id === 'shield')) {
+        return ['attack', 'defend'];
+    }
+
     return Array.isArray(definition.allowedZones) ? definition.allowedZones : ['attack', 'defend'];
 }
 
