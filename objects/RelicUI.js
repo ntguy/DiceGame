@@ -1,13 +1,5 @@
 import { CONSTANTS } from '../config.js';
 
-const RELIC_UI_DEPTHS = {
-    INFO_BACKGROUND: 850,
-    INFO_TEXT: 860,
-    TRAY: 870,
-    ICON_BACKGROUND: 880,
-    ICON_TEXT: 890
-};
-
 export class RelicUIManager {
     constructor(scene) {
         this.scene = scene;
@@ -46,9 +38,6 @@ export class RelicUIManager {
             0.45
         ).setOrigin(0.5, 0);
         this.relicInfoBackground.setStrokeStyle(2, 0xf1c40f, 0.25);
-        if (typeof this.relicInfoBackground.setDepth === 'function') {
-            this.relicInfoBackground.setDepth(RELIC_UI_DEPTHS.INFO_BACKGROUND);
-        }
 
         this.relicInfoTitleText = this.scene.add.text(infoCenterX, infoTitleY + 20, '', {
             fontSize: '20px',
@@ -56,9 +45,6 @@ export class RelicUIManager {
             fontStyle: 'bold',
             align: 'center'
         }).setOrigin(0.5, 0);
-        if (typeof this.relicInfoTitleText.setDepth === 'function') {
-            this.relicInfoTitleText.setDepth(RELIC_UI_DEPTHS.INFO_TEXT);
-        }
 
         this.relicInfoDescriptionText = this.scene.add.text(infoCenterX, infoTitleY + 45, '', {
             fontSize: '18px',
@@ -67,9 +53,6 @@ export class RelicUIManager {
             lineSpacing: 6,
             align: 'center'
         }).setOrigin(0.5, 0);
-        if (typeof this.relicInfoDescriptionText.setDepth === 'function') {
-            this.relicInfoDescriptionText.setDepth(RELIC_UI_DEPTHS.INFO_TEXT);
-        }
 
         const trayWidth = CONSTANTS.RELIC_ICON_SIZE + (CONSTANTS.RELIC_ICON_SPACING * Math.max(0, slotLimit - 1));
         const trayCenterX = CONSTANTS.RIGHT_COLUMN_X - (offsetSpan / 2);
@@ -83,9 +66,6 @@ export class RelicUIManager {
             0.35
         ).setOrigin(0.5);
         this.relicTrayBorder.setStrokeStyle(2, 0xf1c40f, 0.4);
-        if (typeof this.relicTrayBorder.setDepth === 'function') {
-            this.relicTrayBorder.setDepth(RELIC_UI_DEPTHS.TRAY);
-        }
 
         this.setInfoText('', '');
         this.updateDisplay();
@@ -112,9 +92,6 @@ export class RelicUIManager {
             const hasRelic = index < displayedRelics.length;
             const iconBg = this.scene.add.rectangle(x, baseY, iconSize, iconSize, 0x1c1c1c, 0.85)
                 .setStrokeStyle(2, 0xf1c40f, hasRelic ? 0.9 : 0.25);
-            if (typeof iconBg.setDepth === 'function') {
-                iconBg.setDepth(RELIC_UI_DEPTHS.ICON_BACKGROUND);
-            }
 
             this.relicVisuals.push(iconBg);
 
@@ -126,9 +103,6 @@ export class RelicUIManager {
                     fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE,
                     padding: CONSTANTS.EMOJI_TEXT_PADDING
                 }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-                if (typeof iconText.setDepth === 'function') {
-                    iconText.setDepth(RELIC_UI_DEPTHS.ICON_TEXT);
-                }
 
                 const handlePointerDown = pointer => {
                     if (pointer && pointer.event && typeof pointer.event.stopPropagation === 'function') {

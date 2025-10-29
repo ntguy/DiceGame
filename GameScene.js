@@ -162,6 +162,7 @@ export class GameScene extends Phaser.Scene {
         this.isMapViewActive = false;
         this.isFirstCombatTurn = false;
         this.modalInputLockCount = 0;
+        this.previousInputTopOnly = null;
     }
 
     acquireModalInputLock() {
@@ -171,6 +172,12 @@ export class GameScene extends Phaser.Scene {
 
         if (!Number.isFinite(this.modalInputLockCount)) {
             this.modalInputLockCount = 0;
+        }
+
+        if (this.modalInputLockCount === 0) {
+            this.previousInputTopOnly = typeof this.input.topOnly === 'boolean'
+                ? this.input.topOnly
+                : true;
         }
 
         this.modalInputLockCount += 1;
@@ -189,7 +196,11 @@ export class GameScene extends Phaser.Scene {
         this.modalInputLockCount = Math.max(0, this.modalInputLockCount - 1);
 
         if (this.modalInputLockCount === 0) {
-            this.input.setTopOnly(false);
+            const restoreTopOnly = typeof this.previousInputTopOnly === 'boolean'
+                ? this.previousInputTopOnly
+                : true;
+            this.input.setTopOnly(restoreTopOnly);
+            this.previousInputTopOnly = null;
         }
     }
 

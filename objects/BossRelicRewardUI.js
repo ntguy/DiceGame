@@ -3,7 +3,7 @@ import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { CONSTANTS } from '../config.js';
 
 const PANEL_WIDTH = 880;
-const PANEL_HEIGHT = 540;
+const PANEL_HEIGHT = 560;
 const CARD_WIDTH = 250;
 const CARD_HEIGHT = 260;
 const CARD_GAP = 24;
