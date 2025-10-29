@@ -53,6 +53,8 @@ export class BackpackUI {
         this.container = null;
         this.diceSlots = [];
         this.relicSlots = [];
+        this.desiredRelicSlotCount = null;
+        this.relicSectionLayout = null;
         this.diceInfoTitleText = null;
         this.diceInfoDescriptionText = null;
         this.relicInfoTitleText = null;
@@ -279,14 +281,72 @@ export class BackpackUI {
         }).setOrigin(0, 0);
         this.container.add(label);
 
-        const slotsPerRow = CONSTANTS.RELIC_MAX_SLOTS;
+        this.relicSectionLayout = { centerX, centerY, width, height };
+        const initialSlots = this.getSceneRelicSlotCount();
+        this.desiredRelicSlotCount = initialSlots;
+        this.rebuildRelicSlots(initialSlots);
+    }
+
+    getSceneRelicSlotCount() {
+        if (this.scene && typeof this.scene.getRelicSlotCount === 'function') {
+            return this.scene.getRelicSlotCount();
+        }
+        return CONSTANTS.RELIC_MAX_SLOTS;
+    }
+
+    getDesiredRelicSlotCount() {
+        const desired = typeof this.desiredRelicSlotCount === 'number'
+            ? this.desiredRelicSlotCount
+            : this.getSceneRelicSlotCount();
+        const sanitized = Math.floor(desired);
+        return Math.max(1, sanitized || 0);
+    }
+
+    ensureRelicSlotCount() {
+        const desired = this.getDesiredRelicSlotCount();
+        if (!Array.isArray(this.relicSlots) || this.relicSlots.length !== desired) {
+            this.rebuildRelicSlots(desired);
+        }
+    }
+
+    setRelicSlotCount(count) {
+        const desired = Math.max(1, Math.floor(count || 0));
+        if (this.desiredRelicSlotCount !== desired) {
+            this.desiredRelicSlotCount = desired;
+        }
+        this.ensureRelicSlotCount();
+        this.refreshRelicSlots();
+        this.updateRelicHighlights();
+        this.updateRelicDiscardButtonState();
+    }
+
+    rebuildRelicSlots(count) {
+        const layout = this.relicSectionLayout;
+        if (!layout || !this.container) {
+            this.relicSlots = [];
+            return;
+        }
+
+        const slots = Math.max(1, Math.floor(count || 0));
+
+        if (Array.isArray(this.relicSlots)) {
+            this.relicSlots.forEach(slot => {
+                if (slot && slot.container && typeof slot.container.destroy === 'function') {
+                    slot.container.destroy(true);
+                }
+            });
+        }
+
+        this.relicSlots = [];
+
+        const { centerX, centerY, width } = layout;
         const slotAreaWidth = width - ROW_HORIZONTAL_PADDING * 2;
-        const slotSpacing = slotsPerRow > 1
-            ? Math.max(18, (slotAreaWidth - RELIC_SLOT_RADIUS * 2 * slotsPerRow) / (slotsPerRow - 1))
+        const slotSpacing = slots > 1
+            ? Math.max(18, (slotAreaWidth - RELIC_SLOT_RADIUS * 2 * slots) / (slots - 1))
             : 0;
         const startX = centerX - slotAreaWidth / 2 + RELIC_SLOT_RADIUS;
 
-        this.relicSlots = Array.from({ length: slotsPerRow }, (_, index) => {
+        for (let index = 0; index < slots; index += 1) {
             const x = startX + index * (RELIC_SLOT_RADIUS * 2 + slotSpacing);
             const slotContainer = this.scene.add.container(x, centerY);
 
@@ -315,14 +375,14 @@ export class BackpackUI {
             slotContainer.add(labelText);
             this.container.add(slotContainer);
 
-            return {
+            this.relicSlots.push({
                 container: slotContainer,
                 background: slotBackground,
                 iconText,
                 labelText,
                 data: null
-            };
-        });
+            });
+        }
     }
 
     createRelicInfoSection({ centerX, centerY, width, height }) {
@@ -483,6 +543,8 @@ export class BackpackUI {
     }
 
     refreshContent() {
+        this.desiredRelicSlotCount = this.getSceneRelicSlotCount();
+        this.ensureRelicSlotCount();
         this.refreshDiceSlots();
         this.refreshRelicSlots();
         this.updateDiceHighlights();
@@ -561,6 +623,7 @@ export class BackpackUI {
     }
 
     refreshRelicSlots() {
+        this.ensureRelicSlotCount();
         if (!Array.isArray(this.relicSlots) || this.relicSlots.length === 0) {
             this.updateRelicDiscardButtonState();
             return;
@@ -833,5 +896,7 @@ export class BackpackUI {
         this.isVisible = false;
         this.diceDiscardButton = null;
         this.relicDiscardButton = null;
+        this.desiredRelicSlotCount = null;
+        this.relicSectionLayout = null;
     }
 }

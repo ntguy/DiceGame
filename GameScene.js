@@ -24,14 +24,8 @@ import { InfirmaryUI } from './objects/InfirmaryUI.js';
 import { ShopUI } from './objects/ShopUI.js';
 import { TowerOfTenUI } from './objects/TowerOfTenUI.js';
 import { RelicUIManager } from './objects/RelicUI.js';
-import { BlockbusterRelic } from './relics/BlockbusterRelic.js';
-import { BeefyRelic } from './relics/BeefyRelic.js';
-import { FamilyRelic } from './relics/FamilyRelic.js';
-import { ReRollWithItRelic } from './relics/ReRollWithItRelic.js';
-import { WildOneRelic } from './relics/WildOneRelic.js';
-import { StraightSudsRelic } from './relics/StraightSudsRelic.js';
-import { RainRelic } from './relics/RainRelic.js';
-import { PrepperRelic } from './relics/PrepperRelic.js';
+import { BossRelicRewardUI } from './objects/BossRelicRewardUI.js';
+import { createRelicPools } from './relics/RelicPools.js';
 import { resolveWildcardCombo } from './systems/WildcardLogic.js';
 import { MAP_CONFIGS } from './maps/MapConfigs.js';
 import { DiceUpgradeUI } from './objects/DiceUpgradeUI.js';
@@ -193,10 +187,18 @@ export class GameScene extends Phaser.Scene {
     }
 
     resetRelicState() {
+        if (this.bossRelicRewardUI && typeof this.bossRelicRewardUI.destroy === 'function') {
+            this.bossRelicRewardUI.destroy();
+        }
+
+        this.bossRelicRewardUI = null;
         this.relicCatalog = [];
+        this.bossRelicCatalog = [];
         this.relics = [];
         this.ownedRelicIds = new Set();
         this.currentShopRelics = null;
+        this.relicSlotBonus = 0;
+        this.bossRelicBonusClaimed = false;
         this.hasBlockbusterRelic = false;
         this.hasFamilyRelic = false;
         this.familyHealPerFullHouse = 0;
@@ -347,16 +349,9 @@ export class GameScene extends Phaser.Scene {
         this.customDiceLoadout = [];
         this.diceRewardUI = null;
         this.resetRelicState();
-        this.relicCatalog = [
-            new BlockbusterRelic(),
-            new BeefyRelic(),
-            new FamilyRelic(),
-            new ReRollWithItRelic(),
-            new WildOneRelic(),
-            new StraightSudsRelic(),
-            new RainRelic(),
-            new PrepperRelic()
-        ];
+        const relicPools = createRelicPools() || {};
+        this.relicCatalog = Array.isArray(relicPools.general) ? [...relicPools.general] : [];
+        this.bossRelicCatalog = Array.isArray(relicPools.boss) ? [...relicPools.boss] : [];
         this.resetMenuState();
 
         this.cameras.main.setBounds(0, -CONSTANTS.HEADER_HEIGHT, this.scale.width, this.scale.height + CONSTANTS.HEADER_HEIGHT);
@@ -1477,6 +1472,121 @@ export class GameScene extends Phaser.Scene {
             }
         });
         this.updateDiceRewardHandState();
+    }
+
+    presentBossRelicReward() {
+        if (this.bossRelicRewardUI) {
+            this.bossRelicRewardUI.destroy();
+            this.bossRelicRewardUI = null;
+        }
+
+        const options = this.getBossRelicRewardOptions();
+        if (!Array.isArray(options) || options.length === 0) {
+            this.requestEnterMapStateAfterCombat();
+            return;
+        }
+
+        this.bossRelicRewardUI = new BossRelicRewardUI(this, {
+            options,
+            onSelect: option => this.handleBossRelicRewardSelection(option),
+            onClose: () => {
+                this.bossRelicRewardUI = null;
+                this.requestEnterMapStateAfterCombat();
+            }
+        });
+    }
+
+    getBossRelicRewardOptions() {
+        const relicOptions = this.getRandomBossRelics(2);
+        const options = relicOptions.map(relic => ({
+            id: relic.id,
+            type: 'relic',
+            name: relic.name,
+            description: relic.description,
+            icon: relic.icon,
+            relic,
+            buttonLabel: 'Claim'
+        }));
+
+        if (!this.bossRelicBonusClaimed) {
+            options.push({
+                id: 'boss-bonus-slot',
+                type: 'bonus',
+                name: 'Treasure Cache',
+                description: 'Gain 100 gold and +1 relic slot.',
+                icon: '💰',
+                buttonLabel: 'Collect'
+            });
+        }
+
+        return options;
+    }
+
+    getRandomBossRelics(count = 2) {
+        const pool = Array.isArray(this.bossRelicCatalog) ? [...this.bossRelicCatalog] : [];
+        if (pool.length === 0 || count <= 0) {
+            return [];
+        }
+
+        const unowned = pool.filter(relic => relic && !this.ownedRelicIds.has(relic.id));
+        const selections = [];
+
+        const selectFrom = source => {
+            const candidates = Array.isArray(source) ? [...source] : [];
+            while (selections.length < count && candidates.length > 0) {
+                const index = Phaser.Math.Between(0, candidates.length - 1);
+                const [choice] = candidates.splice(index, 1);
+                if (choice) {
+                    selections.push(choice);
+                }
+            }
+        };
+
+        selectFrom(unowned);
+
+        if (selections.length < count) {
+            const remaining = pool.filter(relic => relic && !selections.includes(relic));
+            selectFrom(remaining);
+        }
+
+        if (selections.length < count && unowned.length > 0) {
+            while (selections.length < count) {
+                selections.push(unowned[selections.length % unowned.length]);
+            }
+        }
+
+        return selections.slice(0, count);
+    }
+
+    handleBossRelicRewardSelection(option) {
+        if (!option) {
+            return false;
+        }
+
+        if (option.type === 'relic' && option.relic) {
+            const granted = this.grantRelicDirectly(option.relic);
+            if (granted) {
+                if (option.relic.name) {
+                    this.showNodeMessage(`Gained ${option.relic.name}`, '#f9e79f');
+                }
+                return true;
+            }
+            return false;
+        }
+
+        if (option.type === 'bonus') {
+            if (this.bossRelicBonusClaimed) {
+                return false;
+            }
+
+            this.bossRelicBonusClaimed = true;
+            this.addGold(100);
+            this.increaseRelicSlotLimit(1);
+            this.showNodeMessage('Bonus: +100 Gold and +1 Relic Slot', '#f1c40f');
+            return true;
+        }
+
+        return false;
     }
 
     applyPendingLocks() {
@@ -2843,6 +2953,10 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        if (this.bossRelicRewardUI) {
+            return;
+        }
+
         this.pendingPostCombatTransition = false;
         this.enterMapState();
     }
@@ -3922,13 +4036,43 @@ export class GameScene extends Phaser.Scene {
         }));
     }
 
+    getRelicSlotCount() {
+        const baseSlots = CONSTANTS.RELIC_MAX_SLOTS;
+        const bonusSlots = Number.isFinite(this.relicSlotBonus) ? this.relicSlotBonus : 0;
+        const total = baseSlots + bonusSlots;
+        return Math.max(1, total);
+    }
+
+    increaseRelicSlotLimit(amount = 0) {
+        if (!amount || amount <= 0) {
+            return this.getRelicSlotCount();
+        }
+
+        const bonusSlots = Number.isFinite(this.relicSlotBonus) ? this.relicSlotBonus : 0;
+        this.relicSlotBonus = Math.max(0, bonusSlots + amount);
+        this.updateRelicSlotInterfaces();
+        return this.getRelicSlotCount();
+    }
+
+    updateRelicSlotInterfaces() {
+        if (this.relicUI) {
+            this.relicUI.createShelf();
+        }
+
+        if (this.backpackUI && typeof this.backpackUI.setRelicSlotCount === 'function') {
+            this.backpackUI.setRelicSlotCount(this.getRelicSlotCount());
+        } else if (this.backpackUI && typeof this.backpackUI.refreshContent === 'function') {
+            this.backpackUI.refreshContent();
+        }
+    }
+
     getRelicCapacityState() {
         const currentCount = this.ownedRelicIds instanceof Set
             ? this.ownedRelicIds.size
             : (Array.isArray(this.relics) ? this.relics.length : 0);
         return {
             currentCount,
-            maxCount: CONSTANTS.RELIC_MAX_SLOTS
+            maxCount: this.getRelicSlotCount()
         };
     }
 
@@ -4402,7 +4546,11 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.presentCustomDieReward();
+        if (defeatedNode && defeatedNode.isBoss) {
+            this.presentBossRelicReward();
+        } else {
+            this.presentCustomDieReward();
+        }
     }
 
     handleAllEnemiesDefeated() {

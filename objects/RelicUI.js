@@ -24,7 +24,10 @@ export class RelicUIManager {
         this.destroyInfoTexts();
         this.destroyStaticElements();
 
-        const infoCenterX = CONSTANTS.RIGHT_COLUMN_X - (CONSTANTS.RELIC_ICON_SPACING * (CONSTANTS.RELIC_MAX_SLOTS - 1) / 2);
+        const slotCount = this.getSlotCount();
+        const effectiveSlots = Math.max(1, slotCount);
+        const slotSpan = CONSTANTS.RELIC_ICON_SPACING * (effectiveSlots - 1);
+        const infoCenterX = CONSTANTS.RIGHT_COLUMN_X - (slotSpan / 2);
         const infoTitleY = CONSTANTS.RELIC_INFO_TITLE_Y;
 
         this.relicInfoBackground = this.scene.add.rectangle(
@@ -52,8 +55,8 @@ export class RelicUIManager {
             align: 'center'
         }).setOrigin(0.5, 0);
 
-        const trayWidth = CONSTANTS.RELIC_ICON_SIZE + (CONSTANTS.RELIC_ICON_SPACING * (CONSTANTS.RELIC_MAX_SLOTS - 1));
-        const trayCenterX = CONSTANTS.RIGHT_COLUMN_X - (CONSTANTS.RELIC_ICON_SPACING * (CONSTANTS.RELIC_MAX_SLOTS - 1) / 2);
+        const trayWidth = CONSTANTS.RELIC_ICON_SIZE + (CONSTANTS.RELIC_ICON_SPACING * (effectiveSlots - 1));
+        const trayCenterX = CONSTANTS.RIGHT_COLUMN_X - (CONSTANTS.RELIC_ICON_SPACING * (effectiveSlots - 1) / 2);
 
         this.relicTrayBorder = this.scene.add.rectangle(
             trayCenterX,
@@ -77,14 +80,15 @@ export class RelicUIManager {
         }
 
         const ownedRelics = this.scene.relics.filter(relic => this.scene.ownedRelicIds.has(relic.id));
-        const displayedRelics = ownedRelics.slice(0, CONSTANTS.RELIC_MAX_SLOTS);
+        const slotCount = this.getSlotCount();
+        const displayedRelics = ownedRelics.slice(0, slotCount);
 
         const startX = CONSTANTS.RIGHT_COLUMN_X;
         const baseY = CONSTANTS.RELIC_TRAY_Y;
         const spacing = CONSTANTS.RELIC_ICON_SPACING;
         const iconSize = CONSTANTS.RELIC_ICON_SIZE;
 
-        for (let index = 0; index < CONSTANTS.RELIC_MAX_SLOTS; index += 1) {
+        for (let index = 0; index < slotCount; index += 1) {
             const x = startX - index * spacing;
             const hasRelic = index < displayedRelics.length;
             const iconBg = this.scene.add.rectangle(x, baseY, iconSize, iconSize, 0x1c1c1c, 0.85)
@@ -118,6 +122,13 @@ export class RelicUIManager {
         }
 
         this.updateRelicSelectionHighlight();
+    }
+
+    getSlotCount() {
+        if (this.scene && typeof this.scene.getRelicSlotCount === 'function') {
+            return this.scene.getRelicSlotCount();
+        }
+        return CONSTANTS.RELIC_MAX_SLOTS;
     }
 
     showRelicDetails(relic) {
