@@ -3,7 +3,7 @@ export class BlockbusterRelic extends Relic {
     constructor() {
         super({
             id: 'blockbuster',
-            name: 'Blockbuster',
+            name: 'Block Buster',
             description: 'Your attacks deal double damage to enemy block.',
             icon: '🎬',
             cost: 150

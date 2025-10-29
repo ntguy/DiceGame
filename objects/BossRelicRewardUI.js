@@ -5,9 +5,9 @@ import { CONSTANTS } from '../config.js';
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 560;
 const CARD_WIDTH = 250;
-const CARD_HEIGHT = 260;
+const CARD_HEIGHT = 280;
 const CARD_GAP = 24;
-const CAPACITY_TEXT_Y = PANEL_HEIGHT / 2 - 90;
+const CAPACITY_TEXT_Y = PANEL_HEIGHT / 2 - 110;
 const BUTTON_WIDTH = 220;
 const BUTTON_HEIGHT = 52;
 
@@ -83,7 +83,7 @@ export class BossRelicRewardUI {
 
         const cardSpacing = CARD_WIDTH + CARD_GAP;
         const startX = count > 1 ? -((count - 1) * cardSpacing) / 2 : 0;
-        const cardY = 0;
+        const cardY = -20;
         const capacityFull = this.isCapacityFull();
 
         this.choices.forEach((choice, index) => {
@@ -256,7 +256,7 @@ export class BossRelicRewardUI {
     }
 
     createContinueButton() {
-        const buttonY = PANEL_HEIGHT / 2 - 32;
+        const buttonY = PANEL_HEIGHT / 2 - 50;
         const buttonBg = this.scene.add.rectangle(0, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT, 0x271438, 0.92)
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
