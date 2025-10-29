@@ -279,7 +279,10 @@ export class BackpackUI {
         }).setOrigin(0, 0);
         this.container.add(label);
 
-        const slotsPerRow = CONSTANTS.RELIC_MAX_SLOTS;
+        const slotsPerRowRaw = this.scene && typeof this.scene.getMaxRelicSlots === 'function'
+            ? this.scene.getMaxRelicSlots()
+            : CONSTANTS.RELIC_MAX_SLOTS;
+        const slotsPerRow = Math.max(1, Math.floor(slotsPerRowRaw));
         const slotAreaWidth = width - ROW_HORIZONTAL_PADDING * 2;
         const slotSpacing = slotsPerRow > 1
             ? Math.max(18, (slotAreaWidth - RELIC_SLOT_RADIUS * 2 * slotsPerRow) / (slotsPerRow - 1))
