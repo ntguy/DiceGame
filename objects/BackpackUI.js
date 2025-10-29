@@ -42,7 +42,7 @@ const DEFAULT_EMPTY_DIE_TEXT = {
 
 const DEFAULT_EMPTY_RELIC_TEXT = {
     name: 'Empty Relic Slot',
-    description: 'You can carry up to six relics. Find more on your journey!'
+    description: 'You can carry a limited number of relics. Find more on your journey!'
 };
 
 export class BackpackUI {
@@ -63,6 +63,8 @@ export class BackpackUI {
         this.selectedRelicIndex = null;
         this.diceDiscardButton = null;
         this.relicDiscardButton = null;
+        this.relicSlotCount = 0;
+        this.relicSectionConfig = null;
 
         this.create();
         this.setVisible(false);
@@ -279,14 +281,62 @@ export class BackpackUI {
         }).setOrigin(0, 0);
         this.container.add(label);
 
-        const slotsPerRow = CONSTANTS.RELIC_MAX_SLOTS;
+        this.relicSectionConfig = { centerX, centerY, width, height };
+        this.ensureRelicSlotCount();
+    }
+
+    getDesiredRelicSlotCount() {
+        if (this.scene && typeof this.scene.getRelicSlotLimit === 'function') {
+            const limit = this.scene.getRelicSlotLimit();
+            if (typeof limit === 'number' && limit >= 0) {
+                return Math.floor(limit);
+            }
+        }
+        return CONSTANTS.RELIC_MAX_SLOTS;
+    }
+
+    ensureRelicSlotCount() {
+        const desiredCount = this.getDesiredRelicSlotCount();
+        this.rebuildRelicSlots(desiredCount);
+    }
+
+    rebuildRelicSlots(slotCount) {
+        if (!this.relicSectionConfig) {
+            return;
+        }
+
+        const count = Math.max(0, Math.floor(slotCount));
+        if (count === this.relicSlotCount && Array.isArray(this.relicSlots) && this.relicSlots.length === count) {
+            return;
+        }
+
+        if (Array.isArray(this.relicSlots)) {
+            this.relicSlots.forEach(slot => {
+                if (slot && slot.container) {
+                    slot.container.destroy(true);
+                }
+            });
+        }
+
+        this.relicSlots = [];
+        this.relicSlotCount = count;
+
+        if (typeof this.selectedRelicIndex === 'number' && this.selectedRelicIndex >= count) {
+            this.selectedRelicIndex = null;
+        }
+
+        if (count <= 0) {
+            return;
+        }
+
+        const { centerX, centerY, width } = this.relicSectionConfig;
         const slotAreaWidth = width - ROW_HORIZONTAL_PADDING * 2;
-        const slotSpacing = slotsPerRow > 1
-            ? Math.max(18, (slotAreaWidth - RELIC_SLOT_RADIUS * 2 * slotsPerRow) / (slotsPerRow - 1))
+        const slotSpacing = count > 1
+            ? Math.max(18, (slotAreaWidth - RELIC_SLOT_RADIUS * 2 * count) / (count - 1))
             : 0;
         const startX = centerX - slotAreaWidth / 2 + RELIC_SLOT_RADIUS;
 
-        this.relicSlots = Array.from({ length: slotsPerRow }, (_, index) => {
+        this.relicSlots = Array.from({ length: count }, (_, index) => {
             const x = startX + index * (RELIC_SLOT_RADIUS * 2 + slotSpacing);
             const slotContainer = this.scene.add.container(x, centerY);
 
@@ -483,6 +533,7 @@ export class BackpackUI {
     }
 
     refreshContent() {
+        this.ensureRelicSlotCount();
         this.refreshDiceSlots();
         this.refreshRelicSlots();
         this.updateDiceHighlights();
