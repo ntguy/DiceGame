@@ -14,7 +14,10 @@ export function createMenuUI(scene) {
     });
     const { container: menuPanel, panelWidth, sectionWidth } = panel;
 
-    const combos = Object.entries(COMBO_POINTS);
+    const comboPoints = typeof scene.getComboPointsTable === 'function'
+        ? scene.getComboPointsTable()
+        : COMBO_POINTS;
+    const combos = Object.entries(comboPoints);
     const lineSpacing = 24;
     const comboContentHeight = combos.length * lineSpacing;
     const comboSectionHeight = comboContentHeight + 60;
@@ -34,6 +37,8 @@ export function createMenuUI(scene) {
 
     const comboTextStartX = panelWidth / 2 + sectionWidth / 2 - 16;
     const comboTextStartY = comboTop + 52;
+    scene.comboListOrder = combos.map(([combo]) => combo);
+
     scene.comboListTexts = combos.map(([combo, points], index) => {
         const text = scene.add.text(comboTextStartX, comboTextStartY + index * lineSpacing, `${combo}: ${points}`, {
             fontSize: '20px',

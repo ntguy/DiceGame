@@ -15,7 +15,7 @@ import { createSettingsUI } from './objects/SettingsUI.js';
 import { createHeaderUI } from './objects/HeaderUI.js';
 import { InstructionsUI } from './objects/InstructionsUI.js';
 import { BackpackUI } from './objects/BackpackUI.js';
-import { evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
+import { COMBO_POINTS, evaluateCombo, scoreCombo } from './systems/ComboSystem.js';
 import { EnemyManager } from './systems/EnemySystem.js';
 import { GameOverManager } from './systems/GameOverSystem.js';
 import { PathManager, PATH_NODE_TYPES } from './systems/PathManager.js';
@@ -38,6 +38,22 @@ import { VictoryScreen } from './systems/VictoryScreen.js';
 const SHOP_RELIC_COUNT = 3;
 const BOSS_RELIC_CHOICE_COUNT = 2;
 const BOSS_BONUS_REWARD_ID = 'boss-capacity-bonus';
+
+const CHAIN_REACTOR_BONUS_OVERRIDES = {
+    'Pair': 3,
+    'Two Pair': 7,
+    'Three of a Kind': 7,
+    'Straight Tri': 7,
+    'Four of a Kind': 13,
+    'Straight Quad': 13,
+    'Full House': 19,
+    'Straight Penta': 19,
+    'Five of a Kind': 19,
+    'Fuller House': 25,
+    'Triples Pair': 25,
+    'Straight Sex': 25,
+    'YAHTZEE': 30
+};
 
 function getRandomIndexExclusive(maxExclusive) {
     if (!Number.isFinite(maxExclusive) || maxExclusive <= 0) {
@@ -130,6 +146,7 @@ export class GameScene extends Phaser.Scene {
         this.defendComboText = null;
         this.attackComboText = null;
         this.comboListTexts = [];
+        this.comboListOrder = [];
         this.pendingPostCombatTransition = false;
 
         this.customDiceLoadout = [];
@@ -225,6 +242,12 @@ export class GameScene extends Phaser.Scene {
         this.rollCarryoverEnabled = false;
         this.prepperFirstTurnBonusRolls = 0;
         this.prepperCarryoverRolls = 0;
+        this.hasChainReactorRelic = false;
+        this.hasBatteryIncludedRelic = false;
+        this.batteryDieState = null;
+        this.currentHandSlotCount = CONSTANTS.DICE_PER_SET;
+        this.refreshHandSlotCount();
+        this.updateComboListDisplay();
         if (this.relicUI) {
             this.relicUI.reset();
         }
@@ -269,6 +292,8 @@ export class GameScene extends Phaser.Scene {
         this.isBackpackOpen = false;
         this.headerContainer = null;
         this.layoutHeaderButtons = null;
+        this.comboListTexts = [];
+        this.comboListOrder = [];
     }
 
     init(data) {
@@ -719,6 +744,105 @@ export class GameScene extends Phaser.Scene {
         this.layoutZoneDice('attack');
     }
 
+    getBaseHandSlotCount() {
+        const base = CONSTANTS.DICE_PER_SET;
+        return base + (this.isBatteryDieAvailable() ? 1 : 0);
+    }
+
+    getHandSlotCount() {
+        const count = Number.isFinite(this.currentHandSlotCount)
+            ? this.currentHandSlotCount
+            : this.getBaseHandSlotCount();
+        return Math.max(1, Math.floor(count));
+    }
+
+    setHandSlotCount(count, { relayout = true } = {}) {
+        const sanitized = Math.max(1, Math.floor(Number(count) || CONSTANTS.DICE_PER_SET));
+        if (this.currentHandSlotCount === sanitized) {
+            return;
+        }
+
+        this.currentHandSlotCount = sanitized;
+
+        if (relayout) {
+            this.layoutHandDice({ animate: true });
+        }
+    }
+
+    refreshHandSlotCount() {
+        this.setHandSlotCount(this.getBaseHandSlotCount(), { relayout: true });
+    }
+
+    getHandSlotLayout({ totalSlots } = {}) {
+        const spacing = CONSTANTS.SLOT_SPACING;
+        const baseCenter = CONSTANTS.SLOT_START_X + ((CONSTANTS.DICE_PER_SET - 1) * spacing) / 2;
+        const slotCount = Number.isFinite(totalSlots)
+            ? Math.max(1, Math.floor(totalSlots))
+            : this.getHandSlotCount();
+        const startX = baseCenter - ((slotCount - 1) * spacing) / 2;
+        return {
+            startX,
+            spacing,
+            totalSlots: slotCount,
+            centerX: baseCenter
+        };
+    }
+
+    layoutHandDice({ animate = false } = {}) {
+        if (!Array.isArray(this.dice) || this.dice.length === 0) {
+            return;
+        }
+
+        const layout = this.getHandSlotLayout();
+        const startX = layout.startX;
+        const spacing = layout.spacing;
+
+        this.dice.forEach((die, index) => {
+            if (!die) {
+                return;
+            }
+
+            const targetX = startX + index * spacing;
+            const targetY = CONSTANTS.GRID_Y;
+
+            if (animate && this.tweens) {
+                this.tweens.add({
+                    targets: die,
+                    x: targetX,
+                    y: targetY,
+                    duration: 200,
+                    ease: 'Power2'
+                });
+            } else {
+                die.x = targetX;
+                die.y = targetY;
+            }
+
+            die.slotIndex = index;
+        });
+    }
+
+    isBatteryDieAvailable() {
+        if (!this.hasBatteryIncludedRelic || !this.batteryDieState || !this.batteryDieState.blueprint) {
+            return false;
+        }
+
+        const uses = Number.isFinite(this.batteryDieState.usesRemaining)
+            ? this.batteryDieState.usesRemaining
+            : 0;
+        return uses > 0;
+    }
+
+    getBatteryDieUsesRemaining() {
+        if (!this.batteryDieState) {
+            return 0;
+        }
+        const uses = Number.isFinite(this.batteryDieState.usesRemaining)
+            ? this.batteryDieState.usesRemaining
+            : 0;
+        return Math.max(0, uses);
+    }
+
     toggleMenu() {
         if (!this.menuPanel) {
             return;
@@ -970,11 +1094,15 @@ export class GameScene extends Phaser.Scene {
             }
             return indices;
         }, []);
+        const comboPointsTable = this.getComboPointsTable();
         const evaluateOptions = {
             overrideValues: [...diceValues]
         };
         if (wildcardIndices.length > 0) {
-            evaluateOptions.resolveWildcards = (values, evaluator) => resolveWildcardCombo(values, evaluator, { wildcardIndices });
+            evaluateOptions.resolveWildcards = (values, evaluator) => resolveWildcardCombo(values, evaluator, {
+                wildcardIndices,
+                comboPointsTable
+            });
         }
         const comboInfo = evaluateCombo(diceList, evaluateOptions);
         const comboType = comboInfo.type;
@@ -987,7 +1115,7 @@ export class GameScene extends Phaser.Scene {
         const comboBonusExtra = contributions.reduce((sum, entry) => sum + (entry && entry.comboBonusModifier ? entry.comboBonusModifier : 0), 0);
 
         const baseSum = baseContribution + rerollBonus;
-        const comboBonus = scoreCombo(comboType) + comboBonusExtra;
+        const comboBonus = scoreCombo(comboType, comboPointsTable) + comboBonusExtra;
         const preResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.preResolutionEffects)) ? entry.preResolutionEffects : []);
         const postResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.postResolutionEffects)) ? entry.postResolutionEffects : []);
 
@@ -1001,6 +1129,46 @@ export class GameScene extends Phaser.Scene {
             preResolutionEffects,
             postResolutionEffects
         };
+    }
+
+    getComboPointsTable() {
+        const table = {};
+        Object.keys(COMBO_POINTS).forEach(combo => {
+            const baseValue = COMBO_POINTS[combo] || 0;
+            let value = baseValue;
+
+            if (this.hasChainReactorRelic) {
+                if (Object.prototype.hasOwnProperty.call(CHAIN_REACTOR_BONUS_OVERRIDES, combo)) {
+                    value = CHAIN_REACTOR_BONUS_OVERRIDES[combo];
+                } else if (baseValue > 0) {
+                    value = Math.round(baseValue * 1.25);
+                }
+            }
+
+            table[combo] = Math.max(0, Math.round(value));
+        });
+        return table;
+    }
+
+    updateComboListDisplay() {
+        if (!Array.isArray(this.comboListTexts) || this.comboListTexts.length === 0) {
+            return;
+        }
+
+        const table = this.getComboPointsTable();
+        const order = Array.isArray(this.comboListOrder) && this.comboListOrder.length === this.comboListTexts.length
+            ? this.comboListOrder
+            : Object.keys(table);
+
+        order.forEach((combo, index) => {
+            const textObj = this.comboListTexts[index];
+            if (!textObj || typeof textObj.setText !== 'function') {
+                return;
+            }
+
+            const points = Number.isFinite(table[combo]) ? table[combo] : 0;
+            textObj.setText(`${combo}: ${points}`);
+        });
     }
 
     applyRerollDefenseBonus(count) {
@@ -1204,8 +1372,9 @@ export class GameScene extends Phaser.Scene {
         if (isFirstRoll) {
             this.dice = [];
             const blueprints = this.getActiveDiceBlueprints();
+            const slotCount = blueprints.length;
             blueprints.forEach((blueprint, index) => {
-                const die = createDie(this, index, blueprint);
+                const die = createDie(this, index, blueprint, slotCount);
                 this.dice.push(die);
             });
             diceInPlay = this.getDiceInPlay();
@@ -1399,6 +1568,17 @@ export class GameScene extends Phaser.Scene {
                 break;
             case 'unlocked-and-loaded':
                 this.cleanseCursesOnLongStraights = false;
+                break;
+            case 'chain-reactor':
+                this.hasChainReactorRelic = false;
+                this.updateComboListDisplay();
+                this.updateZonePreviewText();
+                break;
+            case 'battery-included':
+                this.hasBatteryIncludedRelic = false;
+                this.batteryDieState = null;
+                this.refreshHandSlotCount();
+                this.updateZonePreviewText();
                 break;
             case 'blockbuster':
                 this.hasBlockbusterRelic = false;
@@ -1744,7 +1924,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + count);
+        this.pendingLockCount = Math.min(this.getHandSlotCount(), this.pendingLockCount + count);
     }
 
     clearDieWeaken(die) {
@@ -1778,7 +1958,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + count);
+        this.pendingWeakenCount = Math.min(this.getHandSlotCount(), this.pendingWeakenCount + count);
     }
 
     clearDieNullify(die) {
@@ -1815,7 +1995,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.pendingNullifyCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingNullifyCount + count);
+        this.pendingNullifyCount = Math.min(this.getHandSlotCount(), this.pendingNullifyCount + count);
     }
 
     sortDice() {
@@ -1825,14 +2005,17 @@ export class GameScene extends Phaser.Scene {
 
         this.sound.play('swoosh', { volume: CONSTANTS.DEFAULT_SFX_VOLUME });
         this.dice.sort((a, b) => a.value - b.value);
+        const layout = this.getHandSlotLayout({ totalSlots: this.getHandSlotCount() });
+        const startX = layout.startX;
+        const spacing = layout.spacing;
         this.dice.forEach((d, i) => {
             d.slotIndex = i;
-            this.tweens.add({ 
-                targets: d, 
-                x: CONSTANTS.SLOT_START_X + i * CONSTANTS.SLOT_SPACING, 
-                y: CONSTANTS.GRID_Y, 
-                duration: 200, 
-                ease: 'Power2' 
+            this.tweens.add({
+                targets: d,
+                x: startX + i * spacing,
+                y: CONSTANTS.GRID_Y,
+                duration: 200,
+                ease: 'Power2'
             });
         });
     }
@@ -1906,6 +2089,8 @@ export class GameScene extends Phaser.Scene {
         const defendResult = this.computeZoneScore(this.defendDice || [], { zone: 'defend' });
         const attackResult = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
 
+        this.updateBatteryDieUsage({ defendDice: this.defendDice, attackDice: this.attackDice });
+
         if (timeBombBonus > 0) {
             attackResult.baseSum = (attackResult.baseSum || 0) + timeBombBonus;
             attackResult.total = (attackResult.total || 0) + timeBombBonus;
@@ -1956,13 +2141,13 @@ export class GameScene extends Phaser.Scene {
         const finishResolution = () => {
             this.activeTimeBombResolveBonus = 0;
             if (locksToCarryOver > 0) {
-                this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + locksToCarryOver);
+                this.pendingLockCount = Math.min(this.getHandSlotCount(), this.pendingLockCount + locksToCarryOver);
             }
             if (weakenedToCarryOver > 0) {
-                this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + weakenedToCarryOver);
+                this.pendingWeakenCount = Math.min(this.getHandSlotCount(), this.pendingWeakenCount + weakenedToCarryOver);
             }
             if (nullifiedToCarryOver > 0) {
-                this.pendingNullifyCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingNullifyCount + nullifiedToCarryOver);
+                this.pendingNullifyCount = Math.min(this.getHandSlotCount(), this.pendingNullifyCount + nullifiedToCarryOver);
             }
             this.lockedDice.clear();
             this.clearAllWeakenedDice();
@@ -2043,13 +2228,80 @@ export class GameScene extends Phaser.Scene {
             uid: entry.uid
         }));
 
-        while (blueprints.length < CONSTANTS.DICE_PER_SET) {
+        const baseCount = CONSTANTS.DICE_PER_SET;
+        while (blueprints.length < baseCount) {
             blueprints.push(createDieBlueprint('standard'));
         }
 
-        blueprints = blueprints.slice(0, CONSTANTS.DICE_PER_SET);
+        blueprints = blueprints.slice(0, baseCount);
 
-        return this.applyTemporaryDestructionToBlueprints(blueprints);
+        if (this.isBatteryDieAvailable() && this.batteryDieState && this.batteryDieState.blueprint) {
+            blueprints.push(this.batteryDieState.blueprint);
+        }
+
+        const finalBlueprints = this.applyTemporaryDestructionToBlueprints(blueprints);
+        this.currentHandSlotCount = Math.max(1, finalBlueprints.length);
+        return finalBlueprints;
+    }
+
+    initializeBatteryDieStateForEncounter() {
+        if (!this.hasBatteryIncludedRelic) {
+            this.batteryDieState = null;
+            this.refreshHandSlotCount();
+            return;
+        }
+
+        const blueprint = createDieBlueprint('standard');
+        this.batteryDieState = {
+            blueprint: { ...blueprint, batteryDie: true },
+            usesRemaining: 3
+        };
+        this.refreshHandSlotCount();
+    }
+
+    updateBatteryDieUsage({ defendDice = [], attackDice = [] } = {}) {
+        if (!this.hasBatteryIncludedRelic || !this.batteryDieState || !this.batteryDieState.blueprint) {
+            return;
+        }
+
+        const uses = Number.isFinite(this.batteryDieState.usesRemaining)
+            ? this.batteryDieState.usesRemaining
+            : 0;
+        if (uses <= 0) {
+            return;
+        }
+
+        const batteryUid = this.batteryDieState.blueprint.uid;
+        if (!batteryUid) {
+            return;
+        }
+
+        const defendList = Array.isArray(defendDice) ? defendDice : [];
+        const attackList = Array.isArray(attackDice) ? attackDice : [];
+        const combined = [...defendList, ...attackList];
+        const wasUsed = combined.some(die => die && die.dieBlueprint && die.dieBlueprint.uid === batteryUid);
+
+        if (!wasUsed) {
+            return;
+        }
+
+        const nextUses = Math.max(0, uses - 1);
+        if (nextUses === uses) {
+            return;
+        }
+
+        this.batteryDieState.usesRemaining = nextUses;
+
+        combined.forEach(die => {
+            if (!die || !die.dieBlueprint || die.dieBlueprint.uid !== batteryUid) {
+                return;
+            }
+            if (typeof die.updateEmoji === 'function') {
+                die.updateEmoji();
+            }
+        });
+
+        this.refreshHandSlotCount();
     }
 
     initializeTimeBombStatesForEncounter() {
@@ -2104,6 +2356,14 @@ export class GameScene extends Phaser.Scene {
         }
 
         const blueprint = die.dieBlueprint;
+        if (blueprint.batteryDie
+            && this.batteryDieState
+            && this.batteryDieState.blueprint
+            && this.batteryDieState.blueprint.uid === blueprint.uid) {
+            const usesRemaining = this.getBatteryDieUsesRemaining();
+            return usesRemaining > 0 ? `${usesRemaining}` : '';
+        }
+
         if (blueprint.id !== 'bomb') {
             return '';
         }
@@ -3743,6 +4003,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingCrowdControlPlan = null;
         this.isFirstCombatTurn = true;
         this.prepperCarryoverRolls = 0;
+        this.initializeBatteryDieStateForEncounter();
         this.resetZoneConstraints();
         this.resetGameState({ destroyDice: true });
         this.initializeTimeBombStatesForEncounter();
@@ -4631,6 +4892,8 @@ export class GameScene extends Phaser.Scene {
         this.attackDice = [];
         this.defendSlots = Array(this.getMaxDicePerZone()).fill(null);
         this.attackSlots = Array(this.getMaxDicePerZone()).fill(null);
+
+        this.refreshHandSlotCount();
 
         this.playerBlockValue = 0;
         this.rerollDefenseBonus = 0;
