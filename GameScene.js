@@ -80,8 +80,12 @@ export class GameScene extends Phaser.Scene {
 
         // Game state
         this.dice = [];
-        this.defaultMaxDicePerZone = CONSTANTS.DICE_PER_SET;
+        this.baseHandDiceCapacity = CONSTANTS.DICE_PER_SET;
+        this.additionalHandDiceCapacity = 0;
+        this.defaultMaxDicePerZone = this.baseHandDiceCapacity;
         this.maxDicePerZone = this.defaultMaxDicePerZone;
+        this.deferHandCapacityUpdate = false;
+        this.deferBatteryVisualRefresh = false;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.playerMaxHealth = 100;
@@ -225,6 +229,14 @@ export class GameScene extends Phaser.Scene {
         this.rollCarryoverEnabled = false;
         this.prepperFirstTurnBonusRolls = 0;
         this.prepperCarryoverRolls = 0;
+        this.hasChainReactorRelic = false;
+        this.chainReactorComboMultipliers = null;
+        this.hasBatteryIncludedRelic = false;
+        this.batteryDieUsesPerBattle = 0;
+        this.batteryDieUsesRemaining = 0;
+        this.additionalHandDiceCapacity = 0;
+        this.deferHandCapacityUpdate = false;
+        this.deferBatteryVisualRefresh = false;
         if (this.relicUI) {
             this.relicUI.reset();
         }
@@ -269,6 +281,8 @@ export class GameScene extends Phaser.Scene {
         this.isBackpackOpen = false;
         this.headerContainer = null;
         this.layoutHeaderButtons = null;
+        this.comboListOrder = [];
+        this.comboListTexts = [];
     }
 
     init(data) {
@@ -539,16 +553,83 @@ export class GameScene extends Phaser.Scene {
         this.updateZonePreviewText();
     }
 
+    getBaseHandDiceCapacity() {
+        return Math.max(1, this.baseHandDiceCapacity || CONSTANTS.DICE_PER_SET);
+    }
+
+    getAdditionalHandDiceCapacity() {
+        return Math.max(0, Number.isFinite(this.additionalHandDiceCapacity) ? this.additionalHandDiceCapacity : 0);
+    }
+
+    getBatteryDieCapacityBonus() {
+        if (!this.hasBatteryIncludedRelic) {
+            return 0;
+        }
+        const remaining = Number.isFinite(this.batteryDieUsesRemaining) ? this.batteryDieUsesRemaining : 0;
+        return remaining > 0 ? 1 : 0;
+    }
+
+    getDiceHandCapacityLimit() {
+        const base = this.getBaseHandDiceCapacity();
+        const bonus = this.getAdditionalHandDiceCapacity() + this.getBatteryDieCapacityBonus();
+        return Math.max(1, base + bonus);
+    }
+
+    getHandRowStart(totalDice = null) {
+        const spacing = CONSTANTS.SLOT_SPACING;
+        const count = Number.isFinite(totalDice) && totalDice > 0
+            ? Math.floor(totalDice)
+            : Math.max(1, Array.isArray(this.dice) ? this.dice.length : this.getDiceHandCapacityLimit());
+        const width = spacing * Math.max(0, count - 1);
+        const centerX = this.scale ? this.scale.width / 2 : CONSTANTS.SLOT_START_X + width / 2;
+        return centerX - width / 2;
+    }
+
+    getHandSlotX(index, totalDice = null) {
+        const startX = this.getHandRowStart(totalDice);
+        return startX + index * CONSTANTS.SLOT_SPACING;
+    }
+
+    arrangeHandDice({ animate = false } = {}) {
+        if (!Array.isArray(this.dice)) {
+            return;
+        }
+
+        const total = this.dice.length;
+        this.dice.forEach((die, index) => {
+            if (!die) {
+                return;
+            }
+
+            const targetX = this.getHandSlotX(index, total || this.getDiceHandCapacityLimit());
+            const targetY = CONSTANTS.GRID_Y;
+            die.slotIndex = index;
+
+            if (animate && die.scene) {
+                this.tweens.add({
+                    targets: die,
+                    x: targetX,
+                    y: targetY,
+                    duration: 200,
+                    ease: 'Power2'
+                });
+            } else {
+                die.x = targetX;
+                die.y = targetY;
+            }
+        });
+    }
+
     getMaxDicePerZone() {
         const base = Number.isFinite(this.maxDicePerZone)
             ? Math.max(1, Math.floor(this.maxDicePerZone))
             : this.defaultMaxDicePerZone;
-        return Math.min(CONSTANTS.DICE_PER_SET, base);
+        return Math.min(this.getDiceHandCapacityLimit(), base);
     }
 
     getZoneWidth({ includePadding = false } = {}) {
         const baseWidth = CONSTANTS.DEFAULT_ZONE_WIDTH;
-        const ratio = this.getMaxDicePerZone() / CONSTANTS.DICE_PER_SET;
+        const ratio = this.getMaxDicePerZone() / this.getBaseHandDiceCapacity();
         const clampedWidth = Math.max(180, baseWidth * ratio);
         return includePadding ? clampedWidth + 6 : clampedWidth;
     }
@@ -557,7 +638,21 @@ export class GameScene extends Phaser.Scene {
         return 100;
     }
 
+    updateHandCapacityTargets() {
+        const limit = this.getDiceHandCapacityLimit();
+        this.defaultMaxDicePerZone = limit;
+        const currentMax = Number.isFinite(this.maxDicePerZone) ? Math.floor(this.maxDicePerZone) : limit;
+        this.maxDicePerZone = Math.min(limit, Math.max(1, currentMax));
+        this.pendingLockCount = Math.min(limit, this.pendingLockCount || 0);
+        this.pendingWeakenCount = Math.min(limit, this.pendingWeakenCount || 0);
+        this.pendingNullifyCount = Math.min(limit, this.pendingNullifyCount || 0);
+        this.syncZoneSlotsWithMax();
+        this.updateZoneVisualLayout();
+        this.arrangeHandDice();
+    }
+
     resetZoneConstraints() {
+        this.updateHandCapacityTargets();
         this.maxDicePerZone = this.defaultMaxDicePerZone;
         this.syncZoneSlotsWithMax();
         this.updateZoneVisualLayout();
@@ -565,7 +660,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     setMaxDicePerZone(maxDice) {
-        const clamped = Math.max(1, Math.min(CONSTANTS.DICE_PER_SET, Math.floor(Number(maxDice) || 0)));
+        const clamped = Math.max(1, Math.min(this.getDiceHandCapacityLimit(), Math.floor(Number(maxDice) || 0)));
         const previous = this.getMaxDicePerZone();
 
         if (clamped === previous) {
@@ -982,7 +1077,8 @@ export class GameScene extends Phaser.Scene {
         const comboBonusExtra = contributions.reduce((sum, entry) => sum + (entry && entry.comboBonusModifier ? entry.comboBonusModifier : 0), 0);
 
         const baseSum = baseContribution + rerollBonus;
-        const comboBonus = scoreCombo(comboType) + comboBonusExtra;
+        const comboBase = scoreCombo(comboType);
+        const comboBonus = this.modifyComboBonusValue(comboBase + comboBonusExtra, { comboType });
         const preResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.preResolutionEffects)) ? entry.preResolutionEffects : []);
         const postResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.postResolutionEffects)) ? entry.postResolutionEffects : []);
 
@@ -1179,6 +1275,77 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    getComboBonusMultiplier(comboType) {
+        if (!this.hasChainReactorRelic) {
+            return 1;
+        }
+
+        if (!this.chainReactorComboMultipliers) {
+            this.chainReactorComboMultipliers = {
+                'Pair': 1.35,
+                'Two Pair': 1.33,
+                'Three of a Kind': 1.3,
+                'Straight Tri': 1.3,
+                'Four of a Kind': 1.25,
+                'Straight Quad': 1.25,
+                'Full House': 1.25,
+                'Straight Penta': 1.22,
+                'Five of a Kind': 1.22,
+                'Fuller House': 1.2,
+                'Triples Pair': 1.2,
+                'YAHTZEE': 1.2,
+                'Straight Sex': 1.2,
+                'No combo': 1
+            };
+        }
+
+        if (!comboType || comboType === 'No combo') {
+            return 1;
+        }
+
+        return this.chainReactorComboMultipliers[comboType] || 1.2;
+    }
+
+    modifyComboBonusValue(value, { comboType } = {}) {
+        const baseValue = Number.isFinite(value) ? value : 0;
+        if (!this.hasChainReactorRelic) {
+            return Math.round(baseValue);
+        }
+
+        const multiplier = this.getComboBonusMultiplier(comboType);
+        const modified = baseValue * multiplier;
+        return Math.round(modified);
+    }
+
+    getDisplayedComboBonus(comboType) {
+        const base = scoreCombo(comboType);
+        return this.modifyComboBonusValue(base, { comboType });
+    }
+
+    refreshComboBonusMenuValues() {
+        if (!Array.isArray(this.comboListTexts) || this.comboListTexts.length === 0) {
+            return;
+        }
+
+        const combos = Array.isArray(this.comboListOrder) && this.comboListOrder.length > 0
+            ? this.comboListOrder
+            : this.comboListTexts.map(text => {
+                if (!text || typeof text.text !== 'string') {
+                    return '';
+                }
+                return text.text.split(':')[0];
+            });
+
+        combos.forEach((combo, index) => {
+            const textObj = this.comboListTexts[index];
+            if (!textObj || typeof combo !== 'string' || combo.length === 0) {
+                return;
+            }
+            const value = this.getDisplayedComboBonus(combo);
+            textObj.setText(`${combo}: ${value}`);
+        });
+    }
+
     rollDice() {
         if (!this.inCombat || this.isGameOver) {
             return;
@@ -1336,8 +1503,24 @@ export class GameScene extends Phaser.Scene {
 
         this.refreshBackpackContents();
         this.refreshShopInterface();
+        this.onRelicEffectsUpdated();
 
         return true;
+    }
+
+    onRelicEffectsUpdated() {
+        if (this.isResolving) {
+            this.deferHandCapacityUpdate = true;
+        } else {
+            this.updateHandCapacityTargets();
+        }
+        this.refreshComboBonusMenuValues();
+        if (this.isResolving) {
+            this.deferBatteryVisualRefresh = true;
+        } else {
+            this.refreshActiveDiceVisuals();
+        }
+        this.updateZonePreviewText();
     }
 
     discardRelicById(relicId) {
@@ -1367,6 +1550,7 @@ export class GameScene extends Phaser.Scene {
         this.updateZonePreviewText();
         this.addGold(50);
         this.refreshShopInterface();
+        this.onRelicEffectsUpdated();
 
         return true;
     }
@@ -1406,6 +1590,15 @@ export class GameScene extends Phaser.Scene {
                 this.rollCarryoverEnabled = false;
                 this.prepperFirstTurnBonusRolls = 0;
                 this.prepperCarryoverRolls = 0;
+                break;
+            case 'chain-reactor':
+                this.hasChainReactorRelic = false;
+                this.chainReactorComboMultipliers = null;
+                break;
+            case 'battery-included':
+                this.hasBatteryIncludedRelic = false;
+                this.batteryDieUsesPerBattle = 0;
+                this.batteryDieUsesRemaining = 0;
                 break;
             default:
                 break;
@@ -1739,7 +1932,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + count);
+        this.pendingLockCount = Math.min(this.getDiceHandCapacityLimit(), this.pendingLockCount + count);
     }
 
     clearDieWeaken(die) {
@@ -1773,7 +1966,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + count);
+        this.pendingWeakenCount = Math.min(this.getDiceHandCapacityLimit(), this.pendingWeakenCount + count);
     }
 
     clearDieNullify(die) {
@@ -1810,7 +2003,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.pendingNullifyCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingNullifyCount + count);
+        this.pendingNullifyCount = Math.min(this.getDiceHandCapacityLimit(), this.pendingNullifyCount + count);
     }
 
     sortDice() {
@@ -1820,14 +2013,16 @@ export class GameScene extends Phaser.Scene {
 
         this.sound.play('swoosh', { volume: CONSTANTS.DEFAULT_SFX_VOLUME });
         this.dice.sort((a, b) => a.value - b.value);
+        const total = this.dice.length;
         this.dice.forEach((d, i) => {
             d.slotIndex = i;
-            this.tweens.add({ 
-                targets: d, 
-                x: CONSTANTS.SLOT_START_X + i * CONSTANTS.SLOT_SPACING, 
-                y: CONSTANTS.GRID_Y, 
-                duration: 200, 
-                ease: 'Power2' 
+            const targetX = this.getHandSlotX(i, total);
+            this.tweens.add({
+                targets: d,
+                x: targetX,
+                y: CONSTANTS.GRID_Y,
+                duration: 200,
+                ease: 'Power2'
             });
         });
     }
@@ -1946,18 +2141,36 @@ export class GameScene extends Phaser.Scene {
             this.defendDice.includes(die) || this.attackDice.includes(die)
         ).length;
 
+        const batteryDiceUsed = new Set();
+        [...(this.defendDice || []), ...(this.attackDice || [])].forEach(die => {
+            if (die && die.isBatteryDie) {
+                batteryDiceUsed.add(die);
+            }
+        });
+        if (batteryDiceUsed.size > 0) {
+            this.consumeBatteryDieUses(batteryDiceUsed.size);
+        }
+
         const diceToResolve = this.getDiceInPlay();
         this.applyEnemyComboDestruction({ attackResult, defendResult });
         const finishResolution = () => {
             this.activeTimeBombResolveBonus = 0;
+            if (this.deferHandCapacityUpdate) {
+                this.deferHandCapacityUpdate = false;
+                this.updateHandCapacityTargets();
+            }
+            if (this.deferBatteryVisualRefresh) {
+                this.deferBatteryVisualRefresh = false;
+                this.refreshActiveDiceVisuals();
+            }
             if (locksToCarryOver > 0) {
-                this.pendingLockCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingLockCount + locksToCarryOver);
+                this.pendingLockCount = Math.min(this.getDiceHandCapacityLimit(), this.pendingLockCount + locksToCarryOver);
             }
             if (weakenedToCarryOver > 0) {
-                this.pendingWeakenCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingWeakenCount + weakenedToCarryOver);
+                this.pendingWeakenCount = Math.min(this.getDiceHandCapacityLimit(), this.pendingWeakenCount + weakenedToCarryOver);
             }
             if (nullifiedToCarryOver > 0) {
-                this.pendingNullifyCount = Math.min(CONSTANTS.DICE_PER_SET, this.pendingNullifyCount + nullifiedToCarryOver);
+                this.pendingNullifyCount = Math.min(this.getDiceHandCapacityLimit(), this.pendingNullifyCount + nullifiedToCarryOver);
             }
             this.lockedDice.clear();
             this.clearAllWeakenedDice();
@@ -2038,13 +2251,72 @@ export class GameScene extends Phaser.Scene {
             uid: entry.uid
         }));
 
-        while (blueprints.length < CONSTANTS.DICE_PER_SET) {
+        const baseCapacity = this.getBaseHandDiceCapacity();
+        while (blueprints.length < baseCapacity) {
             blueprints.push(createDieBlueprint('standard'));
         }
 
-        blueprints = blueprints.slice(0, CONSTANTS.DICE_PER_SET);
+        blueprints = blueprints.slice(0, baseCapacity);
+
+        if (this.shouldIncludeBatteryDie()) {
+            blueprints.push(this.createBatteryDieBlueprint());
+        }
+
+        const capacityLimit = this.getDiceHandCapacityLimit();
+        if (blueprints.length > capacityLimit) {
+            blueprints = blueprints.slice(0, capacityLimit);
+        }
 
         return this.applyTemporaryDestructionToBlueprints(blueprints);
+    }
+
+    shouldIncludeBatteryDie() {
+        return this.hasBatteryIncludedRelic && this.getBatteryDieUsesRemaining() > 0;
+    }
+
+    createBatteryDieBlueprint() {
+        const blueprint = createDieBlueprint('standard');
+        return { ...blueprint, batteryDie: true };
+    }
+
+    getBatteryDieUsesRemaining() {
+        return Math.max(0, Number.isFinite(this.batteryDieUsesRemaining) ? this.batteryDieUsesRemaining : 0);
+    }
+
+    consumeBatteryDieUses(count = 1) {
+        if (!this.hasBatteryIncludedRelic || count <= 0) {
+            return;
+        }
+
+        const remaining = Math.max(0, this.getBatteryDieUsesRemaining() - Math.floor(count));
+        if (remaining === this.getBatteryDieUsesRemaining()) {
+            return;
+        }
+
+        this.batteryDieUsesRemaining = remaining;
+        if (this.isResolving) {
+            this.deferHandCapacityUpdate = true;
+            this.deferBatteryVisualRefresh = true;
+        } else {
+            this.updateHandCapacityTargets();
+            this.refreshActiveDiceVisuals();
+        }
+    }
+
+    resetBatteryDieForBattle() {
+        if (!this.hasBatteryIncludedRelic) {
+            this.batteryDieUsesRemaining = 0;
+            this.deferHandCapacityUpdate = false;
+            this.deferBatteryVisualRefresh = false;
+            this.updateHandCapacityTargets();
+            return;
+        }
+
+        this.deferHandCapacityUpdate = false;
+        this.deferBatteryVisualRefresh = false;
+        const uses = Math.max(0, Number.isFinite(this.batteryDieUsesPerBattle) ? Math.floor(this.batteryDieUsesPerBattle) : 0);
+        this.batteryDieUsesRemaining = uses;
+        this.updateHandCapacityTargets();
     }
 
     initializeTimeBombStatesForEncounter() {
@@ -2073,7 +2345,7 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
-        const activeEntries = loadout.slice(0, CONSTANTS.DICE_PER_SET);
+        const activeEntries = loadout.slice(0, this.getBaseHandDiceCapacity());
         activeEntries.forEach(entry => {
             if (!entry || entry.id !== 'bomb' || !entry.uid) {
                 return;
@@ -2099,6 +2371,13 @@ export class GameScene extends Phaser.Scene {
         }
 
         const blueprint = die.dieBlueprint;
+        if (blueprint.batteryDie || die.isBatteryDie) {
+            const remaining = this.getBatteryDieUsesRemaining();
+            if (remaining <= 0) {
+                return '';
+            }
+            return `${remaining}`;
+        }
         if (blueprint.id !== 'bomb') {
             return '';
         }
@@ -2502,6 +2781,7 @@ export class GameScene extends Phaser.Scene {
             : (typeof die.value === 'number' ? die.value : 1);
 
         die.dieBlueprint = { ...blueprint };
+        die.isBatteryDie = !!die.dieBlueprint.batteryDie;
 
         if (typeof die.renderFace === 'function') {
             die.renderFace(value || 1, { updateValue: true });
@@ -3738,6 +4018,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingCrowdControlPlan = null;
         this.isFirstCombatTurn = true;
         this.prepperCarryoverRolls = 0;
+        this.resetBatteryDieForBattle();
         this.resetZoneConstraints();
         this.resetGameState({ destroyDice: true });
         this.initializeTimeBombStatesForEncounter();
@@ -4470,6 +4751,7 @@ export class GameScene extends Phaser.Scene {
         }
         this.relicUI.updateDisplay();
         this.relicUI.showRelicDetails(relic);
+        this.onRelicEffectsUpdated();
         return relic;
     }
 
@@ -4621,6 +4903,8 @@ export class GameScene extends Phaser.Scene {
             this.temporarilyDestroyedDice = [];
         }
         this.activeTimeBombResolveBonus = 0;
+        this.deferHandCapacityUpdate = false;
+        this.deferBatteryVisualRefresh = false;
         this.dice = [];
         this.defendDice = [];
         this.attackDice = [];

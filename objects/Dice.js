@@ -5,12 +5,18 @@ import { callSceneMethod } from '../utils/SceneHelpers.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
 
 export function createDie(scene, slotIndex, blueprint) {
-    const x = CONSTANTS.SLOT_START_X + slotIndex * CONSTANTS.SLOT_SPACING;
+    const capacity = scene && typeof scene.getDiceHandCapacityLimit === 'function'
+        ? scene.getDiceHandCapacityLimit()
+        : Math.max((Array.isArray(scene?.dice) ? scene.dice.length : 0) + 1, 1);
+    const x = scene && typeof scene.getHandSlotX === 'function'
+        ? scene.getHandSlotX(slotIndex, capacity)
+        : CONSTANTS.SLOT_START_X + slotIndex * CONSTANTS.SLOT_SPACING;
     const y = CONSTANTS.GRID_Y;
     const container = scene.add.container(x, y);
 
     const dieBlueprint = blueprint ? { ...blueprint } : createDieBlueprint('standard');
     container.dieBlueprint = dieBlueprint;
+    container.isBatteryDie = !!dieBlueprint.batteryDie;
 
     const bg = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE, 0x444444)
         .setOrigin(0.5)
@@ -346,34 +352,23 @@ export function snapToGrid(die, diceArray, scene) {
     }
 
     // Calculate which slot the die should go into based on its position
-    // Check if die is already in hand or coming from zone
     const currentIndex = diceArray.indexOf(die);
-    const effectiveLength = currentIndex === -1 ? diceArray.length : diceArray.length - 1;
-    
-    // Calculate target slot with proper bounds
-    const targetSlot = Phaser.Math.Clamp(
-        Math.round((die.x - CONSTANTS.SLOT_START_X) / CONSTANTS.SLOT_SPACING), 
-        0, 
-        effectiveLength
-    );
-    
+    const targetCount = currentIndex === -1 ? diceArray.length + 1 : diceArray.length;
+    const spacing = CONSTANTS.SLOT_SPACING;
+    const startX = scene && typeof scene.getHandRowStart === 'function'
+        ? scene.getHandRowStart(Math.max(targetCount, 1))
+        : CONSTANTS.SLOT_START_X;
+
+    const rawIndex = Math.round((die.x - startX) / spacing);
+    const targetSlot = Phaser.Math.Clamp(rawIndex, 0, Math.max(targetCount - 1, 0));
+
     // Update array
     if (currentIndex !== -1) {
         diceArray.splice(currentIndex, 1);
     }
     diceArray.splice(targetSlot, 0, die);
 
-    // Update positions
-    diceArray.forEach((d, i) => {
-        d.slotIndex = i;
-        scene.tweens.add({
-            targets: d,
-            x: CONSTANTS.SLOT_START_X + i * CONSTANTS.SLOT_SPACING,
-            y: CONSTANTS.GRID_Y,
-            duration: 200,
-            ease: 'Power2'
-        });
-    });
+    callSceneMethod(scene, 'arrangeHandDice', { animate: true });
 
     die.currentZone = null;
     if (typeof die.updateFaceValueHighlight === 'function') {

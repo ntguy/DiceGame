@@ -159,4 +159,5 @@ export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     }
 
     callSceneMethod(scene, 'updateZonePreviewText');
+    callSceneMethod(scene, 'arrangeHandDice', { animate: true });
 }

@@ -1,5 +1,7 @@
 import { BlockbusterRelic } from './BlockbusterRelic.js';
 import { BeefyRelic } from './BeefyRelic.js';
+import { BatteryIncludedRelic } from './BatteryIncludedRelic.js';
+import { ChainReactorRelic } from './ChainReactorRelic.js';
 import { FamilyRelic } from './FamilyRelic.js';
 import { ReRollWithItRelic } from './ReRollWithItRelic.js';
 import { WildOneRelic } from './WildOneRelic.js';
@@ -10,6 +12,8 @@ import { PrepperRelic } from './PrepperRelic.js';
 const RELIC_ENTRIES = [
     { create: () => new BlockbusterRelic(), pools: ['general', 'boss'] },
     { create: () => new BeefyRelic(), pools: ['general', 'boss'] },
+    { create: () => new BatteryIncludedRelic(), pools: ['general', 'boss'] },
+    { create: () => new ChainReactorRelic(), pools: ['general', 'boss'] },
     { create: () => new FamilyRelic(), pools: ['general', 'boss'] },
     { create: () => new ReRollWithItRelic(), pools: ['general', 'boss'] },
     { create: () => new WildOneRelic(), pools: ['general', 'boss'] },
