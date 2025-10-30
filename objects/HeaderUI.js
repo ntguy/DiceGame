@@ -63,10 +63,14 @@ export function createHeaderUI(scene) {
     background.setScrollFactor(0);
     container.add(background);
 
-    const goldText = scene.add.text(CONSTANTS.UI_MARGIN, headerHeight / 2, '', {
-        fontSize: '20px',
-        color: '#f1c40f'
-    }).setOrigin(0, 0.5);
+    const goldText = scene.add.bitmapText(
+        CONSTANTS.UI_MARGIN,
+        headerHeight / 2,
+        'boldPixels',
+        '',
+        32
+    ).setOrigin(0, 0.5);
+    goldText.setTint(0xf1c40f);
     goldText.setScrollFactor(0);
     container.add(goldText);
 

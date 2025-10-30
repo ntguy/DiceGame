@@ -351,6 +351,7 @@ export class GameScene extends Phaser.Scene {
             frameWidth: 21,
             frameHeight: 27
         });
+        this.load.bitmapFont('boldPixels', './BoldPixels/BoldPixels.png', './BoldPixels/BoldPixels.xml');
     }
     
     create() {
