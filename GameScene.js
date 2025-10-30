@@ -562,11 +562,11 @@ export class GameScene extends Phaser.Scene {
         this.diceAreaBackground = this.add.tileSprite(centerX, centerY, width, height, textureKey)
             .setOrigin(0.5)
             .setTileScale(DICE_AREA_BACKGROUND_TILE_SCALE, DICE_AREA_BACKGROUND_TILE_SCALE)
-            .setDepth(-10);
+            .setDepth(-4);
 
         this.diceAreaBackgroundOverlay = this.add.rectangle(centerX, centerY, width, height, 0x000000, 0.22)
             .setOrigin(0.5)
-            .setDepth(-9);
+            .setDepth(-3);
 
         this.updateDiceAreaBackgroundLayout();
     }
