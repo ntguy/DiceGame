@@ -38,6 +38,10 @@ import { VictoryScreen } from './systems/VictoryScreen.js';
 const SHOP_RELIC_COUNT = 3;
 const BOSS_RELIC_CHOICE_COUNT = 2;
 const BOSS_BONUS_REWARD_ID = 'boss-capacity-bonus';
+const DICE_AREA_BACKGROUND_TILE_SCALE = 2;
+const DICE_AREA_PADDING_X = 70;
+const DICE_AREA_PADDING_TOP = 50;
+const DICE_AREA_PADDING_BOTTOM = 80;
 
 function getRandomIndexExclusive(maxExclusive) {
     if (!Number.isFinite(maxExclusive) || maxExclusive <= 0) {
@@ -134,6 +138,9 @@ export class GameScene extends Phaser.Scene {
 
         this.customDiceLoadout = [];
         this.diceRewardUI = null;
+
+        this.diceAreaBackground = null;
+        this.diceAreaBackgroundOverlay = null;
 
         this.relicUI = new RelicUIManager(this);
 
@@ -403,6 +410,8 @@ export class GameScene extends Phaser.Scene {
 
         this.createZonePreviewTexts();
 
+        this.createDiceAreaBackground();
+
         // --- Buttons ---
         setupButtons(this);
         this.updateRollButtonState();
@@ -537,6 +546,86 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateZonePreviewText();
+    }
+
+    createDiceAreaBackground() {
+        this.destroyDiceAreaBackground();
+
+        const metrics = this.getDiceAreaBackgroundMetrics();
+        if (!metrics) {
+            return;
+        }
+
+        const textureKey = this.getZoneBackgroundTextureKey() || 'path_background';
+        const { centerX, centerY, width, height } = metrics;
+
+        this.diceAreaBackground = this.add.tileSprite(centerX, centerY, width, height, textureKey)
+            .setOrigin(0.5)
+            .setTileScale(DICE_AREA_BACKGROUND_TILE_SCALE, DICE_AREA_BACKGROUND_TILE_SCALE)
+            .setDepth(-10);
+
+        this.diceAreaBackgroundOverlay = this.add.rectangle(centerX, centerY, width, height, 0x000000, 0.22)
+            .setOrigin(0.5)
+            .setDepth(-9);
+
+        this.updateDiceAreaBackgroundLayout();
+    }
+
+    destroyDiceAreaBackground() {
+        if (this.diceAreaBackground && typeof this.diceAreaBackground.destroy === 'function') {
+            this.diceAreaBackground.destroy();
+        }
+        if (this.diceAreaBackgroundOverlay && typeof this.diceAreaBackgroundOverlay.destroy === 'function') {
+            this.diceAreaBackgroundOverlay.destroy();
+        }
+
+        this.diceAreaBackground = null;
+        this.diceAreaBackgroundOverlay = null;
+    }
+
+    updateDiceAreaBackgroundLayout() {
+        const metrics = this.getDiceAreaBackgroundMetrics();
+        if (!metrics) {
+            return;
+        }
+
+        const { centerX, centerY, width, height } = metrics;
+
+        if (this.diceAreaBackground) {
+            this.diceAreaBackground.setPosition(centerX, centerY);
+            this.diceAreaBackground.setSize(width, height);
+            this.diceAreaBackground.setDisplaySize(width, height);
+        }
+
+        if (this.diceAreaBackgroundOverlay) {
+            this.diceAreaBackgroundOverlay.setPosition(centerX, centerY);
+            if (typeof this.diceAreaBackgroundOverlay.setSize === 'function') {
+                this.diceAreaBackgroundOverlay.setSize(width, height);
+            } else {
+                this.diceAreaBackgroundOverlay.displayWidth = width;
+                this.diceAreaBackgroundOverlay.displayHeight = height;
+            }
+        }
+    }
+
+    getDiceAreaBackgroundMetrics() {
+        const dieCount = Math.max(1, CONSTANTS.DICE_PER_SET);
+        const totalDiceWidth = CONSTANTS.DIE_SIZE + (dieCount - 1) * CONSTANTS.SLOT_SPACING;
+        const width = totalDiceWidth + DICE_AREA_PADDING_X * 2;
+        const centerX = CONSTANTS.SLOT_START_X + ((dieCount - 1) * CONSTANTS.SLOT_SPACING) / 2;
+
+        const diceTop = CONSTANTS.GRID_Y - CONSTANTS.DIE_SIZE / 2;
+        const top = diceTop - DICE_AREA_PADDING_TOP;
+        const bottom = CONSTANTS.BUTTONS_Y + DICE_AREA_PADDING_BOTTOM;
+        const height = Math.max(1, bottom - top);
+        const centerY = top + height / 2;
+
+        return {
+            centerX,
+            centerY,
+            width,
+            height
+        };
     }
 
     getMaxDicePerZone() {
@@ -709,6 +798,8 @@ export class GameScene extends Phaser.Scene {
             this.zoneAreaBackground.setPosition(zoneAreaCenterX, zoneAreaCenterY);
             this.zoneAreaBackground.setSize(zoneAreaWidth, zoneAreaHeight);
         }
+
+        this.updateDiceAreaBackgroundLayout();
 
         this.layoutZoneDice('defend');
         this.layoutZoneDice('attack');
@@ -3026,6 +3117,7 @@ export class GameScene extends Phaser.Scene {
 
         applyTexture(this.defendZoneBackground);
         applyTexture(this.attackZoneBackground);
+        applyTexture(this.diceAreaBackground);
     }
 
     getOutsideBackgroundLayerKeysForConfig(config) {
