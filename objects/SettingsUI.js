@@ -7,6 +7,8 @@ export function createSettingsUI(scene) {
         scene.settingsPanel = null;
     }
 
+    scene.mapSkipButton = null;
+
     const panel = createSidePanel(scene, {
         title: 'Settings',
         titleColor: '#76d7c4',
@@ -15,7 +17,7 @@ export function createSettingsUI(scene) {
     const { container: settingsPanel, panelWidth, sectionWidth } = panel;
 
     const contentTop = 90;
-    const contentHeight = 200;
+    const contentHeight = 260;
     const contentCenterY = contentTop + contentHeight / 2;
 
     const settingsBg = scene.add.rectangle(panelWidth / 2, contentCenterY, sectionWidth, contentHeight, 0x232d3b, 0.92)
@@ -59,6 +61,24 @@ export function createSettingsUI(scene) {
     scene.testingModeButton.on('pointerdown', () => scene.toggleTestingMode());
     settingsPanel.add(scene.testingModeButton);
 
+    const skipButtonY = testingButtonY + toggleSpacing;
+    scene.mapSkipButton = scene.add.text(panelWidth / 2, skipButtonY, 'Skip Map ▶', {
+        fontSize: '22px',
+        color: '#ecf0f1',
+        padding: { x: 18, y: 10 }
+    }).setOrigin(0.5);
+    applyTextButtonStyle(scene.mapSkipButton, {
+        baseColor: '#34495e',
+        textColor: '#ecf0f1',
+        hoverBlend: 0.2,
+        pressBlend: 0.3,
+        disabledBlend: 0.45
+    });
+    setTextButtonEnabled(scene.mapSkipButton, false);
+    scene.mapSkipButton.setVisible(false);
+    scene.mapSkipButton.on('pointerdown', () => scene.handleMapSkipButtonPress());
+    settingsPanel.add(scene.mapSkipButton);
+
     scene.settingsCloseButton = panel.closeButton;
     scene.settingsCloseButton.on('pointerup', () => scene.closeSettings());
 
@@ -68,4 +88,5 @@ export function createSettingsUI(scene) {
     scene.updateSettingsButtonLabel();
     scene.updateMuteButtonState();
     scene.updateTestingModeButtonState();
+    scene.updateMapSkipButtonState();
 }

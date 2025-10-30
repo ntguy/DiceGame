@@ -35,12 +35,15 @@ export const CONSTANTS = {
 // Game configuration
 export const config = {
     type: Phaser.AUTO,
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
+    scale: {
+        mode: Phaser.Scale.FIT,
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT,
+        expandParent: true,
+    },
     backgroundColor: "#222",
     scene: [StartScene, GameScene],
     render: {
         pixelArt: true,
-        antialias: false
     }
 };

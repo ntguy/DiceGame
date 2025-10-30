@@ -168,7 +168,7 @@ export class EnemyManager {
     }
 
     applyEnemyBurnTick() {
-        // Firecracker die & other burn sources: burn chips block first, then spills into health.
+        // Cherry Bomb die & other burn sources: burn chips block first, then spills into health.
         if (!this.currentEnemy || this.enemyBurnValue <= 0) {
             return { damageDealt: 0, blockedAmount: 0 };
         }
