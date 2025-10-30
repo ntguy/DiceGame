@@ -2252,8 +2252,19 @@ export class GameScene extends Phaser.Scene {
         }
 
         const blueprint = createDieBlueprint('standard');
+        const sceneRef = this;
+        const decoratedBlueprint = {
+            ...blueprint,
+            batteryDie: true,
+            emojiOverride: '🔋',
+            getLeftStatusLabel() {
+                const usesRemaining = sceneRef.getBatteryDieUsesRemaining();
+                return usesRemaining > 0 ? `${usesRemaining}` : '';
+            }
+        };
+
         this.batteryDieState = {
-            blueprint: { ...blueprint, batteryDie: true },
+            blueprint: decoratedBlueprint,
             usesRemaining: 3
         };
         this.refreshHandSlotCount();
@@ -2356,12 +2367,15 @@ export class GameScene extends Phaser.Scene {
         }
 
         const blueprint = die.dieBlueprint;
-        if (blueprint.batteryDie
-            && this.batteryDieState
-            && this.batteryDieState.blueprint
-            && this.batteryDieState.blueprint.uid === blueprint.uid) {
-            const usesRemaining = this.getBatteryDieUsesRemaining();
-            return usesRemaining > 0 ? `${usesRemaining}` : '';
+
+        if (typeof blueprint.getLeftStatusLabel === 'function') {
+            const label = blueprint.getLeftStatusLabel({ die, blueprint, scene: this });
+            if (typeof label === 'string') {
+                return label;
+            }
+            if (Number.isFinite(label)) {
+                return `${label}`;
+            }
         }
 
         if (blueprint.id !== 'bomb') {

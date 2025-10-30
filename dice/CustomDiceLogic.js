@@ -39,9 +39,33 @@ function getBlueprint(die) {
 }
 
 export function getDieEmoji(dieOrId) {
+    let blueprint = null;
+    if (dieOrId && typeof dieOrId === 'object') {
+        if (dieOrId.dieBlueprint) {
+            blueprint = dieOrId.dieBlueprint;
+        } else if (dieOrId.id) {
+            blueprint = dieOrId;
+        }
+    }
+
+    if (blueprint && typeof blueprint.emojiOverride !== 'undefined') {
+        if (typeof blueprint.emojiOverride === 'function') {
+            const override = blueprint.emojiOverride({ blueprint, die: dieOrId });
+            if (typeof override === 'string') {
+                return override;
+            }
+        } else if (typeof blueprint.emojiOverride === 'string') {
+            return blueprint.emojiOverride;
+        }
+    }
+
+    if (blueprint && blueprint.batteryDie) {
+        return '🔋';
+    }
+
     const id = typeof dieOrId === 'string'
         ? dieOrId
-        : (dieOrId && dieOrId.dieBlueprint ? dieOrId.dieBlueprint.id : dieOrId?.id);
+        : (blueprint && blueprint.id ? blueprint.id : dieOrId?.id);
     const definition = getCustomDieDefinitionById(id);
     if (!definition) {
         return '';
