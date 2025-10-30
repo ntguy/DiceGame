@@ -2,6 +2,7 @@ import { CONSTANTS } from '../config.js';
 import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { getBitmapTint } from '../utils/bitmapTextFactory.js';
 
 const COLUMN_GAP = 24;
 const ROW_VERTICAL_SPACING = 28;
@@ -606,7 +607,7 @@ export class BackpackUI {
                 slot.emojiText.setAlpha(1);
                 const labelText = slot.data.baseName ? `${slot.data.baseName}${slot.data.isUpgraded ? ' +' : ''}` : '';
                 slot.labelText.setText(labelText);
-                slot.labelText.setColor(slot.data.isUpgraded ? INFO_UPGRADED_COLOR : INFO_SUBTEXT_COLOR);
+                slot.labelText.setTint(getBitmapTint(slot.data.isUpgraded ? INFO_UPGRADED_COLOR : INFO_SUBTEXT_COLOR));
                 slot.background.setInteractive({ useHandCursor: true });
             } else {
                 slot.data = null;
@@ -615,7 +616,7 @@ export class BackpackUI {
                 slot.emojiText.setText('');
                 slot.emojiText.setAlpha(0.65);
                 slot.labelText.setText('');
-                slot.labelText.setColor(INFO_SUBTEXT_COLOR);
+                slot.labelText.setTint(getBitmapTint(INFO_SUBTEXT_COLOR));
                 slot.background.setInteractive({ useHandCursor: true });
             }
         });

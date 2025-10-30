@@ -68,16 +68,17 @@ export function applyTextButtonStyle(button, {
         return;
     }
 
-    const baseColorHex = toHexString(getColorObject(baseColor));
-    const hoverColorHex = lightenColor(baseColorHex, hoverBlend).hex;
-    const pressedColorHex = darkenColor(baseColorHex, pressBlend).hex;
-    const disabledColorHex = darkenColor(baseColorHex, disabledBlend).hex;
+    const baseTextColor = textColor || baseColor || '#ffffff';
+    const baseTint = toInt(getColorObject(baseTextColor));
+    const hoverTint = lightenColor(baseTextColor, hoverBlend).int;
+    const pressedTint = darkenColor(baseTextColor, pressBlend).int;
+    const disabledTint = darkenColor(baseTextColor, disabledBlend).int;
 
     const state = {
-        baseColor: baseColorHex,
-        hoverColor: hoverColorHex,
-        pressedColor: pressedColorHex,
-        disabledColor: disabledColorHex,
+        baseTint,
+        hoverTint,
+        pressedTint,
+        disabledTint,
         enabledAlpha,
         disabledAlpha,
         baseY: button.y,
@@ -87,23 +88,20 @@ export function applyTextButtonStyle(button, {
     button.setDataEnabled();
     button.setData('textButtonStyle', state);
 
-    if (textColor) {
-        button.setStyle({ color: textColor });
-    }
-    button.setStyle({ backgroundColor: baseColorHex });
+    button.setTint(baseTint);
     button.setAlpha(enabledAlpha);
 
     const handlePointerOver = () => {
         if (!button.input || !button.input.enabled) {
             return;
         }
-        button.setStyle({ backgroundColor: state.hoverColor });
+        button.setTint(state.hoverTint);
         button.setAlpha(state.enabledAlpha);
     };
 
     const restoreIdleState = () => {
         const isEnabled = button.input && button.input.enabled;
-        button.setStyle({ backgroundColor: isEnabled ? state.baseColor : state.disabledColor });
+        button.setTint(isEnabled ? state.baseTint : state.disabledTint);
         button.setAlpha(isEnabled ? state.enabledAlpha : state.disabledAlpha);
         button.setY(state.baseY);
     };
@@ -112,7 +110,7 @@ export function applyTextButtonStyle(button, {
         if (!button.input || !button.input.enabled) {
             return;
         }
-        button.setStyle({ backgroundColor: state.pressedColor });
+        button.setTint(state.pressedTint);
         button.setY(state.baseY + state.pressOffset);
     };
 
@@ -120,7 +118,7 @@ export function applyTextButtonStyle(button, {
         if (!button.input || !button.input.enabled) {
             return;
         }
-        button.setStyle({ backgroundColor: state.hoverColor });
+        button.setTint(state.hoverTint);
         button.setAlpha(state.enabledAlpha);
         button.setY(state.baseY);
     };
@@ -151,17 +149,17 @@ export function setTextButtonEnabled(button, enabled, overrides = {}) {
         state.disabledAlpha = overrides.disabledAlpha;
     }
     if (typeof overrides.disabledBlend === 'number') {
-        state.disabledColor = darkenColor(state.baseColor, overrides.disabledBlend).hex;
+        state.disabledTint = darkenColor(state.baseTint, overrides.disabledBlend).int;
     }
 
     if (enabled) {
         button.setInteractive({ useHandCursor: true });
-        button.setStyle({ backgroundColor: state.baseColor });
+        button.setTint(state.baseTint);
         button.setAlpha(state.enabledAlpha);
         button.setY(state.baseY);
     } else {
         button.disableInteractive();
-        button.setStyle({ backgroundColor: state.disabledColor });
+        button.setTint(state.disabledTint);
         button.setAlpha(state.disabledAlpha);
         button.setY(state.baseY);
     }

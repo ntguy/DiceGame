@@ -56,6 +56,7 @@ export class StartScene extends Phaser.Scene {
 
     preload() {
         this.cameras.main.setBackgroundColor('#1a1a1a');
+        this.load.bitmapFont('boldPixels', './BoldPixels/BoldPixels.png', './BoldPixels/BoldPixels.xml');
     }
 
     create() {

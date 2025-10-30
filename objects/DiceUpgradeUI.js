@@ -1,5 +1,6 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { getBitmapTint } from '../utils/bitmapTextFactory.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 500;
@@ -335,7 +336,7 @@ export class DiceUpgradeUI {
         const nameColor = isSelected ? '#f1c40f' : '#ffffff';
 
         nameText.setText(displayName);
-        nameText.setColor(nameColor);
+        nameText.setTint(getBitmapTint(nameColor));
 
         const description = isSelected
             ? option.upgradeDescription || option.description || ''

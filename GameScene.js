@@ -765,7 +765,12 @@ export class GameScene extends Phaser.Scene {
         const targetFontSize = suffix === '✕'
             ? this.menuButton.getData('defaultFontSize') || '24px'
             : this.menuButton.getData('expandedFontSize') || this.menuButton.getData('defaultFontSize') || '24px';
-        this.menuButton.setStyle({ fontSize: targetFontSize });
+        const parsedMenuFontSize = typeof targetFontSize === 'string'
+            ? parseInt(targetFontSize, 10)
+            : targetFontSize;
+        if (Number.isFinite(parsedMenuFontSize)) {
+            this.menuButton.setFontSize(parsedMenuFontSize);
+        }
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }
@@ -821,7 +826,12 @@ export class GameScene extends Phaser.Scene {
         const targetFontSize = suffix === '✕'
             ? this.settingsButton.getData('defaultFontSize') || '24px'
             : this.settingsButton.getData('expandedFontSize') || this.settingsButton.getData('defaultFontSize') || '24px';
-        this.settingsButton.setStyle({ fontSize: targetFontSize });
+        const parsedSettingsFontSize = typeof targetFontSize === 'string'
+            ? parseInt(targetFontSize, 10)
+            : targetFontSize;
+        if (Number.isFinite(parsedSettingsFontSize)) {
+            this.settingsButton.setFontSize(parsedSettingsFontSize);
+        }
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }

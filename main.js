@@ -1,4 +1,5 @@
 // import { GameScene } from './scenes/GameScene.js';
+import './utils/bitmapTextFactory.js';
 import { config } from './config.js';
 
 // Initialize the game with configuration
