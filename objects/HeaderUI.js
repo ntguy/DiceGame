@@ -105,16 +105,6 @@ export function createHeaderUI(scene) {
     settingsButton.setData('defaultFontSize', '24px');
     settingsButton.setData('expandedFontSize', '28px');
 
-    const skipButton = createHeaderButton(scene, {
-        label: '▶',
-        x: headerWidth - CONSTANTS.UI_MARGIN,
-        origin: { x: 1, y: 0.5 },
-        onClick: () => scene.handleMapSkipButtonPress(),
-        fontSize: '20px'
-    });
-    skipButton.setVisible(false);
-    setTextButtonEnabled(skipButton, false);
-
     const instructionsButton = createHeaderButton(scene, {
         label: '📘',
         x: headerWidth - CONSTANTS.UI_MARGIN,
@@ -126,15 +116,7 @@ export function createHeaderUI(scene) {
         const menuX = headerWidth - CONSTANTS.UI_MARGIN;
         menuButton.setX(menuX);
 
-        if (skipButton) {
-            const skipWidth = skipButton.getData('buttonWidth');
-            const skipX = menuX - skipWidth - buttonSpacing;
-            skipButton.setX(skipX);
-        }
-
-        let nextX = (skipButton && skipButton.visible)
-            ? skipButton.x
-            : menuX;
+        let nextX = menuX;
 
         const positionButton = button => {
             if (!button) {
@@ -154,7 +136,6 @@ export function createHeaderUI(scene) {
     container.add(menuButton);
     container.add(backpackButton);
     container.add(settingsButton);
-    container.add(skipButton);
     container.add(instructionsButton);
 
     scene.headerContainer = container;
@@ -162,7 +143,6 @@ export function createHeaderUI(scene) {
     scene.backpackButton = backpackButton;
     scene.settingsButton = settingsButton;
     scene.instructionsButton = instructionsButton;
-    scene.mapSkipButton = skipButton;
     scene.layoutHeaderButtons = layoutButtons;
     scene.mapTitleText = mapTitleText;
     scene.goldText = goldText;
