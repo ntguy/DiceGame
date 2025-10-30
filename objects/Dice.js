@@ -4,8 +4,12 @@ import { rollCustomDieValue, getDieEmoji, isZoneAllowedForDie, doesDieFaceValueT
 import { callSceneMethod } from '../utils/SceneHelpers.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
 
-export function createDie(scene, slotIndex, blueprint) {
-    const x = CONSTANTS.SLOT_START_X + slotIndex * CONSTANTS.SLOT_SPACING;
+export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
+    const layoutArgs = Number.isFinite(totalSlots) ? { totalSlots } : {};
+    const layout = callSceneMethod(scene, 'getHandSlotLayout', layoutArgs) || {};
+    const spacing = Number.isFinite(layout.spacing) ? layout.spacing : CONSTANTS.SLOT_SPACING;
+    const startX = Number.isFinite(layout.startX) ? layout.startX : CONSTANTS.SLOT_START_X;
+    const x = startX + slotIndex * spacing;
     const y = CONSTANTS.GRID_Y;
     const container = scene.add.container(x, y);
 
@@ -103,6 +107,7 @@ export function createDie(scene, slotIndex, blueprint) {
         strokeThickness: 3,
     }).setOrigin(1, 0);
     leftStatusText.setVisible(false);
+    leftStatusText.defaultColor = '#ff7675';
     container.add(leftStatusText);
     container.leftStatusText = leftStatusText;
 
@@ -123,16 +128,41 @@ export function createDie(scene, slotIndex, blueprint) {
         }
 
         if (this.leftStatusText) {
-            const labelProvider = typeof scene.getDieLeftStatusText === 'function'
+            const labelInfo = typeof scene.getDieLeftStatusText === 'function'
                 ? scene.getDieLeftStatusText(this)
                 : '';
-            const shouldShowLeft = typeof labelProvider === 'string' && labelProvider.length > 0;
+
+            let labelText = '';
+            let labelColor = null;
+
+            if (labelInfo && typeof labelInfo === 'object') {
+                const { text, color } = labelInfo;
+                if (typeof text === 'string') {
+                    labelText = text;
+                } else if (Number.isFinite(text)) {
+                    labelText = `${text}`;
+                }
+                if (typeof color === 'string') {
+                    labelColor = color;
+                }
+            } else if (typeof labelInfo === 'string') {
+                labelText = labelInfo;
+            } else if (Number.isFinite(labelInfo)) {
+                labelText = `${labelInfo}`;
+            }
+
+            const shouldShowLeft = labelText.length > 0;
             if (shouldShowLeft && this.emojiText && this.emojiText.text && this.emojiText.text.trim().length > 0) {
-                this.leftStatusText.setText(labelProvider);
+                this.leftStatusText.setText(labelText);
                 const emojiHalfWidth = (this.emojiText && this.emojiText.displayWidth) ? this.emojiText.displayWidth / 2 : 0;
                 const emojiX = this.emojiText ? this.emojiText.x : 0;
                 const emojiYPosition = this.emojiText ? this.emojiText.y : emojiY;
                 const spacing = 6;
+                if (labelColor) {
+                    this.leftStatusText.setColor(labelColor);
+                } else if (this.leftStatusText.defaultColor) {
+                    this.leftStatusText.setColor(this.leftStatusText.defaultColor);
+                }
                 this.leftStatusText.setVisible(true);
                 this.leftStatusText.setX(emojiX - emojiHalfWidth - spacing);
                 this.leftStatusText.setY(emojiYPosition);
@@ -348,27 +378,39 @@ export function snapToGrid(die, diceArray, scene) {
     // Calculate which slot the die should go into based on its position
     // Check if die is already in hand or coming from zone
     const currentIndex = diceArray.indexOf(die);
-    const effectiveLength = currentIndex === -1 ? diceArray.length : diceArray.length - 1;
-    
-    // Calculate target slot with proper bounds
+
+    const baseLayout = callSceneMethod(scene, 'getHandSlotLayout') || {};
+    const baseTotalSlots = Number.isFinite(baseLayout.totalSlots)
+        ? baseLayout.totalSlots
+        : callSceneMethod(scene, 'getHandSlotCount');
+    const totalSlots = Math.max(1, Math.floor(Number(baseTotalSlots) || diceArray.length || 1));
+    const spacing = Number.isFinite(baseLayout.spacing) ? baseLayout.spacing : CONSTANTS.SLOT_SPACING;
+    const startX = Number.isFinite(baseLayout.startX) ? baseLayout.startX : CONSTANTS.SLOT_START_X;
+    const maxIndex = Math.max(0, totalSlots - 1);
+
     const targetSlot = Phaser.Math.Clamp(
-        Math.round((die.x - CONSTANTS.SLOT_START_X) / CONSTANTS.SLOT_SPACING), 
-        0, 
-        effectiveLength
+        Math.round((die.x - startX) / spacing),
+        0,
+        maxIndex
     );
     
     // Update array
     if (currentIndex !== -1) {
         diceArray.splice(currentIndex, 1);
     }
-    diceArray.splice(targetSlot, 0, die);
+    const insertionIndex = Math.min(targetSlot, diceArray.length);
+    diceArray.splice(insertionIndex, 0, die);
 
     // Update positions
+    const layout = callSceneMethod(scene, 'getHandSlotLayout', { totalSlots }) || baseLayout;
+    const layoutSpacing = Number.isFinite(layout.spacing) ? layout.spacing : spacing;
+    const layoutStart = Number.isFinite(layout.startX) ? layout.startX : startX;
+
     diceArray.forEach((d, i) => {
         d.slotIndex = i;
         scene.tweens.add({
             targets: d,
-            x: CONSTANTS.SLOT_START_X + i * CONSTANTS.SLOT_SPACING,
+            x: layoutStart + i * layoutSpacing,
             y: CONSTANTS.GRID_Y,
             duration: 200,
             ease: 'Power2'

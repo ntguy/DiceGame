@@ -103,7 +103,14 @@ export function evaluateCombo(diceArray, options = {}) {
     return { ...evaluation, assignments: [...values] };
 }
 
-export function scoreCombo(comboType) {
+export function scoreCombo(comboType, comboPointsTable = null) {
+    if (comboPointsTable && typeof comboPointsTable === 'object') {
+        const override = comboPointsTable[comboType];
+        if (Number.isFinite(override)) {
+            return override;
+        }
+    }
+
     return COMBO_POINTS[comboType] || 0;
 }
 
