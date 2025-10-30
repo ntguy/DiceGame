@@ -3,7 +3,7 @@ import { isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
 import { snapToGrid } from './Dice.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';
 
-const ZONE_BACKGROUND_TILE_SCALE = 2;
+export const ZONE_BACKGROUND_TILE_SCALE = 2;
 
 export const ZONE_LABEL_OFFSET = 20;
 export const ZONE_LABEL_FONT_SIZE = 24;
