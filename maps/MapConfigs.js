@@ -132,11 +132,6 @@ const mapThreeEnemySequence = [
     },
     {
         enemyIndex: 4,
-        rewardGold: 260,
-        label: 'Battle'
-    },
-    {
-        enemyIndex: 5,
         rewardGold: 320,
         label: 'Boss',
         isBoss: true
