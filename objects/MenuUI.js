@@ -34,14 +34,22 @@ export function createMenuUI(scene) {
 
     const comboTextStartX = panelWidth / 2 + sectionWidth / 2 - 16;
     const comboTextStartY = comboTop + 52;
+    scene.comboListOrder = combos.map(([combo]) => combo);
     scene.comboListTexts = combos.map(([combo, points], index) => {
-        const text = scene.add.text(comboTextStartX, comboTextStartY + index * lineSpacing, `${combo}: ${points}`, {
+        const displayValue = scene && typeof scene.getDisplayedComboBonus === 'function'
+            ? scene.getDisplayedComboBonus(combo)
+            : points;
+        const text = scene.add.text(comboTextStartX, comboTextStartY + index * lineSpacing, `${combo}: ${displayValue}`, {
             fontSize: '20px',
             color: '#ecf0f1'
         }).setOrigin(1, 0);
         menuPanel.add(text);
         return text;
     });
+
+    if (scene && typeof scene.refreshComboBonusMenuValues === 'function') {
+        scene.refreshComboBonusMenuValues();
+    }
 
     scene.menuCloseButton = panel.closeButton;
     scene.menuCloseButton.on('pointerup', () => scene.closeMenu());
