@@ -107,6 +107,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
         strokeThickness: 3,
     }).setOrigin(1, 0);
     leftStatusText.setVisible(false);
+    leftStatusText.defaultColor = '#ff7675';
     container.add(leftStatusText);
     container.leftStatusText = leftStatusText;
 
@@ -127,16 +128,41 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
         }
 
         if (this.leftStatusText) {
-            const labelProvider = typeof scene.getDieLeftStatusText === 'function'
+            const labelInfo = typeof scene.getDieLeftStatusText === 'function'
                 ? scene.getDieLeftStatusText(this)
                 : '';
-            const shouldShowLeft = typeof labelProvider === 'string' && labelProvider.length > 0;
+
+            let labelText = '';
+            let labelColor = null;
+
+            if (labelInfo && typeof labelInfo === 'object') {
+                const { text, color } = labelInfo;
+                if (typeof text === 'string') {
+                    labelText = text;
+                } else if (Number.isFinite(text)) {
+                    labelText = `${text}`;
+                }
+                if (typeof color === 'string') {
+                    labelColor = color;
+                }
+            } else if (typeof labelInfo === 'string') {
+                labelText = labelInfo;
+            } else if (Number.isFinite(labelInfo)) {
+                labelText = `${labelInfo}`;
+            }
+
+            const shouldShowLeft = labelText.length > 0;
             if (shouldShowLeft && this.emojiText && this.emojiText.text && this.emojiText.text.trim().length > 0) {
-                this.leftStatusText.setText(labelProvider);
+                this.leftStatusText.setText(labelText);
                 const emojiHalfWidth = (this.emojiText && this.emojiText.displayWidth) ? this.emojiText.displayWidth / 2 : 0;
                 const emojiX = this.emojiText ? this.emojiText.x : 0;
                 const emojiYPosition = this.emojiText ? this.emojiText.y : emojiY;
                 const spacing = 6;
+                if (labelColor) {
+                    this.leftStatusText.setColor(labelColor);
+                } else if (this.leftStatusText.defaultColor) {
+                    this.leftStatusText.setColor(this.leftStatusText.defaultColor);
+                }
                 this.leftStatusText.setVisible(true);
                 this.leftStatusText.setX(emojiX - emojiHalfWidth - spacing);
                 this.leftStatusText.setY(emojiYPosition);

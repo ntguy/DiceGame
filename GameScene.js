@@ -1746,13 +1746,15 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        const availableDice = this.dice.filter(die => die && !this.nullifiedDice.has(die));
+        const availableDice = this.dice.filter(die => this.isDieNullifyEligible(die));
         if (availableDice.length === 0) {
+            this.pendingNullifyCount = 0;
             return;
         }
 
         const nullifyToApply = Math.min(this.pendingNullifyCount, availableDice.length);
         let remaining = nullifyToApply;
+        let applied = 0;
         const candidates = [...availableDice];
 
         while (remaining > 0 && candidates.length > 0) {
@@ -1760,11 +1762,40 @@ export class GameScene extends Phaser.Scene {
             const die = candidates.splice(index, 1)[0];
             if (this.nullifyDie(die)) {
                 remaining--;
+                applied++;
             }
         }
 
-        this.pendingNullifyCount = Math.max(0, this.pendingNullifyCount - nullifyToApply);
+        this.pendingNullifyCount = Math.max(0, this.pendingNullifyCount - applied);
+        if (this.pendingNullifyCount > 0) {
+            const anyEligible = this.dice.some(die => this.isDieNullifyEligible(die));
+            if (!anyEligible) {
+                this.pendingNullifyCount = 0;
+            }
+        }
         this.updateZonePreviewText();
+    }
+
+    isDieNullifyEligible(die) {
+        if (!die || this.nullifiedDice.has(die)) {
+            return false;
+        }
+
+        const blueprint = die.dieBlueprint || null;
+        if (!blueprint) {
+            return false;
+        }
+
+        if (blueprint.batteryDie) {
+            return false;
+        }
+
+        const blueprintId = typeof blueprint.id === 'string' ? blueprint.id : '';
+        if (!blueprintId || blueprintId === 'standard') {
+            return false;
+        }
+
+        return true;
     }
 
     lockDie(die) {
@@ -1877,7 +1908,12 @@ export class GameScene extends Phaser.Scene {
         };
 
         const locksApplied = applyEffect(lockCount, die => this.lockDie(die));
-        const nullifiedApplied = applyEffect(nullifyCount, die => this.nullifyDie(die));
+        const nullifiedApplied = applyEffect(nullifyCount, die => {
+            if (!this.isDieNullifyEligible(die)) {
+                return false;
+            }
+            return this.nullifyDie(die);
+        });
         const weakenedApplied = applyEffect(weakenCount, die => this.weakenDie(die));
 
         if (locksApplied > 0) {
@@ -2259,7 +2295,21 @@ export class GameScene extends Phaser.Scene {
             emojiOverride: '🔋',
             getLeftStatusLabel() {
                 const usesRemaining = sceneRef.getBatteryDieUsesRemaining();
-                return usesRemaining > 0 ? `${usesRemaining}` : '';
+                if (usesRemaining <= 0) {
+                    return '';
+                }
+
+                let color = '#ff7675';
+                if (usesRemaining >= 3) {
+                    color = '#2ecc71';
+                } else if (usesRemaining === 2) {
+                    color = '#f1c40f';
+                }
+
+                return {
+                    text: `${usesRemaining}`,
+                    color
+                };
             }
         };
 
@@ -2370,6 +2420,16 @@ export class GameScene extends Phaser.Scene {
 
         if (typeof blueprint.getLeftStatusLabel === 'function') {
             const label = blueprint.getLeftStatusLabel({ die, blueprint, scene: this });
+            if (label && typeof label === 'object') {
+                const { text } = label;
+                if (typeof text === 'string' && text.length > 0) {
+                    return label;
+                }
+                if (Number.isFinite(text)) {
+                    return { ...label, text: `${text}` };
+                }
+                return '';
+            }
             if (typeof label === 'string') {
                 return label;
             }
