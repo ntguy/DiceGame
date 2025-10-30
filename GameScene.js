@@ -124,6 +124,12 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessage = null;
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
+        this.diceHandBackdrop = null;
+        this.diceHandBackdropBase = null;
+        this.diceHandBackdropHighlight = null;
+        this.diceHandBackdropLowerHighlight = null;
+        this.diceHandBackdropBorder = null;
+        this.diceHandBackdropInnerBorder = null;
         this.activeFacilityUI = null;
         this.defendPreviewText = null;
         this.attackPreviewText = null;
@@ -403,6 +409,8 @@ export class GameScene extends Phaser.Scene {
         if (!this.zoneVisuals) {
             this.zoneVisuals = [];
         }
+
+        this.createDiceHandBackdrop();
 
         this.createZonePreviewTexts();
 
@@ -713,8 +721,120 @@ export class GameScene extends Phaser.Scene {
             this.zoneAreaBackground.setSize(zoneAreaWidth, zoneAreaHeight);
         }
 
+        this.updateDiceHandBackdropLayout();
+
         this.layoutZoneDice('defend');
         this.layoutZoneDice('attack');
+    }
+
+    getDiceHandBackdropLayout() {
+        const diceSlots = Math.max(1, this.getMaxDicePerZone());
+        const diceWidth = CONSTANTS.DIE_SIZE + CONSTANTS.SLOT_SPACING * Math.max(0, diceSlots - 1);
+        const paddingX = 180;
+        const width = Math.max(520, diceWidth + paddingX);
+        const height = 220;
+        const centerX = CONSTANTS.SLOT_START_X + (Math.max(0, diceSlots - 1) * CONSTANTS.SLOT_SPACING) / 2;
+        const centerY = (CONSTANTS.GRID_Y + CONSTANTS.BUTTONS_Y) / 2;
+
+        return {
+            width,
+            height,
+            centerX,
+            centerY
+        };
+    }
+
+    createDiceHandBackdrop() {
+        const layout = this.getDiceHandBackdropLayout();
+        const container = this.add.container(layout.centerX, layout.centerY);
+        container.setDepth(-5);
+
+        const base = this.add.rectangle(0, 0, layout.width, layout.height, 0x0f1a27, 0.78)
+            .setOrigin(0.5);
+        container.add(base);
+
+        const topHighlight = this.add.rectangle(0, 0, layout.width * 0.88, layout.height * 0.36, 0xffffff, 0.22)
+            .setOrigin(0.5)
+            .setAngle(-12);
+        topHighlight.setPosition(-layout.width * 0.1, -layout.height * 0.28);
+        container.add(topHighlight);
+
+        const bottomHighlight = this.add.rectangle(0, 0, layout.width * 0.52, layout.height * 0.28, 0xffffff, 0.1)
+            .setOrigin(0.5)
+            .setAngle(-12);
+        bottomHighlight.setPosition(layout.width * 0.18, layout.height * 0.24);
+        container.add(bottomHighlight);
+
+        const border = this.add.rectangle(0, 0, layout.width, layout.height, 0xffffff, 0)
+            .setOrigin(0.5)
+            .setStrokeStyle(2, 0xffffff, 0.35);
+        container.add(border);
+
+        const innerBorder = this.add.rectangle(0, 0, Math.max(0, layout.width - 18), Math.max(0, layout.height - 18), 0x000000, 0)
+            .setOrigin(0.5)
+            .setStrokeStyle(2, 0x000000, 0.2);
+        container.add(innerBorder);
+
+        this.diceHandBackdrop = container;
+        this.diceHandBackdropBase = base;
+        this.diceHandBackdropHighlight = topHighlight;
+        this.diceHandBackdropLowerHighlight = bottomHighlight;
+        this.diceHandBackdropBorder = border;
+        this.diceHandBackdropInnerBorder = innerBorder;
+
+        this.updateDiceHandBackdropLayout();
+    }
+
+    updateDiceHandBackdropLayout() {
+        if (!this.diceHandBackdrop) {
+            return;
+        }
+
+        const layout = this.getDiceHandBackdropLayout();
+        this.diceHandBackdrop.setPosition(layout.centerX, layout.centerY);
+
+        if (this.diceHandBackdropBase) {
+            this.diceHandBackdropBase.setSize(layout.width, layout.height);
+            if (typeof this.diceHandBackdropBase.setDisplaySize === 'function') {
+                this.diceHandBackdropBase.setDisplaySize(layout.width, layout.height);
+            }
+        }
+
+        if (this.diceHandBackdropBorder) {
+            this.diceHandBackdropBorder.setSize(layout.width, layout.height);
+            if (typeof this.diceHandBackdropBorder.setDisplaySize === 'function') {
+                this.diceHandBackdropBorder.setDisplaySize(layout.width, layout.height);
+            }
+        }
+
+        if (this.diceHandBackdropInnerBorder) {
+            const innerWidth = Math.max(0, layout.width - 18);
+            const innerHeight = Math.max(0, layout.height - 18);
+            this.diceHandBackdropInnerBorder.setSize(innerWidth, innerHeight);
+            if (typeof this.diceHandBackdropInnerBorder.setDisplaySize === 'function') {
+                this.diceHandBackdropInnerBorder.setDisplaySize(innerWidth, innerHeight);
+            }
+        }
+
+        if (this.diceHandBackdropHighlight) {
+            const highlightWidth = layout.width * 0.88;
+            const highlightHeight = layout.height * 0.36;
+            this.diceHandBackdropHighlight.setSize(highlightWidth, highlightHeight);
+            if (typeof this.diceHandBackdropHighlight.setDisplaySize === 'function') {
+                this.diceHandBackdropHighlight.setDisplaySize(highlightWidth, highlightHeight);
+            }
+            this.diceHandBackdropHighlight.setPosition(-layout.width * 0.1, -layout.height * 0.28);
+        }
+
+        if (this.diceHandBackdropLowerHighlight) {
+            const lowerWidth = layout.width * 0.52;
+            const lowerHeight = layout.height * 0.28;
+            this.diceHandBackdropLowerHighlight.setSize(lowerWidth, lowerHeight);
+            if (typeof this.diceHandBackdropLowerHighlight.setDisplaySize === 'function') {
+                this.diceHandBackdropLowerHighlight.setDisplaySize(lowerWidth, lowerHeight);
+            }
+            this.diceHandBackdropLowerHighlight.setPosition(layout.width * 0.18, layout.height * 0.24);
+        }
     }
 
     toggleMenu() {
