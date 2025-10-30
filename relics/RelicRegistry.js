@@ -6,6 +6,7 @@ import { WildOneRelic } from './WildOneRelic.js';
 import { StraightSudsRelic } from './StraightSudsRelic.js';
 import { RainRelic } from './RainRelic.js';
 import { PrepperRelic } from './PrepperRelic.js';
+import { PerfectlyBalancedRelic } from './PerfectlyBalancedRelic.js';
 
 const RELIC_ENTRIES = [
     { create: () => new BlockbusterRelic(), pools: ['general', 'boss'] },
@@ -15,7 +16,8 @@ const RELIC_ENTRIES = [
     { create: () => new WildOneRelic(), pools: ['general', 'boss'] },
     { create: () => new StraightSudsRelic(), pools: ['general', 'boss'] },
     { create: () => new RainRelic(), pools: ['general', 'boss'] },
-    { create: () => new PrepperRelic(), pools: ['general', 'boss'] }
+    { create: () => new PrepperRelic(), pools: ['general', 'boss'] },
+    { create: () => new PerfectlyBalancedRelic(), pools: ['general', 'boss'] }
 ];
 
 function toPool(records, poolKey) {
