@@ -222,6 +222,8 @@ export class GameScene extends Phaser.Scene {
         this.cleanseCursesOnLongStraights = false;
         this.hasRainRelic = false;
         this.playerBurnReductionPerTurn = 0;
+        this.hasPerfectlyBalancedRelic = false;
+        this.perfectlyBalancedZoneBonus = 0;
         this.rollCarryoverEnabled = false;
         this.prepperFirstTurnBonusRolls = 0;
         this.prepperCarryoverRolls = 0;
@@ -946,6 +948,38 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
+    getPerfectlyBalancedBonus({ zone, diceList } = {}) {
+        if (!this.hasPerfectlyBalancedRelic || !zone) {
+            return 0;
+        }
+
+        const currentCount = Array.isArray(diceList)
+            ? diceList.filter(die => !!die).length
+            : 0;
+
+        let opposingDice = null;
+        if (zone === 'defend') {
+            opposingDice = this.attackDice;
+        } else if (zone === 'attack') {
+            opposingDice = this.defendDice;
+        } else {
+            return 0;
+        }
+
+        const opposingCount = Array.isArray(opposingDice)
+            ? opposingDice.filter(die => !!die).length
+            : 0;
+
+        if (currentCount <= 0 || opposingCount <= 0 || currentCount !== opposingCount) {
+            return 0;
+        }
+
+        const bonus = typeof this.perfectlyBalancedZoneBonus === 'number'
+            ? this.perfectlyBalancedZoneBonus
+            : 4;
+        return bonus;
+    }
+
     computeZoneScore(diceList, { zone } = {}) {
         const diceValues = Array.isArray(diceList)
             ? diceList.map(die => (die && typeof die.value === 'number') ? die.value : 0)
@@ -981,7 +1015,8 @@ export class GameScene extends Phaser.Scene {
         const baseContribution = contributions.reduce((sum, entry) => sum + (entry && entry.faceValueContribution ? entry.faceValueContribution : 0), 0);
         const comboBonusExtra = contributions.reduce((sum, entry) => sum + (entry && entry.comboBonusModifier ? entry.comboBonusModifier : 0), 0);
 
-        const baseSum = baseContribution + rerollBonus;
+        const perfectlyBalancedBonus = this.getPerfectlyBalancedBonus({ zone, diceList });
+        const baseSum = baseContribution + rerollBonus + perfectlyBalancedBonus;
         const comboBonus = scoreCombo(comboType) + comboBonusExtra;
         const preResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.preResolutionEffects)) ? entry.preResolutionEffects : []);
         const postResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.postResolutionEffects)) ? entry.postResolutionEffects : []);
@@ -994,7 +1029,8 @@ export class GameScene extends Phaser.Scene {
             assignments,
             wildcardFlags,
             preResolutionEffects,
-            postResolutionEffects
+            postResolutionEffects,
+            perfectlyBalancedBonus
         };
     }
 
@@ -1401,6 +1437,10 @@ export class GameScene extends Phaser.Scene {
             case 'rain':
                 this.hasRainRelic = false;
                 this.playerBurnReductionPerTurn = 0;
+                break;
+            case 'perfectly-balanced':
+                this.hasPerfectlyBalancedRelic = false;
+                this.perfectlyBalancedZoneBonus = 0;
                 break;
             case 'prepper':
                 this.rollCarryoverEnabled = false;
