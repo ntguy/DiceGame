@@ -2,6 +2,7 @@ import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 import { createDieFace, setDieBackgroundFill } from './ui/DieFace.js';
 import { playDiceRollSounds } from '../utils/SoundHelpers.js';
+import { getBitmapTint } from '../utils/bitmapTextFactory.js';
 
 const PANEL_WIDTH = 820;
 const PANEL_HEIGHT = 550;
@@ -388,7 +389,7 @@ export class TowerOfTenUI {
             } else {
                 background.setInteractive({ useHandCursor: true });
             }
-            text.setColor(isSelected ? '#ffffff' : '#eaf2f8');
+            text.setTint(getBitmapTint(isSelected ? '#ffffff' : '#eaf2f8'));
         });
     }
 
@@ -411,7 +412,7 @@ export class TowerOfTenUI {
             slot.selectionText.setVisible(this.hasRolled && !this.rerollUsed);
             if (this.hasRolled && !this.rerollUsed) {
                 slot.selectionText.setText(selected ? 'Roll' : 'Keep');
-                slot.selectionText.setColor(selected ? '#f7c873' : '#d6eaf8');
+                slot.selectionText.setTint(getBitmapTint(selected ? '#f7c873' : '#d6eaf8'));
             } else {
                 slot.selectionText.setText('');
             }
@@ -450,38 +451,38 @@ export class TowerOfTenUI {
             if (!this.hasRolled) {
                 rect.setStrokeStyle(2, COLORS.buttonStroke, 0.6);
                 rect.setFillStyle(COLORS.towerBase, level === 11 ? 0.25 : 0.35);
-                label.setColor(baseLabelColor);
-                rewardLabel.setColor(rewardColor);
+                label.setTint(getBitmapTint(baseLabelColor));
+                rewardLabel.setTint(getBitmapTint(rewardColor));
                 return;
             }
 
             if (total > 11) {
                 rect.setStrokeStyle(2, COLORS.towerBustFill, 0.9);
                 rect.setFillStyle(COLORS.towerBustFill, 0.98);
-                label.setColor(bustTextColor);
-                rewardLabel.setColor(bustTextColor);
+                label.setTint(getBitmapTint(bustTextColor));
+                rewardLabel.setTint(getBitmapTint(bustTextColor));
                 return;
             }
 
             if (total === 11 && level === 11) {
                 rect.setStrokeStyle(2, COLORS.buttonStroke, 0.9);
                 rect.setFillStyle(COLORS.towerHighlight, 0.95);
-                label.setColor(baseLabelColor);
-                rewardLabel.setColor(rewardColor);
+                label.setTint(getBitmapTint(baseLabelColor));
+                rewardLabel.setTint(getBitmapTint(rewardColor));
                 return;
             }
 
             if (total >= level && total <= 10) {
                 rect.setStrokeStyle(2, COLORS.buttonStroke, 0.9);
                 rect.setFillStyle(COLORS.towerHighlight, 0.95);
-                label.setColor(baseLabelColor);
-                rewardLabel.setColor(rewardColor);
+                label.setTint(getBitmapTint(baseLabelColor));
+                rewardLabel.setTint(getBitmapTint(rewardColor));
             } else {
                 rect.setStrokeStyle(2, COLORS.buttonStroke, 0.6);
                 rect.setFillStyle(COLORS.towerBase, total > 10 ? 0.25 : 0.55);
                 const textColor = total > 10 ? fadedColor : baseLabelColor;
-                label.setColor(textColor);
-                rewardLabel.setColor(total > 10 ? fadedColor : rewardColor);
+                label.setTint(getBitmapTint(textColor));
+                rewardLabel.setTint(getBitmapTint(total > 10 ? fadedColor : rewardColor));
             }
         });
     }
@@ -519,7 +520,7 @@ export class TowerOfTenUI {
                         : 'Bust! Re-roll to try again.'
                 );
             }
-            this.statusText.setColor(COLORS.statusWarning);
+            this.statusText.setTint(getBitmapTint(COLORS.statusWarning));
             const penaltyText = this.getBustPenaltyText();
             this.finishButton.text.setText(`Accept Bust (${penaltyText})`);
         } else {
@@ -529,7 +530,7 @@ export class TowerOfTenUI {
             } else {
                 this.statusText.setText('Select dice to re-roll, or cash out.');
             }
-            this.statusText.setColor(COLORS.statusInfo);
+            this.statusText.setTint(getBitmapTint(COLORS.statusInfo));
             const cashLabel = payout > 0 ? `Cash Out (+${payout}g)` : 'Cash Out (0g)';
             this.finishButton.text.setText(cashLabel);
         }
@@ -553,7 +554,7 @@ export class TowerOfTenUI {
         const anySelected = this.diceSelected.some(selected => selected);
         if (!anySelected) {
             this.statusText.setText('Select dice to roll, or cash out.');
-            this.statusText.setColor(COLORS.statusWarning);
+            this.statusText.setTint(getBitmapTint(COLORS.statusWarning));
             return;
         }
         this.performReroll();

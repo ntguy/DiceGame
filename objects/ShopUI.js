@@ -85,7 +85,7 @@ export class ShopUI {
             }).setOrigin(0.5);
 
             const nameText = this.scene.add.text(0, icon.y + 46, relic.name, {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
@@ -217,7 +217,7 @@ export class ShopUI {
             .setInteractive({ useHandCursor: true });
 
         const leaveText = this.scene.add.text(0, leaveY, 'Leave Shop', {
-            fontSize: '24px',
+            fontSize: '32px',
             color: '#f9e79f'
         }).setOrigin(0.5);
 

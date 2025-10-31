@@ -117,7 +117,7 @@ export class InfirmaryUI {
         }).setOrigin(0.5);
 
         const titleText = this.scene.add.text(0, iconText.y + 46, title, {
-            fontSize: '24px',
+            fontSize: '32px',
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);

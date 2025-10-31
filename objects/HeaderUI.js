@@ -9,7 +9,7 @@ function createHeaderButton(scene, {
     x,
     origin,
     onClick,
-    fontSize = '24px',
+    fontSize = '32px',
     width = DEFAULT_BUTTON_WIDTH
 }) {
     const button = scene.add.text(x, CONSTANTS.HEADER_HEIGHT / 2, label, {
@@ -86,17 +86,17 @@ export function createHeaderUI(scene) {
         x: headerWidth - CONSTANTS.UI_MARGIN,
         origin: { x: 1, y: 0.5 },
         onClick: () => scene.toggleMenu(),
-        fontSize: '28px'
+        fontSize: '32px'
     });
-    menuButton.setData('defaultFontSize', '24px');
-    menuButton.setData('expandedFontSize', '28px');
+    menuButton.setData('defaultFontSize', '32px');
+    menuButton.setData('expandedFontSize', '32px');
 
     const backpackButton = createHeaderButton(scene, {
         label: '🎒',
         x: headerWidth - CONSTANTS.UI_MARGIN,
         origin: { x: 1, y: 0.5 },
         onClick: () => scene.toggleBackpack(),
-        fontSize: '28px'
+        fontSize: '32px'
     });
 
     const settingsButton = createHeaderButton(scene, {
@@ -104,10 +104,10 @@ export function createHeaderUI(scene) {
         x: headerWidth - CONSTANTS.UI_MARGIN,
         origin: { x: 1, y: 0.5 },
         onClick: () => scene.toggleSettings(),
-        fontSize: '28px'
+        fontSize: '32px'
     });
-    settingsButton.setData('defaultFontSize', '24px');
-    settingsButton.setData('expandedFontSize', '28px');
+    settingsButton.setData('defaultFontSize', '32px');
+    settingsButton.setData('expandedFontSize', '32px');
 
     const instructionsButton = createHeaderButton(scene, {
         label: '📘',

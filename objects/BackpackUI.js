@@ -2,6 +2,7 @@ import { CONSTANTS } from '../config.js';
 import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { getBitmapTint } from '../utils/bitmapTextFactory.js';
 
 const COLUMN_GAP = 24;
 const ROW_VERTICAL_SPACING = 28;
@@ -12,7 +13,7 @@ const COMPACT_RELIC_SLOT_RADIUS = 30;
 const BASE_RELIC_SLOT_MIN_SPACING = 18;
 const COMPACT_RELIC_SLOT_MIN_SPACING = 14;
 const BASE_RELIC_LABEL_FONT_SIZE = '16px';
-const COMPACT_RELIC_LABEL_FONT_SIZE = '14px';
+const COMPACT_RELIC_LABEL_FONT_SIZE = '16px';
 const BASE_RELIC_LABEL_WRAP_PADDING = 12;
 const COMPACT_RELIC_LABEL_WRAP_PADDING = 10;
 const COMPACT_RELIC_THRESHOLD = 7;
@@ -30,9 +31,9 @@ const RELIC_SLOT_EMPTY_FILL_COLOR = 0x1a0c16;
 const RELIC_SLOT_STROKE_COLOR = 0xf5b7b1;
 const RELIC_SLOT_SELECTED_FILL_COLOR = 0x7d3c98;
 const SECTION_LABEL_COLOR = '#f1f8ff';
-const SECTION_LABEL_FONT_SIZE = '24px';
+const SECTION_LABEL_FONT_SIZE = '32px';
 const INFO_TITLE_COLOR = '#f7dc6f';
-const INFO_TITLE_FONT_SIZE = '26px';
+const INFO_TITLE_FONT_SIZE = '32px';
 const INFO_DESCRIPTION_COLOR = '#ecf0f1';
 const INFO_DESCRIPTION_FONT_SIZE = '20px';
 const INFO_SUBTEXT_COLOR = '#85929e';
@@ -367,7 +368,7 @@ export class BackpackUI {
                 .setInteractive({ useHandCursor: true });
 
             const iconText = this.scene.add.text(0, 0, '', {
-                fontSize: '30px',
+                fontSize: '32px',
                 color: '#ffffff'
             }).setOrigin(0.5);
 
@@ -606,7 +607,7 @@ export class BackpackUI {
                 slot.emojiText.setAlpha(1);
                 const labelText = slot.data.baseName ? `${slot.data.baseName}${slot.data.isUpgraded ? ' +' : ''}` : '';
                 slot.labelText.setText(labelText);
-                slot.labelText.setColor(slot.data.isUpgraded ? INFO_UPGRADED_COLOR : INFO_SUBTEXT_COLOR);
+                slot.labelText.setTint(getBitmapTint(slot.data.isUpgraded ? INFO_UPGRADED_COLOR : INFO_SUBTEXT_COLOR));
                 slot.background.setInteractive({ useHandCursor: true });
             } else {
                 slot.data = null;
@@ -615,7 +616,7 @@ export class BackpackUI {
                 slot.emojiText.setText('');
                 slot.emojiText.setAlpha(0.65);
                 slot.labelText.setText('');
-                slot.labelText.setColor(INFO_SUBTEXT_COLOR);
+                slot.labelText.setTint(getBitmapTint(INFO_SUBTEXT_COLOR));
                 slot.background.setInteractive({ useHandCursor: true });
             }
         });

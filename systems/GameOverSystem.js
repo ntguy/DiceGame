@@ -26,7 +26,7 @@ export class GameOverManager {
         }).setOrigin(0.5);
 
         const subtitle = this.scene.add.text(width / 2, height / 2, 'The enemy has defeated you.', {
-            fontSize: '24px',
+            fontSize: '32px',
             color: '#ecf0f1'
         }).setOrigin(0.5);
 

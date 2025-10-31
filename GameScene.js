@@ -503,7 +503,7 @@ export class GameScene extends Phaser.Scene {
 
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(110, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
-            fontSize: "24px",
+            fontSize: "32px",
             color: "#fff"
         }).setOrigin(0.5);
 
@@ -518,7 +518,7 @@ export class GameScene extends Phaser.Scene {
 
         if (!this.defendPreviewText) {
             this.defendPreviewText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#3498db',
                 align: 'left'
             }).setOrigin(0, 0.5);
@@ -534,7 +534,7 @@ export class GameScene extends Phaser.Scene {
 
         if (!this.attackPreviewText) {
             this.attackPreviewText = this.add.text(attackLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#e74c3c',
                 align: 'left'
             }).setOrigin(0, 0.5);
@@ -887,9 +887,14 @@ export class GameScene extends Phaser.Scene {
         const suffix = this.isMenuOpen ? '✕' : '☰';
         this.menuButton.setText(`${suffix}`);
         const targetFontSize = suffix === '✕'
-            ? this.menuButton.getData('defaultFontSize') || '24px'
-            : this.menuButton.getData('expandedFontSize') || this.menuButton.getData('defaultFontSize') || '24px';
-        this.menuButton.setStyle({ fontSize: targetFontSize });
+            ? this.menuButton.getData('defaultFontSize') || '32px'
+            : this.menuButton.getData('expandedFontSize') || this.menuButton.getData('defaultFontSize') || '32px';
+        const parsedMenuFontSize = typeof targetFontSize === 'string'
+            ? parseInt(targetFontSize, 10)
+            : targetFontSize;
+        if (Number.isFinite(parsedMenuFontSize)) {
+            this.menuButton.setFontSize(parsedMenuFontSize);
+        }
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }
@@ -943,9 +948,14 @@ export class GameScene extends Phaser.Scene {
         const suffix = this.isSettingsOpen ? '✕' : '⚙';
         this.settingsButton.setText(`${suffix}`);
         const targetFontSize = suffix === '✕'
-            ? this.settingsButton.getData('defaultFontSize') || '24px'
-            : this.settingsButton.getData('expandedFontSize') || this.settingsButton.getData('defaultFontSize') || '24px';
-        this.settingsButton.setStyle({ fontSize: targetFontSize });
+            ? this.settingsButton.getData('defaultFontSize') || '32px'
+            : this.settingsButton.getData('expandedFontSize') || this.settingsButton.getData('defaultFontSize') || '32px';
+        const parsedSettingsFontSize = typeof targetFontSize === 'string'
+            ? parseInt(targetFontSize, 10)
+            : targetFontSize;
+        if (Number.isFinite(parsedSettingsFontSize)) {
+            this.settingsButton.setFontSize(parsedSettingsFontSize);
+        }
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }
@@ -4866,7 +4876,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.nodeMessage = this.add.text(this.scale.width / 2, 110, message, {
-            fontSize: '26px',
+            fontSize: '32px',
             color,
             fontStyle: 'bold',
             backgroundColor: 'rgba(0, 0, 0, 0.45)',
