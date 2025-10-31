@@ -1155,7 +1155,7 @@ export class GameScene extends Phaser.Scene {
         const comboBonusExtra = contributions.reduce((sum, entry) => sum + (entry && entry.comboBonusModifier ? entry.comboBonusModifier : 0), 0);
 
         const perfectBalanceBonus = this.getPerfectBalanceBonus({ zone, diceList });
-        const baseSum = baseContribution + rerollBonus + perfectlyBalancedBonus;
+        const baseSum = baseContribution + rerollBonus +perfectBalanceBonus;
         const comboBonus = scoreCombo(comboType, comboPointsTable) + comboBonusExtra;
         const preResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.preResolutionEffects)) ? entry.preResolutionEffects : []);
         const postResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.postResolutionEffects)) ? entry.postResolutionEffects : []);
