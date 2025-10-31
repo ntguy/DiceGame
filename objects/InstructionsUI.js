@@ -172,7 +172,7 @@ export class InstructionsUI {
         const contentTop = -PANEL_HEIGHT / 2 + 120;
 
         this.titleText = this.scene.add.text(0, contentTop, '', {
-            fontSize: '30px',
+            fontSize: '32px',
             color: '#f4d03f',
             fontStyle: 'bold',
             align: 'center',

@@ -16,7 +16,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.45,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#1b1300',
+            strokeAlpha: 0.4,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(rollButton, true);
 
@@ -37,7 +44,14 @@ export function setupButtons(scene) {
         pressBlend: 0.28,
         disabledBlend: 0.35,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#002f29',
+            strokeAlpha: 0.45,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(sortButton, false);
     scene.sortButton = sortButton;
@@ -57,7 +71,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.38,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 64,
+            paddingY: 28,
+            strokeColor: '#4a235a',
+            strokeAlpha: 0.5,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(resolveButton, true);
 
@@ -65,6 +86,76 @@ export function setupButtons(scene) {
         scene.resolveDice();
     });
     scene.resolveButton = resolveButton;
+
+    const actionButtons = [rollButton, sortButton, resolveButton];
+    const layoutActionButtons = () => {
+        const buttons = actionButtons.filter(Boolean);
+        if (buttons.length === 0) {
+            return;
+        }
+
+        const spacing = 28;
+        const totalWidth = buttons.reduce((sum, button) => {
+            const state = button.getData && button.getData('textButtonStyle');
+            const backgroundWidth = state && state.backgroundRect
+                ? (state.backgroundRect.displayWidth || state.backgroundRect.width || 0)
+                : 0;
+            const textWidth = typeof button.displayWidth === 'number'
+                ? button.displayWidth
+                : (typeof button.width === 'number' ? button.width : 0);
+            const effectiveWidth = Math.max(backgroundWidth, textWidth, 1);
+            return sum + effectiveWidth;
+        }, 0);
+
+        const sceneWidth = scene && scene.scale && typeof scene.scale.width === 'number'
+            ? scene.scale.width
+            : (scene && scene.cameras && scene.cameras.main && typeof scene.cameras.main.width === 'number'
+                ? scene.cameras.main.width
+                : 0);
+
+        let currentX = sceneWidth / 2 - (totalWidth + spacing * (buttons.length - 1)) / 2;
+
+        buttons.forEach(button => {
+            const state = button.getData && button.getData('textButtonStyle');
+            const backgroundWidth = state && state.backgroundRect
+                ? (state.backgroundRect.displayWidth || state.backgroundRect.width || 0)
+                : 0;
+            const textWidth = typeof button.displayWidth === 'number'
+                ? button.displayWidth
+                : (typeof button.width === 'number' ? button.width : 0);
+            const effectiveWidth = Math.max(backgroundWidth, textWidth, 1);
+            const targetX = currentX + effectiveWidth / 2;
+            button.setX(targetX);
+            currentX += effectiveWidth + spacing;
+        });
+    };
+
+    actionButtons.forEach(button => {
+        if (!button || typeof button.setText !== 'function') {
+            return;
+        }
+        const originalSetText = button.setText.bind(button);
+        button.setText = function patchedSetText(...args) {
+            const result = originalSetText(...args);
+            layoutActionButtons();
+            return result;
+        };
+    });
+
+    layoutActionButtons();
+    scene.layoutActionButtons = layoutActionButtons;
+
+    if (scene && scene.scale && typeof scene.scale.on === 'function') {
+        scene.scale.on('resize', layoutActionButtons);
+    }
+
+    if (scene && scene.events && typeof scene.events.once === 'function') {
+        scene.events.once('shutdown', () => {
+            if (scene && scene.scale && typeof scene.scale.off === 'function') {
+                scene.scale.off('resize', layoutActionButtons);
+            }
+        });
+    }
 }
 
 export function setupHealthBar(scene) {
