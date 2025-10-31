@@ -430,7 +430,7 @@ export class InstructionsUI {
         this.bodyContainer.add(bullet);
         this.bodyEntries.push(bullet);
 
-        const tokens = this.createTokens(point);
+        const tokens = this.combineTokens(this.createTokens(point));
         let cursorX = textStartX;
         let lineIndex = 0;
 
@@ -460,6 +460,11 @@ export class InstructionsUI {
             }
 
             if (cursorX === textStartX && isWhitespace) {
+                return;
+            }
+
+            if (isWhitespace) {
+                cursorX += tokenWidth;
                 return;
             }
 
@@ -493,6 +498,45 @@ export class InstructionsUI {
         });
 
         return tokens;
+    }
+
+    combineTokens(tokens) {
+        if (!Array.isArray(tokens) || tokens.length === 0) {
+            return [];
+        }
+
+        const combined = [];
+
+        tokens.forEach((token) => {
+            if (!token || typeof token.text !== 'string' || token.text.length === 0) {
+                return;
+            }
+
+            const isWhitespace = /^\s+$/.test(token.text);
+            const lastEntry = combined[combined.length - 1];
+
+            if (!lastEntry) {
+                if (isWhitespace) {
+                    return;
+                }
+                combined.push({ text: token.text, color: token.color });
+                return;
+            }
+
+            if (isWhitespace) {
+                lastEntry.text += token.text;
+                return;
+            }
+
+            if (lastEntry.color === token.color) {
+                lastEntry.text += token.text;
+                return;
+            }
+
+            combined.push({ text: token.text, color: token.color });
+        });
+
+        return combined;
     }
 
     splitByKeywords(text, keywords, baseColor) {
