@@ -6,7 +6,7 @@ import { callSceneMethod } from '../utils/SceneHelpers.js';
 const ZONE_BACKGROUND_TILE_SCALE = 2;
 
 export const ZONE_LABEL_OFFSET = 20;
-export const ZONE_LABEL_FONT_SIZE = 24;
+export const ZONE_LABEL_FONT_SIZE = 32;
 export const ZONE_AREA_PADDING_X = 20;
 export const ZONE_AREA_PADDING_TOP = 40;
 export const ZONE_AREA_PADDING_BOTTOM = 16;
