@@ -507,6 +507,10 @@ export class GameScene extends Phaser.Scene {
             color: "#fff"
         }).setOrigin(0.5);
 
+        if (typeof this.layoutBattleButtons === 'function') {
+            this.layoutBattleButtons();
+        }
+
         this.enterMapState();
     }
 
