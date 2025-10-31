@@ -1,5 +1,6 @@
 import { PATH_NODE_TYPES } from '../systems/PathManager.js';
 import { CONSTANTS } from '../config.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const COLORS = {
     [PATH_NODE_TYPES.ENEMY]: 0xe74c3c,
@@ -1631,13 +1632,13 @@ export class PathUI {
                 this.updateState();
             });
 
-            const iconText = this.scene.add.text(0, 0, icon || '?', {
+            const iconText = createBitmapText(this.scene, 0, 0, icon || '?', {
                 fontSize: '24px',
                 color: '#000000',
                 padding: CONSTANTS.EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, 50, node.label || '', {
+            const labelText = createBitmapText(this.scene, 0, 50, node.label || '', {
                 fontSize: '18px',
                 color: '#ffffff'
             }).setOrigin(0.5);

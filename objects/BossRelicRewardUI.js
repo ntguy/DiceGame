@@ -1,6 +1,7 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { CONSTANTS } from '../config.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 560;
@@ -99,18 +100,18 @@ export class BossRelicRewardUI {
 
             cardContainer.setPosition(cardX, cardY);
 
-            const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, choice.icon || '♦', {
+            const icon = createBitmapText(this.scene, 0, -CARD_HEIGHT / 2 + 50, choice.icon || '♦', {
                 fontSize: '52px',
                 padding: CONSTANTS.EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
-            const nameText = this.scene.add.text(0, icon.y + 46, choice.name || 'Reward', {
+            const nameText = createBitmapText(this.scene, 0, icon.y + 46, choice.name || 'Reward', {
                 fontSize: '24px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
 
-            const descText = this.scene.add.text(0, nameText.y + 28, choice.description || '', {
+            const descText = createBitmapText(this.scene, 0, nameText.y + 28, choice.description || '', {
                 fontSize: '16px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
@@ -120,7 +121,7 @@ export class BossRelicRewardUI {
             const buttonBg = this.scene.add.rectangle(0, buttonY, CARD_WIDTH - 48, 48, 0x271438, 0.92)
                 .setStrokeStyle(2, 0xf1c40f, 0.85);
 
-            const buttonText = this.scene.add.text(0, buttonY, '', {
+            const buttonText = createBitmapText(this.scene, 0, buttonY, '', {
                 fontSize: '18px',
                 color: '#f9e79f'
             }).setOrigin(0.5);
@@ -208,7 +209,7 @@ export class BossRelicRewardUI {
     }
 
     createCapacityText() {
-        const text = this.scene.add.text(0, CAPACITY_TEXT_Y, '', {
+        const text = createBitmapText(this.scene, 0, CAPACITY_TEXT_Y, '', {
             fontSize: '18px',
             color: '#f9e79f',
             align: 'center'
@@ -261,7 +262,7 @@ export class BossRelicRewardUI {
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonText = this.scene.add.text(0, buttonY, 'Continue', {
+        const buttonText = createBitmapText(this.scene, 0, buttonY, 'Continue', {
             fontSize: '20px',
             color: '#f9e79f'
         }).setOrigin(0.5);

@@ -1,6 +1,7 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { CONSTANTS } from '../config.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;
@@ -111,18 +112,18 @@ export class InfirmaryUI {
 
         cardContainer.setPosition(x, y);
 
-        const iconText = this.scene.add.text(0, -CARD_HEIGHT / 2 + 44, icon, {
+        const iconText = createBitmapText(this.scene, 0, -CARD_HEIGHT / 2 + 44, icon, {
             fontSize: '48px',
             padding: CONSTANTS.EMOJI_TEXT_PADDING
         }).setOrigin(0.5);
 
-        const titleText = this.scene.add.text(0, iconText.y + 46, title, {
+        const titleText = createBitmapText(this.scene, 0, iconText.y + 46, title, {
             fontSize: '24px',
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        const descText = this.scene.add.text(0, titleText.y + 24, description, {
+        const descText = createBitmapText(this.scene, 0, titleText.y + 24, description, {
             fontSize: '16px',
             color: '#c8f7c5',
             align: 'center',
@@ -134,7 +135,7 @@ export class InfirmaryUI {
             .setStrokeStyle(2, accentColor, 0.8)
             .setInteractive({ useHandCursor: !disabled });
 
-        const buttonText = this.scene.add.text(0, buttonY, buttonLabel, {
+        const buttonText = createBitmapText(this.scene, 0, buttonY, buttonLabel, {
             fontSize: '18px',
             color: '#e8fff4'
         }).setOrigin(0.5);

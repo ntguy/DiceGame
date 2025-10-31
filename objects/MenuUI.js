@@ -1,4 +1,5 @@
 import { COMBO_POINTS } from '../systems/ComboSystem.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 import { createSidePanel } from './ui/SidePanelFactory.js';
 
 export function createMenuUI(scene) {
@@ -25,7 +26,7 @@ export function createMenuUI(scene) {
         .setStrokeStyle(2, 0xf1c40f, 0.18);
     menuPanel.add(comboBg);
 
-    const comboTitle = scene.add.text(panelWidth / 2, comboTop + 16, 'Combo Bonuses', {
+    const comboTitle = createBitmapText(scene, panelWidth / 2, comboTop + 16, 'Combo Bonuses', {
         fontSize: '24px',
         color: '#f9e79f',
         fontStyle: 'bold'
@@ -35,7 +36,7 @@ export function createMenuUI(scene) {
     const comboTextStartX = panelWidth / 2 + sectionWidth / 2 - 16;
     const comboTextStartY = comboTop + 52;
     scene.comboListTexts = combos.map(([combo, points], index) => {
-        const text = scene.add.text(comboTextStartX, comboTextStartY + index * lineSpacing, `${combo}: ${points}`, {
+        const text = createBitmapText(scene, comboTextStartX, comboTextStartY + index * lineSpacing, `${combo}: ${points}`, {
             fontSize: '20px',
             color: '#ecf0f1'
         }).setOrigin(1, 0);

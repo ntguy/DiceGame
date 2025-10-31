@@ -1,5 +1,6 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 500;
@@ -91,18 +92,18 @@ export class DiceUpgradeUI {
 
             cardContainer.setPosition(cardX, cardY);
 
-            const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, option.emoji || '', {
+            const icon = createBitmapText(this.scene, 0, -CARD_HEIGHT / 2 + 50, option.emoji || '', {
                 fontSize: '52px',
                 padding: EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
-            const nameText = this.scene.add.text(0, icon.y + 46, option.name || 'Unknown', {
+            const nameText = createBitmapText(this.scene, 0, icon.y + 46, option.name || 'Unknown', {
                 fontSize: '24px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
 
-            const descriptionText = this.scene.add.text(0, nameText.y + 28, option.description || '', {
+            const descriptionText = createBitmapText(this.scene, 0, nameText.y + 28, option.description || '', {
                 fontSize: '16px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
@@ -115,13 +116,13 @@ export class DiceUpgradeUI {
             const box = this.scene.add.rectangle(0, 0, CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE, 0x271438, 0.9)
                 .setStrokeStyle(2, 0xf1c40f, 0.85);
 
-            const checkmark = this.scene.add.text(0, 0, '✔', {
+            const checkmark = createBitmapText(this.scene, 0, 0, '✔', {
                 fontSize: '20px',
                 color: '#f1c40f'
             }).setOrigin(0.5);
             checkmark.setVisible(false);
 
-            const label = this.scene.add.text(0, CHECKBOX_BOX_SIZE / 2 + 10, 'Select', {
+            const label = createBitmapText(this.scene, 0, CHECKBOX_BOX_SIZE / 2 + 10, 'Select', {
                 fontSize: '18px',
                 color: '#f9e79f',
                 align: 'center'
@@ -167,7 +168,7 @@ export class DiceUpgradeUI {
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonText = this.scene.add.text(0, 0, 'Select dice', {
+        const buttonText = createBitmapText(this.scene, 0, 0, 'Select dice', {
             fontSize: '22px',
             color: '#f9e79f',
             fontStyle: 'bold'
@@ -221,7 +222,7 @@ export class DiceUpgradeUI {
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonText = this.scene.add.text(0, 0, 'Skip', {
+        const buttonText = createBitmapText(this.scene, 0, 0, 'Skip', {
             fontSize: '20px',
             color: '#f9e79f',
             fontStyle: 'bold'

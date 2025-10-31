@@ -1,5 +1,6 @@
 import { CONSTANTS } from '../config.js';
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const DEFAULT_BUTTON_WIDTH = 72;
 const DEFAULT_BUTTON_HEIGHT = 40;
@@ -12,7 +13,7 @@ function createHeaderButton(scene, {
     fontSize = '24px',
     width = DEFAULT_BUTTON_WIDTH
 }) {
-    const button = scene.add.text(x, CONSTANTS.HEADER_HEIGHT / 2, label, {
+    const button = createBitmapText(scene, x, CONSTANTS.HEADER_HEIGHT / 2, label, {
         fontSize,
         color: '#ecf0f1',
         padding: { x: 18, y: 6 },
@@ -74,7 +75,7 @@ export function createHeaderUI(scene) {
     goldText.setScrollFactor(0);
     container.add(goldText);
 
-    const mapTitleText = scene.add.text(headerWidth / 2, headerHeight / 2, '', {
+    const mapTitleText = createBitmapText(scene, headerWidth / 2, headerHeight / 2, '', {
         fontSize: '20px',
         color: '#ecf0f1'
     }).setOrigin(0.5, 0.5);

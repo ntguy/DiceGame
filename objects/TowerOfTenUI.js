@@ -2,6 +2,7 @@ import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
 import { createDieFace, setDieBackgroundFill } from './ui/DieFace.js';
 import { playDiceRollSounds } from '../utils/SoundHelpers.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const PANEL_WIDTH = 820;
 const PANEL_HEIGHT = 550;
@@ -138,7 +139,7 @@ export class TowerOfTenUI {
                 this.setDiceCount(count);
             });
 
-            const text = this.scene.add.text(0, 0, label, {
+            const text = createBitmapText(this.scene, 0, 0, label, {
                 fontSize: '18px',
                 color: '#eaf2f8'
             }).setOrigin(0.5);
@@ -170,7 +171,7 @@ export class TowerOfTenUI {
             const stepRect = this.scene.add.rectangle(0, y, TOWER_STEP_SIZE, TOWER_STEP_SIZE, COLORS.towerBase, 0.7)
                 .setStrokeStyle(2, COLORS.buttonStroke, 0.6);
             const labelText = level === 11 ? '11+' : `${level}`;
-            const label = this.scene.add.text(0, y, labelText, {
+            const label = createBitmapText(this.scene, 0, y, labelText, {
                 fontSize: '18px',
                 color: '#0b1a2b'
             }).setOrigin(0.5);
@@ -178,7 +179,7 @@ export class TowerOfTenUI {
             const rewardInfo = level === 11
                 ? { text: this.getBustPenaltyText(), color: COLORS.rewardBust }
                 : (TOWER_REWARD_INFO[level] || { text: '', color: '#ffffff' });
-            const rewardLabel = this.scene.add.text(-(TOWER_STEP_SIZE / 2) - 12, y, rewardInfo.text, {
+            const rewardLabel = createBitmapText(this.scene, -(TOWER_STEP_SIZE / 2) - 12, y, rewardInfo.text, {
                 fontSize: '16px',
                 color: rewardInfo.color
             }).setOrigin(1, 0.5);
@@ -199,18 +200,18 @@ export class TowerOfTenUI {
 
     createStatusTexts() {
         const totalY = PANEL_HEIGHT / 2 - 180;
-        this.totalText = this.scene.add.text(-100, totalY, 'Total: --', {
+        this.totalText = createBitmapText(this.scene, -100, totalY, 'Total: --', {
             fontSize: '22px',
             color: '#d6eaf8',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.payoutText = this.scene.add.text(-100, totalY + 34, 'Potential Reward: --', {
+        this.payoutText = createBitmapText(this.scene, -100, totalY + 34, 'Potential Reward: --', {
             fontSize: '18px',
             color: '#d6eaf8'
         }).setOrigin(0.5);
 
-        this.statusText = this.scene.add.text(-100, totalY - 180, '', {
+        this.statusText = createBitmapText(this.scene, -100, totalY - 180, '', {
             fontSize: '18px',
             color: COLORS.statusInfo
         }).setOrigin(0.5);
@@ -248,13 +249,13 @@ export class TowerOfTenUI {
         const background = this.scene.add.rectangle(0, 0, INSTRUCTIONS_WIDTH, panelHeight, COLORS.instructionsBg, 0.92)
             .setStrokeStyle(2, COLORS.instructionsStroke, 0.8);
 
-        const title = this.scene.add.text(0, -panelHeight / 2 + 24, 'Instructions', {
+        const title = createBitmapText(this.scene, 0, -panelHeight / 2 + 24, 'Instructions', {
             fontSize: '22px',
             color: '#eaf6fb',
             fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
-        const bodyText = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, title.y + 40,
+        const bodyText = createBitmapText(this.scene, -INSTRUCTIONS_WIDTH / 2 + 16, title.y + 40,
             '',
             {
                 fontSize: '16px',
@@ -290,7 +291,7 @@ export class TowerOfTenUI {
             onClick();
         });
 
-        const text = this.scene.add.text(0, 0, label, {
+        const text = createBitmapText(this.scene, 0, 0, label, {
             fontSize: '18px',
             color: '#eaf2f8'
         }).setOrigin(0.5);
@@ -348,7 +349,7 @@ export class TowerOfTenUI {
                 this.toggleDieSelection(i);
             });
 
-            const selectionText = this.scene.add.text(0, DICE_SIZE / 2 + 18, 'Roll', {
+            const selectionText = createBitmapText(this.scene, 0, DICE_SIZE / 2 + 18, 'Roll', {
                 fontSize: '16px',
                 color: '#f7c873'
             }).setOrigin(0.5);

@@ -1,6 +1,7 @@
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { createDieFace, setDieBackgroundFill, setDieStroke } from './ui/DieFace.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const PANEL_WIDTH = 920;
 const PANEL_HEIGHT = 540;
@@ -171,7 +172,7 @@ export class InstructionsUI {
 
         const contentTop = -PANEL_HEIGHT / 2 + 120;
 
-        this.titleText = this.scene.add.text(0, contentTop, '', {
+        this.titleText = createBitmapText(this.scene, 0, contentTop, '', {
             fontSize: '30px',
             color: '#f4d03f',
             fontStyle: 'bold',
@@ -198,7 +199,7 @@ export class InstructionsUI {
             .setStrokeStyle(2, 0x5dade2, 0.9)
             .setInteractive({ useHandCursor: true });
 
-        const buttonText = this.scene.add.text(0, buttonY, 'Close', {
+        const buttonText = createBitmapText(this.scene, 0, buttonY, 'Close', {
             fontSize: '22px',
             color: '#d6eaf8',
             fontStyle: 'bold'
@@ -228,7 +229,7 @@ export class InstructionsUI {
         const selectorY = PANEL_HEIGHT / 2 - 130;
         const firstDieX = -((PAGES.length - 1) * PAGE_SPACING) / 2;
 
-        const label = this.scene.add.text(firstDieX - 70, selectorY, 'Page:', {
+        const label = createBitmapText(this.scene, firstDieX - 70, selectorY, 'Page:', {
             fontSize: '22px',
             color: '#d6eaf8',
             fontStyle: 'bold'
@@ -421,7 +422,7 @@ export class InstructionsUI {
         const lineHeight = BULLET_LINE_HEIGHT;
         const spacingAfter = BULLET_SPACING;
 
-        const bullet = this.scene.add.text(bulletX, startY, '•', {
+        const bullet = createBitmapText(this.scene, bulletX, startY, '•', {
             fontSize: '20px',
             color: BULLET_COLOR,
             fontStyle: 'bold'
@@ -463,7 +464,7 @@ export class InstructionsUI {
                 return;
             }
 
-            const text = this.scene.add.text(cursorX, startY + lineIndex * lineHeight, token.text, tokenStyle)
+            const text = createBitmapText(this.scene, cursorX, startY + lineIndex * lineHeight, token.text, tokenStyle)
                 .setOrigin(0, 0);
 
             this.bodyContainer.add(text);

@@ -1,3 +1,5 @@
+import { createBitmapText } from './utils/BitmapTextLabel.js';
+
 const LETTER_PATTERNS = {
     D: [
         '11110',
@@ -76,11 +78,9 @@ export class StartScene extends Phaser.Scene {
         const lastLineBottom = titleY + (lines.length - 1) * (letterHeight + this.lineSpacing) + letterHeight;
         const buttonY = lastLineBottom + this.dieSize * 3;
 
-        const button = this.add.text(width / 2, buttonY, 'PLAY', {
-            fontFamily: 'monospace',
+        const button = createBitmapText(this, width / 2, buttonY, 'PLAY', {
             fontSize: '48px',
             color: '#ffffff',
-            fontStyle: 'bold',
             align: 'center'
         }).setOrigin(0.5);
 

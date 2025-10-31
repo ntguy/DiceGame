@@ -1,5 +1,6 @@
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 import { createSidePanel } from './ui/SidePanelFactory.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 export function createSettingsUI(scene) {
     if (scene.settingsPanel) {
@@ -28,7 +29,7 @@ export function createSettingsUI(scene) {
     const muteButtonY = contentTop + 52;
     const toggleSpacing = 64;
 
-    scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
+    scene.muteButton = createBitmapText(scene, panelWidth / 2, muteButtonY, '', {
         fontSize: '22px',
         color: '#ecf0f1',
         padding: { x: 18, y: 10 }
@@ -45,7 +46,7 @@ export function createSettingsUI(scene) {
     settingsPanel.add(scene.muteButton);
 
     const testingButtonY = muteButtonY + toggleSpacing;
-    scene.testingModeButton = scene.add.text(panelWidth / 2, testingButtonY, '', {
+    scene.testingModeButton = createBitmapText(scene, panelWidth / 2, testingButtonY, '', {
         fontSize: '22px',
         color: '#ecf0f1',
         padding: { x: 18, y: 10 }
@@ -62,7 +63,7 @@ export function createSettingsUI(scene) {
     settingsPanel.add(scene.testingModeButton);
 
     const skipButtonY = testingButtonY + toggleSpacing;
-    scene.mapSkipButton = scene.add.text(panelWidth / 2, skipButtonY, 'Skip Map ▶', {
+    scene.mapSkipButton = createBitmapText(scene, panelWidth / 2, skipButtonY, 'Skip Map ▶', {
         fontSize: '22px',
         color: '#ecf0f1',
         padding: { x: 18, y: 10 }

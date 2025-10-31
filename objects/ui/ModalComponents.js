@@ -1,3 +1,5 @@
+import { createBitmapText } from '../../utils/BitmapTextLabel.js';
+
 const DEFAULT_MODAL_CONFIG = {
     width: 720,
     height: 480,
@@ -50,7 +52,7 @@ export function createModal(scene, config = {}) {
 
     let titleText = null;
     if (merged.title) {
-        titleText = scene.add.text(0, panelTop + merged.titlePadding, merged.title, merged.titleStyle)
+        titleText = createBitmapText(scene, 0, panelTop + merged.titlePadding, merged.title, merged.titleStyle)
             .setOrigin(0.5, 0.5);
         container.add(titleText);
     }
@@ -60,7 +62,7 @@ export function createModal(scene, config = {}) {
         const subtitleY = titleText
             ? titleText.y + merged.subtitleSpacing
             : panelTop + merged.titlePadding + merged.subtitleSpacing;
-        subtitleText = scene.add.text(0, subtitleY, merged.subtitle, merged.subtitleStyle)
+        subtitleText = createBitmapText(scene, 0, subtitleY, merged.subtitle, merged.subtitleStyle)
             .setOrigin(0.5, 0.5);
         container.add(subtitleText);
     }
