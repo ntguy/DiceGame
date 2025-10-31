@@ -159,9 +159,9 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
                 const emojiYPosition = this.emojiText ? this.emojiText.y : emojiY;
                 const spacing = 6;
                 if (labelColor) {
-                    this.leftStatusText.setColor(labelColor);
+                    this.leftStatusText.setStyle({ color: labelColor });
                 } else if (this.leftStatusText.defaultColor) {
-                    this.leftStatusText.setColor(this.leftStatusText.defaultColor);
+                    this.leftStatusText.setStyle({ color: this.leftStatusText.defaultColor });
                 }
                 this.leftStatusText.setVisible(true);
                 this.leftStatusText.setX(emojiX - emojiHalfWidth - spacing);
