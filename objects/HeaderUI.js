@@ -10,10 +10,10 @@ function createHeaderButton(scene, {
     label,
     x,
     onClick,
-    fontSize = '32px'
+    fontSize = '28px'
 }) {
 
-    const HEADER_BUTTON_HEIGHT = CONSTANTS.HEADER_HEIGHT;
+    const HEADER_BUTTON_HEIGHT = CONSTANTS.HEADER_HEIGHT - 2;
     const headerY = CONSTANTS.HEADER_HEIGHT / 2;
 
     const button = scene.add.text(x, headerY, label, {
@@ -180,7 +180,7 @@ export function createHeaderUI(scene) {
         label: '🎒',
         x: headerWidth - CONSTANTS.UI_MARGIN,
         onClick: () => scene.toggleBackpack(),
-        fontSize: '32px'
+        fontSize: '24px'
     });
 
     const settingsButton = createHeaderButton(scene, {
@@ -195,7 +195,8 @@ export function createHeaderUI(scene) {
     const instructionsButton = createHeaderButton(scene, {
         label: '📘',
         x: headerWidth - CONSTANTS.UI_MARGIN,
-        onClick: () => scene.toggleInstructions()
+        onClick: () => scene.toggleInstructions(),
+        fontSize: '24px'
     });
 
     const layoutButtons = () => {

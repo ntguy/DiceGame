@@ -54,7 +54,7 @@ export class BossRelicRewardUI {
             },
             subtitle: 'Choose one reward to aid your journey.',
             subtitleStyle: {
-                fontSize: '22px',
+                fontSize: '32px',
                 color: '#f9e79f'
             }
         });
@@ -112,7 +112,7 @@ export class BossRelicRewardUI {
             }).setOrigin(0.5);
 
             const descText = this.scene.add.text(0, nameText.y + 28, choice.description || '', {
-                fontSize: '16px',
+                fontSize: '17px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
             }).setOrigin(0.5, 0);
