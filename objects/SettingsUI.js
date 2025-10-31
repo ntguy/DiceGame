@@ -31,14 +31,23 @@ export function createSettingsUI(scene) {
     scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
         fontSize: '22px',
         color: '#ecf0f1',
-        padding: { x: 18, y: 10 }
+        padding: { x: 18, y: 10 },
+        forceNormalText: true
     }).setOrigin(0.5);
     applyTextButtonStyle(scene.muteButton, {
         baseColor: '#34495e',
         textColor: '#ecf0f1',
         hoverBlend: 0.2,
         pressBlend: 0.3,
-        disabledBlend: 0.45
+        disabledBlend: 0.45,
+        background: {
+            paddingX: 48,
+            paddingY: 24,
+            strokeColor: '#76d7c4',
+            strokeAlpha: 0.28,
+            strokeWidth: 2,
+            baseColor: '#1f2a36'
+        }
     });
     setTextButtonEnabled(scene.muteButton, true);
     scene.muteButton.on('pointerdown', () => scene.toggleMute());
@@ -55,7 +64,15 @@ export function createSettingsUI(scene) {
         textColor: '#ecf0f1',
         hoverBlend: 0.2,
         pressBlend: 0.3,
-        disabledBlend: 0.45
+        disabledBlend: 0.45,
+        background: {
+            paddingX: 48,
+            paddingY: 24,
+            strokeColor: '#76d7c4',
+            strokeAlpha: 0.28,
+            strokeWidth: 2,
+            baseColor: '#1f2a36'
+        }
     });
     setTextButtonEnabled(scene.testingModeButton, true);
     scene.testingModeButton.on('pointerdown', () => scene.toggleTestingMode());
@@ -65,14 +82,23 @@ export function createSettingsUI(scene) {
     scene.mapSkipButton = scene.add.text(panelWidth / 2, skipButtonY, 'Skip Map ▶', {
         fontSize: '22px',
         color: '#ecf0f1',
-        padding: { x: 18, y: 10 }
+        padding: { x: 18, y: 10 },
+        forceNormalText: true
     }).setOrigin(0.5);
     applyTextButtonStyle(scene.mapSkipButton, {
         baseColor: '#34495e',
         textColor: '#ecf0f1',
         hoverBlend: 0.2,
         pressBlend: 0.3,
-        disabledBlend: 0.45
+        disabledBlend: 0.45,
+        background: {
+            paddingX: 48,
+            paddingY: 24,
+            strokeColor: '#76d7c4',
+            strokeAlpha: 0.28,
+            strokeWidth: 2,
+            baseColor: '#1f2a36'
+        }
     });
     setTextButtonEnabled(scene.mapSkipButton, false);
     scene.mapSkipButton.setVisible(false);

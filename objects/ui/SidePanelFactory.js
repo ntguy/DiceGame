@@ -67,7 +67,7 @@ export function createSidePanel(scene, {
     container.add(closeButton);
 
     const closeText = scene.add.text(panelWidth / 2, closeButtonY, closeLabel, {
-        fontSize: '24px',
+        fontSize: '32px',
         color: closeTextColor
     }).setOrigin(0.5);
     container.add(closeText);
