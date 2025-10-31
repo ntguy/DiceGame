@@ -1,4 +1,5 @@
 import { applyTextButtonStyle, setTextButtonEnabled } from '../objects/ui/ButtonStyles.js';
+import { createBitmapText } from '../utils/BitmapTextFactory.js';
 
 export class GameOverManager {
     constructor(scene) {
@@ -19,18 +20,18 @@ export class GameOverManager {
         this.background.setOrigin(0.5);
         this.background.setInteractive();
 
-        const title = this.scene.add.text(width / 2, height / 2 - 60, 'Game Over', {
+        const title = createBitmapText(this.scene, width / 2, height / 2 - 60, 'Game Over', {
             fontSize: '48px',
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        const subtitle = this.scene.add.text(width / 2, height / 2, 'The enemy has defeated you.', {
+        const subtitle = createBitmapText(this.scene, width / 2, height / 2, 'The enemy has defeated you.', {
             fontSize: '24px',
             color: '#ecf0f1'
         }).setOrigin(0.5);
 
-        this.retryButton = this.scene.add.text(width / 2, height / 2 + 80, 'RETRY', {
+        this.retryButton = createBitmapText(this.scene, width / 2, height / 2 + 80, 'RETRY', {
             fontSize: '36px',
             color: '#1b1300',
             padding: { x: 30, y: 16 }

@@ -3,6 +3,7 @@ import { createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { rollCustomDieValue, getDieEmoji, isZoneAllowedForDie, doesDieFaceValueTriggerRule } from '../dice/CustomDiceLogic.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';
 import { removeFromZones, snapIntoZone } from './DiceZone.js';
+import { createBitmapText } from '../utils/BitmapTextFactory.js';
 
 export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     const layoutArgs = Number.isFinite(totalSlots) ? { totalSlots } : {};
@@ -34,7 +35,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
         this.isFaceValueHighlighted = shouldHighlight;
     };
 
-    const lockIndicator = scene.add.text(0, -CONSTANTS.DIE_SIZE / 2 - 16, '🔒', {
+    const lockIndicator = createBitmapText(scene, 0, -CONSTANTS.DIE_SIZE / 2 - 16, '🔒', {
         fontSize: '28px',
         color: '#f1c40f',
         stroke: '#000000',
@@ -61,7 +62,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
         drawDiePips(scene, container, faceValue, { pipColor: color, updateValue });
     };
 
-    const wildBaseValueText = scene.add.text(0, 0, '', {
+    const wildBaseValueText = createBitmapText(scene, 0, 0, '', {
         fontSize: '36px',
         color: '#cccccc',
         fontStyle: 'bold',
@@ -92,14 +93,14 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     };
 
     const emojiY = CONSTANTS.DIE_SIZE / 2 + 20;
-    const emojiText = scene.add.text(0, emojiY, getDieEmoji(container), {
+    const emojiText = createBitmapText(scene, 0, emojiY, getDieEmoji(container), {
         fontSize: '28px',
         padding: CONSTANTS.EMOJI_TEXT_PADDING
     }).setOrigin(0.5, 0);
     container.add(emojiText);
     container.emojiText = emojiText;
 
-    const leftStatusText = scene.add.text(0, emojiY, '', {
+    const leftStatusText = createBitmapText(scene, 0, emojiY, '', {
         fontSize: '20px',
         fontStyle: 'bold',
         color: '#ff7675',
@@ -111,7 +112,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     container.add(leftStatusText);
     container.leftStatusText = leftStatusText;
 
-    const upgradePlusText = scene.add.text(0, emojiY, '+', {
+    const upgradePlusText = createBitmapText(scene, 0, emojiY, '+', {
         fontSize: '20px',
         fontStyle: 'bold',
         color: '#f1c40f',

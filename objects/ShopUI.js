@@ -1,6 +1,7 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { CONSTANTS } from '../config.js';
+import { createBitmapText } from '../utils/BitmapTextFactory.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 540;
@@ -79,18 +80,18 @@ export class ShopUI {
 
             cardContainer.setPosition(cardX, cardY);
 
-            const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, relic.icon || '♦', {
+            const icon = createBitmapText(this.scene, 0, -CARD_HEIGHT / 2 + 50, relic.icon || '♦', {
                 fontSize: '52px',
                 padding: CONSTANTS.EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
-            const nameText = this.scene.add.text(0, icon.y + 46, relic.name, {
+            const nameText = createBitmapText(this.scene, 0, icon.y + 46, relic.name, {
                 fontSize: '24px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
 
-            const descText = this.scene.add.text(0, nameText.y + 28, relic.description, {
+            const descText = createBitmapText(this.scene, 0, nameText.y + 28, relic.description, {
                 fontSize: '16px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
@@ -100,7 +101,7 @@ export class ShopUI {
             const buttonBg = this.scene.add.rectangle(0, buttonY, CARD_WIDTH - 48, 48, 0x271438, 0.92)
                 .setStrokeStyle(2, 0xf1c40f, 0.85);
 
-            const buttonText = this.scene.add.text(0, buttonY, '', {
+            const buttonText = createBitmapText(this.scene, 0, buttonY, '', {
                 fontSize: '18px',
                 color: '#f9e79f'
             }).setOrigin(0.5);
@@ -185,7 +186,7 @@ export class ShopUI {
 
     createCapacityMessage() {
         const messageY = PANEL_HEIGHT / 2 - 90;
-        const text = this.scene.add.text(0, messageY, 'Sell a relic from your pack to make space.', {
+        const text = createBitmapText(this.scene, 0, messageY, 'Sell a relic from your pack to make space.', {
             fontSize: '18px',
             color: '#f9e79f'
         }).setOrigin(0.5);
@@ -216,7 +217,7 @@ export class ShopUI {
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const leaveText = this.scene.add.text(0, leaveY, 'Leave Shop', {
+        const leaveText = createBitmapText(this.scene, 0, leaveY, 'Leave Shop', {
             fontSize: '24px',
             color: '#f9e79f'
         }).setOrigin(0.5);

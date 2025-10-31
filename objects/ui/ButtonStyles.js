@@ -54,6 +54,95 @@ function darkenColor(color, amount) {
     return blendColor(color, BLACK, amount);
 }
 
+function getPadding(gameObject) {
+    if (!gameObject || typeof gameObject.getData !== 'function') {
+        return { x: 0, y: 0 };
+    }
+    const padding = gameObject.getData('padding');
+    if (!padding) {
+        return { x: 0, y: 0 };
+    }
+    const x = typeof padding.x === 'number' ? padding.x : 0;
+    const y = typeof padding.y === 'number' ? padding.y : 0;
+    return { x, y };
+}
+
+function getBitmapTextBounds(text) {
+    if (!text || typeof text.getTextBounds !== 'function') {
+        return { width: text.width || 0, height: text.height || 0 };
+    }
+    const bounds = text.getTextBounds(true);
+    if (bounds && bounds.global) {
+        return {
+            width: bounds.global.width,
+            height: bounds.global.height
+        };
+    }
+    return {
+        width: text.width || 0,
+        height: text.height || 0
+    };
+}
+
+function ensureButtonBackground(button, width, height, colorInt, alpha) {
+    const scene = button.scene;
+    let background = button.getData && button.getData('textButtonBackground');
+    if (!background && scene && scene.add && typeof scene.add.rectangle === 'function') {
+        background = scene.add.rectangle(button.x, button.y, width, height, colorInt, alpha)
+            .setOrigin(button.originX, button.originY);
+        background.setDepth(button.depth - 1);
+        background.setScrollFactor(button.scrollFactorX ?? 1, button.scrollFactorY ?? 1);
+        if (button.getData) {
+            button.setData('textButtonBackground', background);
+        }
+
+        if (typeof button.on === 'function') {
+            button.on('positionupdate', () => {
+                background.setPosition(button.x, button.y);
+            });
+            button.once('destroy', () => {
+                background.destroy();
+            });
+        }
+    }
+    return background;
+}
+
+function updateButtonBackgroundSize(button, background, width, height) {
+    if (!background) {
+        return;
+    }
+    background.setSize(width, height);
+    background.setDisplaySize(width, height);
+}
+
+function setBitmapTextTint(text, color) {
+    if (!text || typeof text.setTint !== 'function') {
+        return;
+    }
+    if (color == null) {
+        text.clearTint();
+        return;
+    }
+    const colorObject = getColorObject(color);
+    text.setTint(toInt(colorObject));
+}
+
+function updateHitArea(button, width, height) {
+    if (!button || typeof button.setInteractive !== 'function' || typeof Phaser === 'undefined') {
+        return;
+    }
+
+    const originX = typeof button.originX === 'number' ? button.originX : 0;
+    const originY = typeof button.originY === 'number' ? button.originY : 0;
+    const rect = new Phaser.Geom.Rectangle(-width * originX, -height * originY, width, height);
+    button.setInteractive({
+        hitArea: rect,
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true
+    });
+}
+
 export function applyTextButtonStyle(button, {
     baseColor = '#ffffff',
     textColor,
@@ -68,42 +157,63 @@ export function applyTextButtonStyle(button, {
         return;
     }
 
-    const baseColorHex = toHexString(getColorObject(baseColor));
-    const hoverColorHex = lightenColor(baseColorHex, hoverBlend).hex;
-    const pressedColorHex = darkenColor(baseColorHex, pressBlend).hex;
-    const disabledColorHex = darkenColor(baseColorHex, disabledBlend).hex;
+    const baseColorObject = getColorObject(baseColor);
+    const baseColorHex = toHexString(baseColorObject);
+    const baseColorInt = toInt(baseColorObject);
+    const hoverColor = lightenColor(baseColorHex, hoverBlend);
+    const pressedColor = darkenColor(baseColorHex, pressBlend);
+    const disabledColor = darkenColor(baseColorHex, disabledBlend);
+
+    const padding = getPadding(button);
+    const bounds = getBitmapTextBounds(button);
+    const width = (button.getData && button.getData('buttonWidth')) || bounds.width + padding.x * 2;
+    const height = (button.getData && button.getData('buttonHeight')) || bounds.height + padding.y * 2;
+
+    const background = ensureButtonBackground(button, width, height, baseColorInt, enabledAlpha);
+    updateButtonBackgroundSize(button, background, width, height);
+
+    setBitmapTextTint(button, textColor);
+    if (background) {
+        background.setFillStyle(baseColorInt, enabledAlpha);
+    }
+    button.setAlpha(enabledAlpha);
+
+    updateHitArea(button, width, height);
 
     const state = {
         baseColor: baseColorHex,
-        hoverColor: hoverColorHex,
-        pressedColor: pressedColorHex,
-        disabledColor: disabledColorHex,
+        baseColorInt,
+        hoverColor,
+        pressedColor,
+        disabledColor,
         enabledAlpha,
         disabledAlpha,
         baseY: button.y,
-        pressOffset
+        pressOffset,
+        background,
+        width,
+        height
     };
 
     button.setDataEnabled();
     button.setData('textButtonStyle', state);
 
-    if (textColor) {
-        button.setStyle({ color: textColor });
-    }
-    button.setStyle({ backgroundColor: baseColorHex });
-    button.setAlpha(enabledAlpha);
-
     const handlePointerOver = () => {
         if (!button.input || !button.input.enabled) {
             return;
         }
-        button.setStyle({ backgroundColor: state.hoverColor });
+        if (state.background) {
+            state.background.setFillStyle(state.hoverColor.int, 1);
+        }
         button.setAlpha(state.enabledAlpha);
     };
 
     const restoreIdleState = () => {
         const isEnabled = button.input && button.input.enabled;
-        button.setStyle({ backgroundColor: isEnabled ? state.baseColor : state.disabledColor });
+        if (state.background) {
+            const fillColor = isEnabled ? state.baseColorInt : state.disabledColor.int;
+            state.background.setFillStyle(fillColor, 1);
+        }
         button.setAlpha(isEnabled ? state.enabledAlpha : state.disabledAlpha);
         button.setY(state.baseY);
     };
@@ -112,7 +222,9 @@ export function applyTextButtonStyle(button, {
         if (!button.input || !button.input.enabled) {
             return;
         }
-        button.setStyle({ backgroundColor: state.pressedColor });
+        if (state.background) {
+            state.background.setFillStyle(state.pressedColor.int, 1);
+        }
         button.setY(state.baseY + state.pressOffset);
     };
 
@@ -120,7 +232,9 @@ export function applyTextButtonStyle(button, {
         if (!button.input || !button.input.enabled) {
             return;
         }
-        button.setStyle({ backgroundColor: state.hoverColor });
+        if (state.background) {
+            state.background.setFillStyle(state.hoverColor.int, 1);
+        }
         button.setAlpha(state.enabledAlpha);
         button.setY(state.baseY);
     };
@@ -151,17 +265,21 @@ export function setTextButtonEnabled(button, enabled, overrides = {}) {
         state.disabledAlpha = overrides.disabledAlpha;
     }
     if (typeof overrides.disabledBlend === 'number') {
-        state.disabledColor = darkenColor(state.baseColor, overrides.disabledBlend).hex;
+        state.disabledColor = darkenColor(state.baseColor, overrides.disabledBlend);
     }
 
     if (enabled) {
-        button.setInteractive({ useHandCursor: true });
-        button.setStyle({ backgroundColor: state.baseColor });
+        updateHitArea(button, state.width, state.height);
+        if (state.background) {
+            state.background.setFillStyle(state.baseColorInt, 1);
+        }
         button.setAlpha(state.enabledAlpha);
         button.setY(state.baseY);
     } else {
         button.disableInteractive();
-        button.setStyle({ backgroundColor: state.disabledColor });
+        if (state.background) {
+            state.background.setFillStyle(state.disabledColor.int, 1);
+        }
         button.setAlpha(state.disabledAlpha);
         button.setY(state.baseY);
     }
