@@ -1,9 +1,10 @@
 import { CONSTANTS } from '../config.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 
 export function setupButtons(scene) {
     // --- Roll button ---
-    const rollButton = scene.add.text(200, CONSTANTS.BUTTONS_Y, "ROLL", {
+    const rollButton = createBitmapText(scene, 200, CONSTANTS.BUTTONS_Y, "ROLL", {
         fontSize: "40px",
         color: "#1b1300",
         padding: { x: 20, y: 10 }
@@ -24,7 +25,7 @@ export function setupButtons(scene) {
     scene.rollButton = rollButton;
 
     // --- Sort button ---
-    const sortButton = scene.add.text(350, CONSTANTS.BUTTONS_Y, "SORT", {
+    const sortButton = createBitmapText(scene, 350, CONSTANTS.BUTTONS_Y, "SORT", {
         fontSize: "40px",
         color: "#002f29",
         padding: { x: 20, y: 10 }
@@ -44,7 +45,7 @@ export function setupButtons(scene) {
     sortButton.on("pointerdown", () => scene.sortDice());
 
     // --- Resolve button ---
-    const resolveButton = scene.add.text(535, CONSTANTS.BUTTONS_Y, "RESOLVE", {
+    const resolveButton = createBitmapText(scene, 535, CONSTANTS.BUTTONS_Y, "RESOLVE", {
         fontSize: "40px",
         color: "#f7ecff",
         padding: { x: 20, y: 10 }
@@ -86,7 +87,7 @@ export function setupHealthBar(scene) {
     damageFill.displayWidth = 0;
     damageFill.displayHeight = barHeight;
 
-    const text = scene.add.text(20, y + 2 + barHeight + 8, "", {
+    const text = createBitmapText(scene, 20, y + 2 + barHeight + 8, "", {
         fontSize: "20px",
         color: "#ffffff"
     });
@@ -122,28 +123,28 @@ export function setupEnemyUI(scene, enemyName) {
     damageFill.displayWidth = 0;
     damageFill.displayHeight = barHeight;
 
-    const text = scene.add.text(x + barWidth, y + barHeight + 8, "", {
+    const text = createBitmapText(scene, x + barWidth, y + barHeight + 8, "", {
         fontSize: "20px",
         color: "#ffffff"
     }).setOrigin(1, 0);
 
-    const nameText = scene.add.text(x + barWidth, y - 24, enemyName, {
+    const nameText = createBitmapText(scene, x + barWidth, y - 24, enemyName, {
         fontSize: "18px",
         color: "#ffffff"
     }).setOrigin(1, 0);
 
-    const intentText = scene.add.text(scene.scale.width - 20, y + barHeight + 40, "", {
+    const intentText = createBitmapText(scene, scene.scale.width - 20, y + barHeight + 40, "", {
         fontSize: "20px",
         color: "#f1c40f"
     }).setOrigin(1, 0);
 
-    const statusText = scene.add.text(scene.scale.width - 20, y + barHeight + 66, "", {
+    const statusText = createBitmapText(scene, scene.scale.width - 20, y + barHeight + 66, "", {
         fontSize: "16px",
         color: "#ecf0f1",
         align: "right"
     }).setOrigin(1, 0);
 
-    const burnText = scene.add.text(x - 12, y + barHeight + 10, "", {
+    const burnText = createBitmapText(scene, x - 12, y + barHeight + 10, "", {
         fontSize: "16px",
         color: "#ff7675",
         fontStyle: "bold"

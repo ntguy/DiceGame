@@ -1,4 +1,5 @@
 import { applyTextButtonStyle, setTextButtonEnabled } from '../objects/ui/ButtonStyles.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 export class VictoryScreen {
     constructor(scene) {
@@ -29,10 +30,10 @@ export class VictoryScreen {
 
         const message = "Congratulations Dicemaster! Your masterful rolling has helped you drop through every level of the dice tower. Thank you for defeating the mighty Status-tician, restoring freedom to the kingdom.";
 
-        this.messageText = this.scene.add.text(width / 2, height / 2 - 40, message, style);
+        this.messageText = createBitmapText(this.scene, width / 2, height / 2 - 40, message, style);
         this.messageText.setOrigin(0.5);
 
-        this.playAgainButton = this.scene.add.text(width / 2, height / 2 + 120, 'PLAY AGAIN', {
+        this.playAgainButton = createBitmapText(this.scene, width / 2, height / 2 + 120, 'PLAY AGAIN', {
             fontSize: '36px',
             color: '#1b1300',
             padding: { x: 32, y: 18 }

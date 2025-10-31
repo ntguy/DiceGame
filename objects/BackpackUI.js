@@ -2,6 +2,7 @@ import { CONSTANTS } from '../config.js';
 import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const COLUMN_GAP = 24;
 const ROW_VERTICAL_SPACING = 28;
@@ -159,7 +160,7 @@ export class BackpackUI {
             .setStrokeStyle(2, DICE_SLOT_STROKE_COLOR, 0.35);
         this.container.add(background);
 
-        const label = this.scene.add.text(centerX - width / 2 + 18, centerY - height / 2 + 14, 'Dice', {
+        const label = createBitmapText(this.scene, centerX - width / 2 + 18, centerY - height / 2 + 14, 'Dice', {
             fontSize: SECTION_LABEL_FONT_SIZE,
             color: SECTION_LABEL_COLOR,
             fontStyle: 'bold'
@@ -180,12 +181,12 @@ export class BackpackUI {
                 .setStrokeStyle(2, DICE_SLOT_STROKE_COLOR, 0.25)
                 .setInteractive({ useHandCursor: true });
 
-            const emojiText = this.scene.add.text(0, 0, '', {
+            const emojiText = createBitmapText(this.scene, 0, 0, '', {
                 fontSize: '32px',
                 color: '#ffffff'
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, DICE_SLOT_SIZE / 2 + 16, '', {
+            const labelText = createBitmapText(this.scene, 0, DICE_SLOT_SIZE / 2 + 16, '', {
                 fontSize: '16px',
                 color: INFO_SUBTEXT_COLOR,
                 align: 'center',
@@ -216,7 +217,7 @@ export class BackpackUI {
             .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.8);
         this.container.add(background);
 
-        this.diceInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 20, 'Backpack', {
+        this.diceInfoTitleText = createBitmapText(this.scene, centerX, centerY - height / 2 + 20, 'Backpack', {
             fontSize: INFO_TITLE_FONT_SIZE,
             color: INFO_TITLE_COLOR,
             fontStyle: 'bold',
@@ -225,7 +226,7 @@ export class BackpackUI {
         }).setOrigin(0.5, 0);
         this.container.add(this.diceInfoTitleText);
 
-        this.diceInfoDescriptionText = this.scene.add.text(centerX, this.diceInfoTitleText.y + 48, 'Select a die to learn more about it.', {
+        this.diceInfoDescriptionText = createBitmapText(this.scene, centerX, this.diceInfoTitleText.y + 48, 'Select a die to learn more about it.', {
             fontSize: INFO_DESCRIPTION_FONT_SIZE,
             color: INFO_DESCRIPTION_COLOR,
             align: 'left',
@@ -242,7 +243,7 @@ export class BackpackUI {
             .setStrokeStyle(2, DISCARD_BUTTON_STROKE_COLOR, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonLabel = this.scene.add.text(centerX, buttonY, 'Discard Die', {
+        const buttonLabel = createBitmapText(this.scene, centerX, buttonY, 'Discard Die', {
             fontSize: '20px',
             color: DISCARD_BUTTON_TEXT_COLOR,
             fontStyle: 'bold'
@@ -284,7 +285,7 @@ export class BackpackUI {
             .setStrokeStyle(2, RELIC_SLOT_STROKE_COLOR, 0.35);
         this.container.add(background);
 
-        const label = this.scene.add.text(centerX - width / 2 + 18, centerY - height / 2 + 14, 'Relics', {
+        const label = createBitmapText(this.scene, centerX - width / 2 + 18, centerY - height / 2 + 14, 'Relics', {
             fontSize: SECTION_LABEL_FONT_SIZE,
             color: SECTION_LABEL_COLOR,
             fontStyle: 'bold'
@@ -366,12 +367,12 @@ export class BackpackUI {
                 .setStrokeStyle(2, RELIC_SLOT_STROKE_COLOR, 0.3)
                 .setInteractive({ useHandCursor: true });
 
-            const iconText = this.scene.add.text(0, 0, '', {
+            const iconText = createBitmapText(this.scene, 0, 0, '', {
                 fontSize: '30px',
                 color: '#ffffff'
             }).setOrigin(0.5);
 
-            const labelText = this.scene.add.text(0, radius + 16, '', {
+            const labelText = createBitmapText(this.scene, 0, radius + 16, '', {
                 fontSize: labelFontSize,
                 color: INFO_SUBTEXT_COLOR,
                 align: 'center',
@@ -402,7 +403,7 @@ export class BackpackUI {
             .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.8);
         this.container.add(background);
 
-        this.relicInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 20, 'Backpack', {
+        this.relicInfoTitleText = createBitmapText(this.scene, centerX, centerY - height / 2 + 20, 'Backpack', {
             fontSize: INFO_TITLE_FONT_SIZE,
             color: INFO_TITLE_COLOR,
             fontStyle: 'bold',
@@ -411,7 +412,7 @@ export class BackpackUI {
         }).setOrigin(0.5, 0);
         this.container.add(this.relicInfoTitleText);
 
-        this.relicInfoDescriptionText = this.scene.add.text(centerX, this.relicInfoTitleText.y + 48, 'Select a relic to learn more about it.', {
+        this.relicInfoDescriptionText = createBitmapText(this.scene, centerX, this.relicInfoTitleText.y + 48, 'Select a relic to learn more about it.', {
             fontSize: INFO_DESCRIPTION_FONT_SIZE,
             color: INFO_DESCRIPTION_COLOR,
             align: 'left',
@@ -428,7 +429,7 @@ export class BackpackUI {
             .setStrokeStyle(2, DISCARD_BUTTON_STROKE_COLOR, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const buttonLabel = this.scene.add.text(centerX, buttonY, 'Sell (50g)', {
+        const buttonLabel = createBitmapText(this.scene, centerX, buttonY, 'Sell (50g)', {
             fontSize: '20px',
             color: DISCARD_BUTTON_TEXT_COLOR,
             fontStyle: 'bold'
@@ -474,7 +475,7 @@ export class BackpackUI {
             .setOrigin(1, 0.5)
             .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.85)
             .setInteractive({ useHandCursor: true });
-        const buttonLabel = this.scene.add.text(right - buttonWidth / 2, y, 'Close', {
+        const buttonLabel = createBitmapText(this.scene, right - buttonWidth / 2, y, 'Close', {
             fontSize: '22px',
             color: CLOSE_BUTTON_TEXT_COLOR,
             fontStyle: 'bold'

@@ -1,4 +1,5 @@
 import { CONSTANTS } from '../config.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 export class RelicUIManager {
     constructor(scene) {
@@ -39,14 +40,14 @@ export class RelicUIManager {
         ).setOrigin(0.5, 0);
         this.relicInfoBackground.setStrokeStyle(2, 0xf1c40f, 0.25);
 
-        this.relicInfoTitleText = this.scene.add.text(infoCenterX, infoTitleY + 20, '', {
+        this.relicInfoTitleText = createBitmapText(this.scene, infoCenterX, infoTitleY + 20, '', {
             fontSize: '20px',
             color: '#f1c40f',
             fontStyle: 'bold',
             align: 'center'
         }).setOrigin(0.5, 0);
 
-        this.relicInfoDescriptionText = this.scene.add.text(infoCenterX, infoTitleY + 45, '', {
+        this.relicInfoDescriptionText = createBitmapText(this.scene, infoCenterX, infoTitleY + 45, '', {
             fontSize: '18px',
             color: '#f9e79f',
             wordWrap: { width: CONSTANTS.RELIC_INFO_WRAP_WIDTH },
@@ -99,7 +100,7 @@ export class RelicUIManager {
                 const relic = displayedRelics[index];
                 iconBg.setInteractive({ useHandCursor: true });
 
-                const iconText = this.scene.add.text(x, baseY, relic.icon || '♦', {
+                const iconText = createBitmapText(this.scene, x, baseY, relic.icon || '♦', {
                     fontSize: CONSTANTS.RELIC_ICON_FONT_SIZE,
                     padding: CONSTANTS.EMOJI_TEXT_PADDING
                 }).setOrigin(0.5).setInteractive({ useHandCursor: true });

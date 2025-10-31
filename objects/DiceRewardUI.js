@@ -1,5 +1,6 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { createBitmapText } from '../utils/BitmapTextLabel.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;
@@ -86,13 +87,13 @@ export class DiceRewardUI {
         const box = this.scene.add.rectangle(boxX, 0, TOGGLE_BOX_SIZE, TOGGLE_BOX_SIZE, 0x271438, 0.9)
             .setStrokeStyle(2, 0xf1c40f, 0.85);
 
-        const checkmark = this.scene.add.text(boxX, 0, '✔', {
+        const checkmark = createBitmapText(this.scene, boxX, 0, '✔', {
             fontSize: '20px',
             color: '#f1c40f'
         }).setOrigin(0.5);
         checkmark.setVisible(false);
 
-        const label = this.scene.add.text(boxX + TOGGLE_BOX_SIZE / 2 + 16, 0, 'View Upgrade', {
+        const label = createBitmapText(this.scene, boxX + TOGGLE_BOX_SIZE / 2 + 16, 0, 'View Upgrade', {
             fontSize: '20px',
             color: '#f9e79f'
         }).setOrigin(0, 0.5);
@@ -166,18 +167,18 @@ export class DiceRewardUI {
 
             cardContainer.setPosition(cardX, cardY);
 
-            const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, option.emoji || '', {
+            const icon = createBitmapText(this.scene, 0, -CARD_HEIGHT / 2 + 50, option.emoji || '', {
                 fontSize: '52px',
                 padding: EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
 
-            const nameText = this.scene.add.text(0, icon.y + 46, option.name || 'Unknown', {
+            const nameText = createBitmapText(this.scene, 0, icon.y + 46, option.name || 'Unknown', {
                 fontSize: '24px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
 
-            const descriptionText = this.scene.add.text(0, nameText.y + 28, option.description || '', {
+            const descriptionText = createBitmapText(this.scene, 0, nameText.y + 28, option.description || '', {
                 fontSize: '16px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
@@ -188,7 +189,7 @@ export class DiceRewardUI {
                 .setStrokeStyle(2, 0xf1c40f, 0.85)
                 .setInteractive({ useHandCursor: true });
 
-            const buttonText = this.scene.add.text(0, buttonY, this.selectionEnabledLabel, {
+            const buttonText = createBitmapText(this.scene, 0, buttonY, this.selectionEnabledLabel, {
                 fontSize: '18px',
                 color: '#f9e79f'
             }).setOrigin(0.5);
@@ -279,7 +280,7 @@ export class DiceRewardUI {
         const messageY = PANEL_HEIGHT / 2 - 60;
         const skipX = PANEL_WIDTH / 2 - 140;
 
-        const capacityText = this.scene.add.text(-PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack (🎒) to make space.', {
+        const capacityText = createBitmapText(this.scene, -PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack (🎒) to make space.', {
             fontSize: '18px',
             color: '#f9e79f'
         }).setOrigin(0, 0.5);
@@ -289,7 +290,7 @@ export class DiceRewardUI {
             .setStrokeStyle(2, 0xf1c40f, 0.85)
             .setInteractive({ useHandCursor: true });
 
-        const skipButtonText = this.scene.add.text(skipX, messageY, 'Skip', {
+        const skipButtonText = createBitmapText(this.scene, skipX, messageY, 'Skip', {
             fontSize: '18px',
             color: '#f9e79f'
         }).setOrigin(0.5);
