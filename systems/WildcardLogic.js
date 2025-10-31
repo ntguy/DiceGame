@@ -3,7 +3,8 @@ import { scoreCombo } from './ComboSystem.js';
 export function resolveWildcardCombo(values, evaluateComboFn, {
     wildcardValue = 1,
     possibleFaces = [1, 2, 3, 4, 5, 6],
-    wildcardIndices: explicitWildcardIndices = null
+    wildcardIndices: explicitWildcardIndices = null,
+    comboPointsTable = null
 } = {}) {
     if (!Array.isArray(values) || typeof evaluateComboFn !== 'function') {
         return { type: 'No combo' };
@@ -30,7 +31,7 @@ export function resolveWildcardCombo(values, evaluateComboFn, {
     const assignValue = (depth, workingValues) => {
         if (depth === wildcardIndices.length) {
             const evaluation = evaluateComboFn(workingValues);
-            const comboScore = scoreCombo(evaluation.type);
+            const comboScore = scoreCombo(evaluation.type, comboPointsTable);
             const totalValue = workingValues.reduce((sum, value) => sum + value, 0);
 
             if (

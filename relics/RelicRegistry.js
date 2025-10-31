@@ -7,8 +7,12 @@ import { StraightSudsRelic } from './StraightSudsRelic.js';
 import { RainRelic } from './RainRelic.js';
 import { PrepperRelic } from './PrepperRelic.js';
 import { PerfectBalanceRelic } from './PerfectBalance.js';
+import { ChainReactorRelic } from './ChainReactorRelic.js';
+import { BatteryIncludedRelic } from './BatteryIncludedRelic.js';
 
 const RELIC_ENTRIES = [
+    { create: () => new ChainReactorRelic(), pools: ['general', 'boss'] },
+    { create: () => new BatteryIncludedRelic(), pools: ['general', 'boss'] },
     { create: () => new BlockbusterRelic(), pools: ['general', 'boss'] },
     { create: () => new BeefyRelic(), pools: ['general', 'boss'] },
     { create: () => new FamilyRelic(), pools: ['general', 'boss'] },
