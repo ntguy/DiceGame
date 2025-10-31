@@ -1,3 +1,4 @@
+import { createBitmapText } from '../../utils/BitmapTextFactory.js';
 const BASE_SIZE = 60;
 const BASE_PIP_RADIUS = 6;
 const BASE_POSITIONS = {
@@ -13,7 +14,7 @@ function createQuestionText(scene, size, style = {}) {
     const fontSize = style.fontSize || `${Math.round(size * 0.6)}px`;
     const color = style.color || '#ffffff';
     const fontStyle = style.fontStyle || 'bold';
-    return scene.add.text(0, 0, '?', {
+    return createBitmapText(scene, 0, 0, '?', {
         fontSize,
         color,
         fontStyle,

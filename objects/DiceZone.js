@@ -2,6 +2,7 @@ import { CONSTANTS } from '../config.js';
 import { isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
 import { snapToGrid } from './Dice.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';
+import { createBitmapText } from '../utils/BitmapTextFactory.js';
 
 const ZONE_BACKGROUND_TILE_SCALE = 2;
 
@@ -54,7 +55,7 @@ export function setupZones(scene) {
         .setOrigin(0.5)
         .setTileScale(ZONE_BACKGROUND_TILE_SCALE, ZONE_BACKGROUND_TILE_SCALE);
     const defendRect = scene.add.rectangle(defendZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0x3498db);
-    const defendLabel = scene.add.text(
+    const defendLabel = createBitmapText(scene, 
         defendZoneX,
         zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
         "DEFEND",
@@ -68,7 +69,7 @@ export function setupZones(scene) {
         .setOrigin(0.5)
         .setTileScale(ZONE_BACKGROUND_TILE_SCALE, ZONE_BACKGROUND_TILE_SCALE);
     const attackRect = scene.add.rectangle(attackZoneX, zoneY, zoneWidth, zoneHeight).setStrokeStyle(2, 0xe74c3c);
-    const attackLabel = scene.add.text(
+    const attackLabel = createBitmapText(scene, 
         attackZoneX,
         zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
         "ATTACK",

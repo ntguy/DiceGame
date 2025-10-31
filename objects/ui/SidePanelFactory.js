@@ -1,5 +1,6 @@
 import { CONSTANTS } from '../../config.js';
 import { applyRectangleButtonStyle } from './ButtonStyles.js';
+import { createBitmapText } from '../../utils/BitmapTextFactory.js';
 
 const DEFAULT_PANEL_BACKGROUND = 0x101820;
 const DEFAULT_PANEL_STROKE_ALPHA = 0.08;
@@ -34,7 +35,7 @@ export function createSidePanel(scene, {
 
     container.add(background);
 
-    const headerText = scene.add.text(panelWidth / 2, 24, title, {
+    const headerText = createBitmapText(scene, panelWidth / 2, 24, title, {
         fontSize: '32px',
         color: titleColor,
         fontStyle: 'bold'
@@ -66,7 +67,7 @@ export function createSidePanel(scene, {
 
     container.add(closeButton);
 
-    const closeText = scene.add.text(panelWidth / 2, closeButtonY, closeLabel, {
+    const closeText = createBitmapText(scene, panelWidth / 2, closeButtonY, closeLabel, {
         fontSize: '24px',
         color: closeTextColor
     }).setOrigin(0.5);
