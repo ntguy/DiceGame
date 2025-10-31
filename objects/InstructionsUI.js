@@ -37,11 +37,11 @@ const PAGES = [
                 keywords: [{ phrase: 'roll', color: KEYWORD_COLOR }]
             },
             {
-                text: 'You have 2 re-rolls to use on any number of dice, aiming to form combos to place in the Defend and Attack zones.',
+                text: 'You have 2 re-rolls to use on any number of dice, aiming to form combos to place in the Defend (🛡️) and Attack (⚔️) zones.',
                 keywords: [
                     { phrase: '2 re-rolls', color: KEYWORD_COLOR },
-                    { phrase: 'Defend', color: DEFENSE_COLOR },
-                    { phrase: 'Attack', color: ATTACK_COLOR }
+                    { phrase: 'Defend (🛡️)', color: DEFENSE_COLOR },
+                    { phrase: 'Attack (⚔️)', color: ATTACK_COLOR }
                 ]
             },
             {

@@ -12,7 +12,7 @@ const DEFINITIONS = [
     {
         id: 'shield',
         name: 'Shield',
-        emoji: 'Defend',
+        emoji: '🛡️',
         description: 'Can only defend. 2× FV.',
         upgradeDescription: 'In defend zone: 2× FV.',
         allowedZones: ['defend']
@@ -20,7 +20,7 @@ const DEFINITIONS = [
     {
         id: 'sword',
         name: 'Sword',
-        emoji: 'Attack',
+        emoji: '⚔️',
         description: 'Can only attack. 2× FV.',
         upgradeDescription: 'In attack zone: 2× FV.',
         allowedZones: ['attack']
