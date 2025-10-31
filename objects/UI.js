@@ -1,116 +1,151 @@
 import { CONSTANTS } from '../config.js';
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 
+function createBattleButton(scene, { x, label, textColor, styles, enabled, onClick }) {
+    const button = scene.add
+        .text(x, CONSTANTS.BUTTONS_Y, label, {
+            fontSize: '40px',
+            color: textColor,
+            padding: { x: 20, y: 10 }
+        })
+        .setOrigin(0.5);
+
+    applyTextButtonStyle(button, styles);
+    setTextButtonEnabled(button, enabled);
+    button.on('pointerdown', onClick);
+
+    return button;
+}
+
+function getStyledButtonWidth(button) {
+    if (!button) {
+        return 0;
+    }
+
+    const styleState = button.getData('textButtonStyle');
+    if (styleState && styleState.backgroundRect) {
+        return styleState.backgroundRect.displayWidth || styleState.backgroundRect.width || 0;
+    }
+
+    return button.displayWidth || button.width || 0;
+}
+
 export function setupButtons(scene) {
-    // --- Roll button ---
-    const rollButton = scene.add.text(200, CONSTANTS.BUTTONS_Y, "ROLL", {
-        fontSize: "40px",
-        color: "#1b1300",
-        padding: { x: 20, y: 10 }
-    }).setOrigin(0.5);
-
-    applyTextButtonStyle(rollButton, {
-        baseColor: '#f1c40f',
-        textColor: '#1b1300',
-        hoverBlend: 0.16,
-        pressBlend: 0.3,
-        disabledBlend: 0.45,
-        enabledAlpha: 1,
-        disabledAlpha: 0.45,
-        background: {
-            paddingX: 56,
-            paddingY: 28,
-            strokeColor: '#1b1300',
-            strokeAlpha: 0.4,
-            strokeWidth: 4
+    const buttonDefinitions = [
+        {
+            key: 'rollButton',
+            label: 'ROLL',
+            textColor: '#1b1300',
+            styles: {
+                baseColor: '#f1c40f',
+                textColor: '#1b1300',
+                hoverBlend: 0.16,
+                pressBlend: 0.3,
+                disabledBlend: 0.45,
+                enabledAlpha: 1,
+                disabledAlpha: 0.45,
+                background: {
+                    paddingX: 56,
+                    paddingY: 28,
+                    strokeColor: '#1b1300',
+                    strokeAlpha: 0.4,
+                    strokeWidth: 4
+                }
+            },
+            enabled: true,
+            onClick: () => scene.rollDice()
+        },
+        {
+            key: 'sortButton',
+            label: 'SORT',
+            textColor: '#002f29',
+            styles: {
+                baseColor: '#1abc9c',
+                textColor: '#002f29',
+                hoverBlend: 0.14,
+                pressBlend: 0.28,
+                disabledBlend: 0.35,
+                enabledAlpha: 1,
+                disabledAlpha: 0.45,
+                background: {
+                    paddingX: 56,
+                    paddingY: 28,
+                    strokeColor: '#002f29',
+                    strokeAlpha: 0.45,
+                    strokeWidth: 4
+                }
+            },
+            enabled: false,
+            onClick: () => scene.sortDice()
+        },
+        {
+            key: 'resolveButton',
+            label: 'RESOLVE',
+            textColor: '#f7ecff',
+            styles: {
+                baseColor: '#9b59b6',
+                textColor: '#f7ecff',
+                hoverBlend: 0.14,
+                pressBlend: 0.3,
+                disabledBlend: 0.38,
+                enabledAlpha: 1,
+                disabledAlpha: 0.45,
+                background: {
+                    paddingX: 64,
+                    paddingY: 28,
+                    strokeColor: '#4a235a',
+                    strokeAlpha: 0.5,
+                    strokeWidth: 4
+                }
+            },
+            enabled: true,
+            onClick: () => scene.resolveDice()
         }
-    });
-    setTextButtonEnabled(rollButton, true);
+    ];
 
-    rollButton.on("pointerdown", () => scene.rollDice());
-    scene.rollButton = rollButton;
+    const buttons = buttonDefinitions.reduce((acc, definition, index) => {
+        const button = createBattleButton(scene, {
+            x: 200 + index * 230,
+            label: definition.label,
+            textColor: definition.textColor,
+            styles: definition.styles,
+            enabled: definition.enabled,
+            onClick: definition.onClick
+        });
 
-    // --- Sort button ---
-    const sortButton = scene.add.text(430, CONSTANTS.BUTTONS_Y, "SORT", {
-        fontSize: "40px",
-        color: "#002f29",
-        padding: { x: 20, y: 10 }
-    }).setOrigin(0.5);
-
-    applyTextButtonStyle(sortButton, {
-        baseColor: '#1abc9c',
-        textColor: '#002f29',
-        hoverBlend: 0.14,
-        pressBlend: 0.28,
-        disabledBlend: 0.35,
-        enabledAlpha: 1,
-        disabledAlpha: 0.45,
-        background: {
-            paddingX: 56,
-            paddingY: 28,
-            strokeColor: '#002f29',
-            strokeAlpha: 0.45,
-            strokeWidth: 4
-        }
-    });
-    setTextButtonEnabled(sortButton, false);
-    scene.sortButton = sortButton;
-    sortButton.on("pointerdown", () => scene.sortDice());
-
-    // --- Resolve button ---
-    const resolveButton = scene.add.text(660, CONSTANTS.BUTTONS_Y, "RESOLVE", {
-        fontSize: "40px",
-        color: "#f7ecff",
-        padding: { x: 20, y: 10 }
-    }).setOrigin(0.5);
-
-    applyTextButtonStyle(resolveButton, {
-        baseColor: '#9b59b6',
-        textColor: '#f7ecff',
-        hoverBlend: 0.14,
-        pressBlend: 0.3,
-        disabledBlend: 0.38,
-        enabledAlpha: 1,
-        disabledAlpha: 0.45,
-        background: {
-            paddingX: 64,
-            paddingY: 28,
-            strokeColor: '#4a235a',
-            strokeAlpha: 0.5,
-            strokeWidth: 4
-        }
-    });
-    setTextButtonEnabled(resolveButton, true);
-
-    resolveButton.on("pointerdown", () => {
-        scene.resolveDice();
-    });
-    scene.resolveButton = resolveButton;
-
-    const getStyledButtonWidth = button => {
-        if (!button) {
-            return 0;
-        }
-        const styleState = button.getData('textButtonStyle');
-        if (styleState && styleState.backgroundRect) {
-            return styleState.backgroundRect.displayWidth || styleState.backgroundRect.width || 0;
-        }
-        return button.displayWidth || button.width || 0;
-    };
+        scene[definition.key] = button;
+        acc[definition.key] = button;
+        return acc;
+    }, {});
 
     const layoutBattleButtons = () => {
         const spacing = 20;
-        const centerX = 430;
+        const rollCount = scene.rollsRemainingText;
 
-        const rollWidth = getStyledButtonWidth(rollButton);
-        const sortWidth = getStyledButtonWidth(sortButton);
-        const resolveWidth = getStyledButtonWidth(resolveButton);
+        const rollCountRight = rollCount
+            ? rollCount.x + (rollCount.displayWidth || rollCount.width || 0) / 2
+            : 200;
 
-        sortButton.setX(centerX);
-        rollButton.setX(centerX - (sortWidth / 2 + spacing + rollWidth / 2));
-        resolveButton.setX(centerX + (sortWidth / 2 + spacing + resolveWidth / 2));
+        let currentX = rollCountRight + spacing;
+
+        [
+            buttons.rollButton,
+            buttons.sortButton,
+            buttons.resolveButton
+        ].forEach(button => {
+            if (!button) {
+                return;
+            }
+
+            const width = getStyledButtonWidth(button);
+            const halfWidth = width / 2;
+
+            button.setX(currentX + halfWidth);
+            currentX += width + spacing;
+        });
     };
 
+    scene.layoutBattleButtons = layoutBattleButtons;
     layoutBattleButtons();
 }
 
