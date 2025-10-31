@@ -1,8 +1,6 @@
 import { CONSTANTS } from '../config.js';
 
-const HEADER_BUTTON_MIN_WIDTH = 44;
-const HEADER_BUTTON_HEIGHT = CONSTANTS.HEADER_HEIGHT - 8;
-const HEADER_BUTTON_PADDING_X = 12;
+const HEADER_BUTTON_WIDTH = 52;
 const HEADER_BUTTON_BASE_COLOR = 0x1c2833;
 const HEADER_BUTTON_HOVER_COLOR = 0x243547;
 const HEADER_BUTTON_PRESS_COLOR = 0x16202b;
@@ -14,6 +12,8 @@ function createHeaderButton(scene, {
     onClick,
     fontSize = '32px'
 }) {
+
+    const HEADER_BUTTON_HEIGHT = CONSTANTS.HEADER_HEIGHT;
     const headerY = CONSTANTS.HEADER_HEIGHT / 2;
 
     const button = scene.add.text(x, headerY, label, {
@@ -27,7 +27,7 @@ function createHeaderButton(scene, {
     const background = scene.add.rectangle(
         button.x,
         button.y,
-        HEADER_BUTTON_MIN_WIDTH,
+        HEADER_BUTTON_WIDTH,
         HEADER_BUTTON_HEIGHT,
         HEADER_BUTTON_BASE_COLOR,
         HEADER_BUTTON_ALPHA
@@ -40,10 +40,9 @@ function createHeaderButton(scene, {
     };
 
     const syncSize = () => {
-        const width = Math.max(button.width + HEADER_BUTTON_PADDING_X * 2, HEADER_BUTTON_MIN_WIDTH);
-        background.setSize(width, HEADER_BUTTON_HEIGHT);
-        background.setDisplaySize(width, HEADER_BUTTON_HEIGHT);
-        button.setData('buttonWidth', width);
+        background.setSize(HEADER_BUTTON_WIDTH, HEADER_BUTTON_HEIGHT);
+        background.setDisplaySize(HEADER_BUTTON_WIDTH, HEADER_BUTTON_HEIGHT);
+        button.setData('buttonWidth', HEADER_BUTTON_WIDTH);
         button.setData('buttonHeight', HEADER_BUTTON_HEIGHT);
     };
 

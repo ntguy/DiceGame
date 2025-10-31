@@ -86,6 +86,32 @@ export function setupButtons(scene) {
         scene.resolveDice();
     });
     scene.resolveButton = resolveButton;
+
+    const getStyledButtonWidth = button => {
+        if (!button) {
+            return 0;
+        }
+        const styleState = button.getData('textButtonStyle');
+        if (styleState && styleState.backgroundRect) {
+            return styleState.backgroundRect.displayWidth || styleState.backgroundRect.width || 0;
+        }
+        return button.displayWidth || button.width || 0;
+    };
+
+    const layoutBattleButtons = () => {
+        const spacing = 20;
+        const centerX = 430;
+
+        const rollWidth = getStyledButtonWidth(rollButton);
+        const sortWidth = getStyledButtonWidth(sortButton);
+        const resolveWidth = getStyledButtonWidth(resolveButton);
+
+        sortButton.setX(centerX);
+        rollButton.setX(centerX - (sortWidth / 2 + spacing + rollWidth / 2));
+        resolveButton.setX(centerX + (sortWidth / 2 + spacing + resolveWidth / 2));
+    };
+
+    layoutBattleButtons();
 }
 
 export function setupHealthBar(scene) {
