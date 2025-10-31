@@ -4530,13 +4530,29 @@ export class GameScene extends Phaser.Scene {
             this.nodeMessage = null;
         }
 
-        this.nodeMessage = this.add.text(this.scale.width / 2, 110, message, {
+        const messageContainer = this.add.container(this.scale.width / 2, 110);
+        messageContainer.setDepth(30);
+
+        const messageText = this.add.text(0, 0, message, {
             fontSize: '26px',
             color,
-            fontStyle: 'bold',
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            padding: { x: 16, y: 8 }
-        }).setOrigin(0.5).setDepth(30);
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const padding = { x: 16, y: 8 };
+        const bounds = messageText.getTextBounds ? messageText.getTextBounds() : null;
+        const width = bounds && bounds.local ? bounds.local.width : messageText.width;
+        const height = bounds && bounds.local ? bounds.local.height : messageText.height;
+
+        const background = this.add.rectangle(0, 0,
+            Math.max(1, width + padding.x * 2),
+            Math.max(1, height + padding.y * 2),
+            0x000000,
+            0.45
+        ).setOrigin(0.5);
+
+        messageContainer.add([background, messageText]);
+        this.nodeMessage = messageContainer;
 
         this.nodeMessageTween = this.tweens.add({
             targets: this.nodeMessage,
