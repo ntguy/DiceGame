@@ -493,6 +493,25 @@ export class InstructionsUI {
                 if (part.length === 0) {
                     return;
                 }
+
+                if (/^\s+$/.test(part)) {
+                    const containsNewline = part.includes('\n');
+                    const normalized = containsNewline ? part : ' ';
+                    const previous = tokens[tokens.length - 1];
+
+                    if (
+                        !containsNewline &&
+                        previous &&
+                        /^\s+$/.test(previous.text) &&
+                        !previous.text.includes('\n')
+                    ) {
+                        return;
+                    }
+
+                    tokens.push({ text: normalized, color });
+                    return;
+                }
+
                 tokens.push({ text: part, color });
             });
         });
