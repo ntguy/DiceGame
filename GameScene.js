@@ -239,8 +239,8 @@ export class GameScene extends Phaser.Scene {
         this.cleanseCursesOnLongStraights = false;
         this.hasRainRelic = false;
         this.playerBurnReductionPerTurn = 0;
-        this.hasPerfectlyBalancedRelic = false;
-        this.perfectlyBalancedZoneBonus = 0;
+        this.hasPerfectBalanceRelic = false;
+        this.perfectBalanceZoneBonus = 0;
         this.rollCarryoverEnabled = false;
         this.prepperFirstTurnBonusRolls = 0;
         this.prepperCarryoverRolls = 0;
@@ -503,7 +503,7 @@ export class GameScene extends Phaser.Scene {
 
         // --- Roll counter ---
         this.rollsRemainingText = this.add.text(110, CONSTANTS.BUTTONS_Y, `${CONSTANTS.DEFAULT_MAX_ROLLS}`, {
-            fontSize: "24px",
+            fontSize: "32px",
             color: "#fff"
         }).setOrigin(0.5);
 
@@ -518,7 +518,7 @@ export class GameScene extends Phaser.Scene {
 
         if (!this.defendPreviewText) {
             this.defendPreviewText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#3498db',
                 align: 'left'
             }).setOrigin(0, 0.5);
@@ -534,7 +534,7 @@ export class GameScene extends Phaser.Scene {
 
         if (!this.attackPreviewText) {
             this.attackPreviewText = this.add.text(attackLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#e74c3c',
                 align: 'left'
             }).setOrigin(0, 0.5);
@@ -887,9 +887,14 @@ export class GameScene extends Phaser.Scene {
         const suffix = this.isMenuOpen ? '✕' : '☰';
         this.menuButton.setText(`${suffix}`);
         const targetFontSize = suffix === '✕'
-            ? this.menuButton.getData('defaultFontSize') || '24px'
-            : this.menuButton.getData('expandedFontSize') || this.menuButton.getData('defaultFontSize') || '24px';
-        this.menuButton.setStyle({ fontSize: targetFontSize });
+            ? this.menuButton.getData('defaultFontSize') || '32px'
+            : this.menuButton.getData('expandedFontSize') || this.menuButton.getData('defaultFontSize') || '32px';
+        const parsedMenuFontSize = typeof targetFontSize === 'string'
+            ? parseInt(targetFontSize, 10)
+            : targetFontSize;
+        if (Number.isFinite(parsedMenuFontSize)) {
+            this.menuButton.setFontSize(parsedMenuFontSize);
+        }
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }
@@ -943,9 +948,14 @@ export class GameScene extends Phaser.Scene {
         const suffix = this.isSettingsOpen ? '✕' : '⚙';
         this.settingsButton.setText(`${suffix}`);
         const targetFontSize = suffix === '✕'
-            ? this.settingsButton.getData('defaultFontSize') || '24px'
-            : this.settingsButton.getData('expandedFontSize') || this.settingsButton.getData('defaultFontSize') || '24px';
-        this.settingsButton.setStyle({ fontSize: targetFontSize });
+            ? this.settingsButton.getData('defaultFontSize') || '32px'
+            : this.settingsButton.getData('expandedFontSize') || this.settingsButton.getData('defaultFontSize') || '32px';
+        const parsedSettingsFontSize = typeof targetFontSize === 'string'
+            ? parseInt(targetFontSize, 10)
+            : targetFontSize;
+        if (Number.isFinite(parsedSettingsFontSize)) {
+            this.settingsButton.setFontSize(parsedSettingsFontSize);
+        }
         if (this.layoutHeaderButtons) {
             this.layoutHeaderButtons();
         }
@@ -1073,8 +1083,8 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
-    getPerfectlyBalancedBonus({ zone, diceList } = {}) {
-        if (!this.hasPerfectlyBalancedRelic || !zone) {
+    getPerfectBalanceBonus({ zone, diceList } = {}) {
+        if (!this.hasPerfectBalanceRelic || !zone) {
             return 0;
         }
 
@@ -1099,8 +1109,8 @@ export class GameScene extends Phaser.Scene {
             return 0;
         }
 
-        const bonus = typeof this.perfectlyBalancedZoneBonus === 'number'
-            ? this.perfectlyBalancedZoneBonus
+        const bonus = typeof this.perfectBalanceZoneBonus === 'number'
+            ? this.perfectBalanceZoneBonus
             : 4;
         return bonus;
     }
@@ -1144,7 +1154,7 @@ export class GameScene extends Phaser.Scene {
         const baseContribution = contributions.reduce((sum, entry) => sum + (entry && entry.faceValueContribution ? entry.faceValueContribution : 0), 0);
         const comboBonusExtra = contributions.reduce((sum, entry) => sum + (entry && entry.comboBonusModifier ? entry.comboBonusModifier : 0), 0);
 
-        const perfectlyBalancedBonus = this.getPerfectlyBalancedBonus({ zone, diceList });
+        const perfectBalanceBonus = this.getPerfectBalanceBonus({ zone, diceList });
         const baseSum = baseContribution + rerollBonus + perfectlyBalancedBonus;
         const comboBonus = scoreCombo(comboType, comboPointsTable) + comboBonusExtra;
         const preResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.preResolutionEffects)) ? entry.preResolutionEffects : []);
@@ -1159,7 +1169,7 @@ export class GameScene extends Phaser.Scene {
             wildcardFlags,
             preResolutionEffects,
             postResolutionEffects,
-            perfectlyBalancedBonus
+            perfectBalanceBonus
         };
     }
 
@@ -1619,9 +1629,9 @@ export class GameScene extends Phaser.Scene {
                 this.hasRainRelic = false;
                 this.playerBurnReductionPerTurn = 0;
                 break;
-            case 'perfectly-balanced':
-                this.hasPerfectlyBalancedRelic = false;
-                this.perfectlyBalancedZoneBonus = 0;
+            case 'perfect-balance':
+                this.hasPerfectBalanceRelic = false;
+                this.perfectBalanceZoneBonus = 0;
                 break;
             case 'prepper':
                 this.rollCarryoverEnabled = false;
@@ -4866,7 +4876,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.nodeMessage = this.add.text(this.scale.width / 2, 110, message, {
-            fontSize: '26px',
+            fontSize: '32px',
             color,
             fontStyle: 'bold',
             backgroundColor: 'rgba(0, 0, 0, 0.45)',

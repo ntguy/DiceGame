@@ -16,7 +16,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.45,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#1b1300',
+            strokeAlpha: 0.4,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(rollButton, true);
 
@@ -24,7 +31,7 @@ export function setupButtons(scene) {
     scene.rollButton = rollButton;
 
     // --- Sort button ---
-    const sortButton = scene.add.text(350, CONSTANTS.BUTTONS_Y, "SORT", {
+    const sortButton = scene.add.text(430, CONSTANTS.BUTTONS_Y, "SORT", {
         fontSize: "40px",
         color: "#002f29",
         padding: { x: 20, y: 10 }
@@ -37,14 +44,21 @@ export function setupButtons(scene) {
         pressBlend: 0.28,
         disabledBlend: 0.35,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#002f29',
+            strokeAlpha: 0.45,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(sortButton, false);
     scene.sortButton = sortButton;
     sortButton.on("pointerdown", () => scene.sortDice());
 
     // --- Resolve button ---
-    const resolveButton = scene.add.text(535, CONSTANTS.BUTTONS_Y, "RESOLVE", {
+    const resolveButton = scene.add.text(660, CONSTANTS.BUTTONS_Y, "RESOLVE", {
         fontSize: "40px",
         color: "#f7ecff",
         padding: { x: 20, y: 10 }
@@ -57,7 +71,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.38,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 64,
+            paddingY: 28,
+            strokeColor: '#4a235a',
+            strokeAlpha: 0.5,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(resolveButton, true);
 
@@ -65,6 +86,32 @@ export function setupButtons(scene) {
         scene.resolveDice();
     });
     scene.resolveButton = resolveButton;
+
+    const getStyledButtonWidth = button => {
+        if (!button) {
+            return 0;
+        }
+        const styleState = button.getData('textButtonStyle');
+        if (styleState && styleState.backgroundRect) {
+            return styleState.backgroundRect.displayWidth || styleState.backgroundRect.width || 0;
+        }
+        return button.displayWidth || button.width || 0;
+    };
+
+    const layoutBattleButtons = () => {
+        const spacing = 20;
+        const centerX = 430;
+
+        const rollWidth = getStyledButtonWidth(rollButton);
+        const sortWidth = getStyledButtonWidth(sortButton);
+        const resolveWidth = getStyledButtonWidth(resolveButton);
+
+        sortButton.setX(centerX);
+        rollButton.setX(centerX - (sortWidth / 2 + spacing + rollWidth / 2));
+        resolveButton.setX(centerX + (sortWidth / 2 + spacing + resolveWidth / 2));
+    };
+
+    layoutBattleButtons();
 }
 
 export function setupHealthBar(scene) {

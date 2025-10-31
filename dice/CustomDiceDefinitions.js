@@ -13,16 +13,16 @@ const DEFINITIONS = [
         id: 'shield',
         name: 'Shield',
         emoji: '🛡️',
-        description: 'Can only 🛡️. 2× FV.',
-        upgradeDescription: 'In 🛡️: 2× FV.',
+        description: 'Can only defend. 2× FV.',
+        upgradeDescription: 'In defend zone: 2× FV.',
         allowedZones: ['defend']
     },
     {
         id: 'sword',
         name: 'Sword',
         emoji: '⚔️',
-        description: 'Can only ⚔️. 2× FV.',
-        upgradeDescription: 'In ⚔️: 2× FV.',
+        description: 'Can only attack. 2× FV.',
+        upgradeDescription: 'In attack zone: 2× FV.',
         allowedZones: ['attack']
     },
     {
@@ -77,8 +77,8 @@ const DEFINITIONS = [
         id: 'demolition',
         name: 'Demolition',
         emoji: '⚒️',
-        description: 'FV=1-2: before ⚔️, reduce enemy block by 10.',
-        upgradeDescription: 'FV=1-3: before ⚔️, reduce enemy block by 10.',
+        description: 'FV=1-2: before attack, reduce enemy block by 10.',
+        upgradeDescription: 'FV=1-3: before attack, reduce enemy block by 10.',
         allowedZones: ['attack', 'defend']
     },
     {
@@ -93,8 +93,8 @@ const DEFINITIONS = [
         id: 'bomb',
         name: 'Time Bomb',
         emoji: '💣',
-        description: 'Unused turn: countdown -1. At 0: +20 ⚔️ once.',
-        upgradeDescription: 'Unused turn: countdown -1. At 0: +30 ⚔️ once.',
+        description: 'Unused turn: countdown -1. At 0: +20 attack once.',
+        upgradeDescription: 'Unused turn: countdown -1. At 0: +30 attack once.',
         allowedZones: ['attack', 'defend']
     }
 ];

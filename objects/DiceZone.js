@@ -6,7 +6,7 @@ import { callSceneMethod } from '../utils/SceneHelpers.js';
 const ZONE_BACKGROUND_TILE_SCALE = 2;
 
 export const ZONE_LABEL_OFFSET = 20;
-export const ZONE_LABEL_FONT_SIZE = 24;
+export const ZONE_LABEL_FONT_SIZE = 32;
 export const ZONE_AREA_PADDING_X = 20;
 export const ZONE_AREA_PADDING_TOP = 40;
 export const ZONE_AREA_PADDING_BOTTOM = 16;
@@ -57,7 +57,7 @@ export function setupZones(scene) {
     const defendLabel = scene.add.text(
         defendZoneX,
         zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
-        "DEFEND",
+        "Defend",
         { fontSize: `${ZONE_LABEL_FONT_SIZE}px`, color: "#3498db" }
     ).setOrigin(0.5);
     visuals.push(defendBackground, defendRect, defendLabel);
@@ -71,7 +71,7 @@ export function setupZones(scene) {
     const attackLabel = scene.add.text(
         attackZoneX,
         zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
-        "ATTACK",
+        "Attack",
         { fontSize: `${ZONE_LABEL_FONT_SIZE}px`, color: "#e74c3c" }
     ).setOrigin(0.5);
     visuals.push(attackBackground, attackRect, attackLabel);

@@ -27,7 +27,7 @@ export const CONSTANTS = {
     RELIC_TRAY_Y: CONTENT_HEIGHT - 40,
     RELIC_ICON_SPACING: 56,
     RELIC_ICON_SIZE: 48,
-    RELIC_ICON_FONT_SIZE: '28px',
+    RELIC_ICON_FONT_SIZE: '32px',
     RELIC_MAX_SLOTS: 6,
     EMOJI_TEXT_PADDING: { top: 6, bottom: 6 }
 };

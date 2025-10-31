@@ -1,38 +1,124 @@
 import { CONSTANTS } from '../config.js';
-import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 
-const DEFAULT_BUTTON_WIDTH = 72;
-const DEFAULT_BUTTON_HEIGHT = 40;
+const HEADER_BUTTON_WIDTH = 52;
+const HEADER_BUTTON_BASE_COLOR = 0x1c2833;
+const HEADER_BUTTON_HOVER_COLOR = 0x243547;
+const HEADER_BUTTON_PRESS_COLOR = 0x16202b;
+const HEADER_BUTTON_ALPHA = 0.95;
 
 function createHeaderButton(scene, {
     label,
     x,
-    origin,
     onClick,
-    fontSize = '24px',
-    width = DEFAULT_BUTTON_WIDTH
+    fontSize = '28px'
 }) {
-    const button = scene.add.text(x, CONSTANTS.HEADER_HEIGHT / 2, label, {
+
+    const HEADER_BUTTON_HEIGHT = CONSTANTS.HEADER_HEIGHT - 2;
+    const headerY = CONSTANTS.HEADER_HEIGHT / 2;
+
+    const button = scene.add.text(x, headerY, label, {
         fontSize,
         color: '#ecf0f1',
-        padding: { x: 18, y: 6 },
-        align: 'center'
-    }).setOrigin(origin.x, origin.y);
-
-    applyTextButtonStyle(button, {
-        baseColor: '#2c3e50',
-        textColor: '#ecf0f1',
-        hoverBlend: 0.18,
-        pressBlend: 0.28,
-        disabledBlend: 0.42
-    });
-    setTextButtonEnabled(button, true);
-    button.on('pointerdown', onClick);
+        align: 'center',
+        forceNormalText: true
+    }).setOrigin(0.5, 0.5);
     button.setScrollFactor(0);
 
-    button.setFixedSize(width, DEFAULT_BUTTON_HEIGHT);
-    button.setData('buttonWidth', width);
-    button.setData('buttonHeight', DEFAULT_BUTTON_HEIGHT);
+    const background = scene.add.rectangle(
+        button.x,
+        button.y,
+        HEADER_BUTTON_WIDTH,
+        HEADER_BUTTON_HEIGHT,
+        HEADER_BUTTON_BASE_COLOR,
+        HEADER_BUTTON_ALPHA
+    ).setOrigin(0.5, 0.5);
+    background.setStrokeStyle(1, 0x0b141d, 0.7);
+    background.setScrollFactor(0);
+
+    const syncPosition = () => {
+        background.setPosition(button.x, button.y);
+    };
+
+    const syncSize = () => {
+        background.setSize(HEADER_BUTTON_WIDTH, HEADER_BUTTON_HEIGHT);
+        background.setDisplaySize(HEADER_BUTTON_WIDTH, HEADER_BUTTON_HEIGHT);
+        button.setData('buttonWidth', HEADER_BUTTON_WIDTH);
+        button.setData('buttonHeight', HEADER_BUTTON_HEIGHT);
+    };
+
+    const syncDepth = () => {
+        const depth = typeof button.depth === 'number' ? button.depth : 0;
+        background.setDepth(depth - 1);
+    };
+
+    const syncVisibility = () => {
+        background.setVisible(button.visible);
+    };
+
+    const syncScrollFactor = () => {
+        const xFactor = typeof button.scrollFactorX === 'number' ? button.scrollFactorX : 1;
+        const yFactor = typeof button.scrollFactorY === 'number' ? button.scrollFactorY : 1;
+        background.setScrollFactor(xFactor, yFactor);
+    };
+
+    const syncAll = () => {
+        syncSize();
+        syncPosition();
+        syncDepth();
+        syncVisibility();
+        syncScrollFactor();
+    };
+
+    syncAll();
+
+    const patchMethod = (methodName, after) => {
+        if (typeof button[methodName] !== 'function') {
+            return;
+        }
+        const original = button[methodName].bind(button);
+        button[methodName] = function patchedMethod(...args) {
+            const result = original(...args);
+            after();
+            return result;
+        };
+    };
+
+    patchMethod('setText', syncAll);
+    patchMethod('setFontSize', syncAll);
+    patchMethod('setStyle', syncAll);
+    patchMethod('setX', syncPosition);
+    patchMethod('setY', syncPosition);
+    patchMethod('setScrollFactor', syncScrollFactor);
+    patchMethod('setDepth', syncDepth);
+    patchMethod('setVisible', syncVisibility);
+
+    const applyBaseColor = color => {
+        background.setFillStyle(color, HEADER_BUTTON_ALPHA);
+    };
+
+    const handlePointerOver = () => applyBaseColor(HEADER_BUTTON_HOVER_COLOR);
+    const handlePointerOut = () => applyBaseColor(HEADER_BUTTON_BASE_COLOR);
+    const handlePointerDown = () => applyBaseColor(HEADER_BUTTON_PRESS_COLOR);
+    const handlePointerUp = pointer => {
+        applyBaseColor(HEADER_BUTTON_HOVER_COLOR);
+        if (typeof onClick === 'function') {
+            onClick(pointer);
+        }
+    };
+
+    background.setInteractive({ useHandCursor: true });
+    background.on('pointerover', handlePointerOver);
+    background.on('pointerout', handlePointerOut);
+    background.on('pointerdown', handlePointerDown);
+    background.on('pointerup', handlePointerUp);
+    background.on('pointerupoutside', handlePointerOut);
+
+    button.once('destroy', () => {
+        background.destroy();
+    });
+
+    button.setData('backgroundRect', background);
+    button.setData('refreshHeaderButtonMetrics', syncAll);
 
     return button;
 }
@@ -45,7 +131,7 @@ export function createHeaderUI(scene) {
 
     const headerWidth = scene.scale.width;
     const headerHeight = CONSTANTS.HEADER_HEIGHT;
-    const buttonSpacing = 12;
+    const buttonSpacing = 8;
 
     const container = scene.add.container(0, 0);
     container.setDepth(100);
@@ -84,63 +170,82 @@ export function createHeaderUI(scene) {
     const menuButton = createHeaderButton(scene, {
         label: '☰',
         x: headerWidth - CONSTANTS.UI_MARGIN,
-        origin: { x: 1, y: 0.5 },
         onClick: () => scene.toggleMenu(),
-        fontSize: '28px'
+        fontSize: '32px'
     });
-    menuButton.setData('defaultFontSize', '24px');
-    menuButton.setData('expandedFontSize', '28px');
+    menuButton.setData('defaultFontSize', '32px');
+    menuButton.setData('expandedFontSize', '32px');
 
     const backpackButton = createHeaderButton(scene, {
         label: '🎒',
         x: headerWidth - CONSTANTS.UI_MARGIN,
-        origin: { x: 1, y: 0.5 },
         onClick: () => scene.toggleBackpack(),
-        fontSize: '28px'
+        fontSize: '24px'
     });
 
     const settingsButton = createHeaderButton(scene, {
         label: '⚙',
         x: headerWidth - CONSTANTS.UI_MARGIN,
-        origin: { x: 1, y: 0.5 },
         onClick: () => scene.toggleSettings(),
-        fontSize: '28px'
+        fontSize: '32px'
     });
-    settingsButton.setData('defaultFontSize', '24px');
-    settingsButton.setData('expandedFontSize', '28px');
+    settingsButton.setData('defaultFontSize', '32px');
+    settingsButton.setData('expandedFontSize', '32px');
 
     const instructionsButton = createHeaderButton(scene, {
         label: '📘',
         x: headerWidth - CONSTANTS.UI_MARGIN,
-        origin: { x: 1, y: 0.5 },
-        onClick: () => scene.toggleInstructions()
+        onClick: () => scene.toggleInstructions(),
+        fontSize: '24px'
     });
 
     const layoutButtons = () => {
-        const menuX = headerWidth - CONSTANTS.UI_MARGIN;
-        menuButton.setX(menuX);
+        const order = [menuButton, settingsButton, instructionsButton, backpackButton];
+        order.forEach(button => {
+            const refresh = button && button.getData('refreshHeaderButtonMetrics');
+            if (typeof refresh === 'function') {
+                refresh();
+            }
+        });
 
-        let nextX = menuX;
+        let cursorX = headerWidth - CONSTANTS.UI_MARGIN;
 
         const positionButton = button => {
             if (!button) {
                 return;
             }
-            const width = button.getData('buttonWidth');
-            nextX -= width + buttonSpacing;
-            button.setX(nextX);
+            const targetY = headerHeight / 2;
+            button.setY(targetY);
+            const width = button.getData('buttonWidth') || button.width || 0;
+            cursorX -= width / 2;
+            button.setX(cursorX);
+            const background = button.getData('backgroundRect');
+            if (background) {
+                background.setY(targetY);
+                background.setX(cursorX);
+            }
+            cursorX -= width / 2 + buttonSpacing;
         };
 
-        positionButton(settingsButton);
-        positionButton(instructionsButton);
-        positionButton(backpackButton);
+        order.forEach(positionButton);
     };
     layoutButtons();
 
-    container.add(menuButton);
-    container.add(backpackButton);
-    container.add(settingsButton);
-    container.add(instructionsButton);
+    const addButtonToContainer = button => {
+        if (!button) {
+            return;
+        }
+        const background = button.getData('backgroundRect');
+        if (background) {
+            container.add(background);
+        }
+        container.add(button);
+    };
+
+    addButtonToContainer(menuButton);
+    addButtonToContainer(backpackButton);
+    addButtonToContainer(settingsButton);
+    addButtonToContainer(instructionsButton);
 
     scene.headerContainer = container;
     scene.menuButton = menuButton;
