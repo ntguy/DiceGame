@@ -31,7 +31,8 @@ export function createSettingsUI(scene) {
     scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
         fontSize: '22px',
         color: '#ecf0f1',
-        padding: { x: 18, y: 10 }
+        padding: { x: 18, y: 10 },
+        forceNormalText: true
     }).setOrigin(0.5);
     applyTextButtonStyle(scene.muteButton, {
         baseColor: '#34495e',

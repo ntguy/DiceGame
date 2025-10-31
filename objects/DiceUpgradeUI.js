@@ -1,5 +1,6 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';
+import { getBitmapTint } from '../utils/bitmapTextFactory.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 500;
@@ -93,11 +94,12 @@ export class DiceUpgradeUI {
 
             const icon = this.scene.add.text(0, -CARD_HEIGHT / 2 + 50, option.emoji || '', {
                 fontSize: '52px',
-                padding: EMOJI_TEXT_PADDING
+                padding: EMOJI_TEXT_PADDING,
+                forceNormalText: true
             }).setOrigin(0.5);
 
             const nameText = this.scene.add.text(0, icon.y + 46, option.name || 'Unknown', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);
@@ -335,7 +337,7 @@ export class DiceUpgradeUI {
         const nameColor = isSelected ? '#f1c40f' : '#ffffff';
 
         nameText.setText(displayName);
-        nameText.setColor(nameColor);
+        nameText.setTint(getBitmapTint(nameColor));
 
         const description = isSelected
             ? option.upgradeDescription || option.description || ''

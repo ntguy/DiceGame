@@ -16,7 +16,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.45,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#1b1300',
+            strokeAlpha: 0.4,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(rollButton, true);
 
@@ -37,7 +44,14 @@ export function setupButtons(scene) {
         pressBlend: 0.28,
         disabledBlend: 0.35,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#002f29',
+            strokeAlpha: 0.45,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(sortButton, false);
     scene.sortButton = sortButton;
@@ -57,7 +71,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.38,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 64,
+            paddingY: 28,
+            strokeColor: '#4a235a',
+            strokeAlpha: 0.5,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(resolveButton, true);
 
