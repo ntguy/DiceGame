@@ -3,7 +3,7 @@ import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js
 
 export function setupButtons(scene) {
     // --- Roll button ---
-    const rollButton = scene.add.text(200, CONSTANTS.BUTTONS_Y, "ROLL", {
+    const rollButton = scene.add.text(180, CONSTANTS.BUTTONS_Y, "ROLL", {
         fontSize: "40px",
         color: "#1b1300",
         padding: { x: 20, y: 10 }
@@ -16,7 +16,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.45,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#1b1300',
+            strokeAlpha: 0.4,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(rollButton, true);
 
@@ -24,7 +31,7 @@ export function setupButtons(scene) {
     scene.rollButton = rollButton;
 
     // --- Sort button ---
-    const sortButton = scene.add.text(350, CONSTANTS.BUTTONS_Y, "SORT", {
+    const sortButton = scene.add.text(380, CONSTANTS.BUTTONS_Y, "SORT", {
         fontSize: "40px",
         color: "#002f29",
         padding: { x: 20, y: 10 }
@@ -37,14 +44,21 @@ export function setupButtons(scene) {
         pressBlend: 0.28,
         disabledBlend: 0.35,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 56,
+            paddingY: 28,
+            strokeColor: '#002f29',
+            strokeAlpha: 0.45,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(sortButton, false);
     scene.sortButton = sortButton;
     sortButton.on("pointerdown", () => scene.sortDice());
 
     // --- Resolve button ---
-    const resolveButton = scene.add.text(535, CONSTANTS.BUTTONS_Y, "RESOLVE", {
+    const resolveButton = scene.add.text(580, CONSTANTS.BUTTONS_Y, "RESOLVE", {
         fontSize: "40px",
         color: "#f7ecff",
         padding: { x: 20, y: 10 }
@@ -57,7 +71,14 @@ export function setupButtons(scene) {
         pressBlend: 0.3,
         disabledBlend: 0.38,
         enabledAlpha: 1,
-        disabledAlpha: 0.45
+        disabledAlpha: 0.45,
+        background: {
+            paddingX: 64,
+            paddingY: 28,
+            strokeColor: '#4a235a',
+            strokeAlpha: 0.5,
+            strokeWidth: 4
+        }
     });
     setTextButtonEnabled(resolveButton, true);
 

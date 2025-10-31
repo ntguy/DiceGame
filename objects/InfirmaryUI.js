@@ -113,11 +113,12 @@ export class InfirmaryUI {
 
         const iconText = this.scene.add.text(0, -CARD_HEIGHT / 2 + 44, icon, {
             fontSize: '48px',
-            padding: CONSTANTS.EMOJI_TEXT_PADDING
+            padding: CONSTANTS.EMOJI_TEXT_PADDING,
+            forceNormalText: true
         }).setOrigin(0.5);
 
         const titleText = this.scene.add.text(0, iconText.y + 46, title, {
-            fontSize: '24px',
+            fontSize: '32px',
             color: '#ffffff',
             fontStyle: 'bold'
         }).setOrigin(0.5);

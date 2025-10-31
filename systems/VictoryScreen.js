@@ -21,7 +21,7 @@ export class VictoryScreen {
         this.background.setInteractive({ useHandCursor: false });
 
         const style = {
-            fontSize: '28px',
+            fontSize: '32px',
             color: '#ffffff',
             align: 'center',
             wordWrap: { width: Math.floor(width * 0.75) }
