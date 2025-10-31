@@ -173,7 +173,7 @@ export class DiceRewardUI {
             }).setOrigin(0.5);
 
             const nameText = this.scene.add.text(0, icon.y + 46, option.name || 'Unknown', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);

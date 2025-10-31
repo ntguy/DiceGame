@@ -105,7 +105,7 @@ export class BossRelicRewardUI {
             }).setOrigin(0.5);
 
             const nameText = this.scene.add.text(0, icon.y + 46, choice.name || 'Reward', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#ffffff',
                 fontStyle: 'bold'
             }).setOrigin(0.5);

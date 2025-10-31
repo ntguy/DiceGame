@@ -26,7 +26,7 @@ export function createMenuUI(scene) {
     menuPanel.add(comboBg);
 
     const comboTitle = scene.add.text(panelWidth / 2, comboTop + 16, 'Combo Bonuses', {
-        fontSize: '24px',
+        fontSize: '32px',
         color: '#f9e79f',
         fontStyle: 'bold'
     }).setOrigin(0.5, 0);

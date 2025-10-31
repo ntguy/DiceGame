@@ -1632,7 +1632,7 @@ export class PathUI {
             });
 
             const iconText = this.scene.add.text(0, 0, icon || '?', {
-                fontSize: '24px',
+                fontSize: '32px',
                 color: '#000000',
                 padding: CONSTANTS.EMOJI_TEXT_PADDING
             }).setOrigin(0.5);
