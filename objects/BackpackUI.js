@@ -12,8 +12,8 @@ const BASE_RELIC_SLOT_RADIUS = 34;
 const COMPACT_RELIC_SLOT_RADIUS = 30;
 const BASE_RELIC_SLOT_MIN_SPACING = 18;
 const COMPACT_RELIC_SLOT_MIN_SPACING = 14;
-const BASE_RELIC_LABEL_FONT_SIZE = '16px';
-const COMPACT_RELIC_LABEL_FONT_SIZE = '16px';
+const BASE_RELIC_LABEL_FONT_SIZE = '17px';
+const COMPACT_RELIC_LABEL_FONT_SIZE = '17px';
 const BASE_RELIC_LABEL_WRAP_PADDING = 12;
 const COMPACT_RELIC_LABEL_WRAP_PADDING = 10;
 const COMPACT_RELIC_THRESHOLD = 7;
@@ -188,7 +188,7 @@ export class BackpackUI {
             }).setOrigin(0.5);
 
             const labelText = this.scene.add.text(0, DICE_SLOT_SIZE / 2 + 16, '', {
-                fontSize: '16px',
+                fontSize: '17px',
                 color: INFO_SUBTEXT_COLOR,
                 align: 'center',
                 wordWrap: { width: DICE_SLOT_SIZE + 12 }

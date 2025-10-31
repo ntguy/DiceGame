@@ -16,21 +16,32 @@ function createHeaderButton(scene, {
         fontSize,
         color: '#ecf0f1',
         padding: { x: 18, y: 6 },
-        align: 'center'
+        align: 'center',
+        forceNormalText: true
     }).setOrigin(origin.x, origin.y);
 
+    button.setFixedSize(width, DEFAULT_BUTTON_HEIGHT);
+
     applyTextButtonStyle(button, {
-        baseColor: '#2c3e50',
+        baseColor: '#ecf0f1',
         textColor: '#ecf0f1',
         hoverBlend: 0.18,
         pressBlend: 0.28,
-        disabledBlend: 0.42
+        disabledBlend: 0.42,
+        background: {
+            paddingX: 36,
+            paddingY: 22,
+            baseColor: '#1c2833',
+            baseAlpha: 0.95,
+            strokeColor: '#0b141d',
+            strokeAlpha: 0.65,
+            strokeWidth: 2
+        }
     });
     setTextButtonEnabled(button, true);
     button.on('pointerdown', onClick);
     button.setScrollFactor(0);
 
-    button.setFixedSize(width, DEFAULT_BUTTON_HEIGHT);
     button.setData('buttonWidth', width);
     button.setData('buttonHeight', DEFAULT_BUTTON_HEIGHT);
 

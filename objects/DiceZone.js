@@ -57,7 +57,7 @@ export function setupZones(scene) {
     const defendLabel = scene.add.text(
         defendZoneX,
         zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
-        "DEFEND",
+        "Defend",
         { fontSize: `${ZONE_LABEL_FONT_SIZE}px`, color: "#3498db" }
     ).setOrigin(0.5);
     visuals.push(defendBackground, defendRect, defendLabel);
@@ -71,7 +71,7 @@ export function setupZones(scene) {
     const attackLabel = scene.add.text(
         attackZoneX,
         zoneY - zoneHeight / 2 - ZONE_LABEL_OFFSET,
-        "ATTACK",
+        "Attack",
         { fontSize: `${ZONE_LABEL_FONT_SIZE}px`, color: "#e74c3c" }
     ).setOrigin(0.5);
     visuals.push(attackBackground, attackRect, attackLabel);

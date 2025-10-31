@@ -31,7 +31,7 @@ export function setupButtons(scene) {
     scene.rollButton = rollButton;
 
     // --- Sort button ---
-    const sortButton = scene.add.text(350, CONSTANTS.BUTTONS_Y, "SORT", {
+    const sortButton = scene.add.text(430, CONSTANTS.BUTTONS_Y, "SORT", {
         fontSize: "40px",
         color: "#002f29",
         padding: { x: 20, y: 10 }
@@ -58,7 +58,7 @@ export function setupButtons(scene) {
     sortButton.on("pointerdown", () => scene.sortDice());
 
     // --- Resolve button ---
-    const resolveButton = scene.add.text(535, CONSTANTS.BUTTONS_Y, "RESOLVE", {
+    const resolveButton = scene.add.text(660, CONSTANTS.BUTTONS_Y, "RESOLVE", {
         fontSize: "40px",
         color: "#f7ecff",
         padding: { x: 20, y: 10 }

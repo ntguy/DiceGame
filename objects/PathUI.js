@@ -14,7 +14,7 @@ const COLORS = {
 };
 
 const ICONS = {
-    [PATH_NODE_TYPES.ENEMY]: '⚔️',
+    [PATH_NODE_TYPES.ENEMY]: 'Attack',
     [PATH_NODE_TYPES.SHOP]: '🛒',
     [PATH_NODE_TYPES.INFIRMARY]: '⊕',
     [PATH_NODE_TYPES.TOWER]: '🎲',
