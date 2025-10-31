@@ -11,17 +11,17 @@ import { ChainReactorRelic } from './ChainReactorRelic.js';
 import { BatteryIncludedRelic } from './BatteryIncludedRelic.js';
 
 const RELIC_ENTRIES = [
-    { create: () => new ChainReactorRelic(), pools: ['general', 'boss'] },
-    { create: () => new BatteryIncludedRelic(), pools: ['general', 'boss'] },
-    { create: () => new BlockbusterRelic(), pools: ['general', 'boss'] },
-    { create: () => new BeefyRelic(), pools: ['general', 'boss'] },
-    { create: () => new FamilyRelic(), pools: ['general', 'boss'] },
-    { create: () => new ReRollWithItRelic(), pools: ['general', 'boss'] },
-    { create: () => new WildOneRelic(), pools: ['general', 'boss'] },
-    { create: () => new StraightSudsRelic(), pools: ['general', 'boss'] },
-    { create: () => new RainRelic(), pools: ['general', 'boss'] },
-    { create: () => new PrepperRelic(), pools: ['general', 'boss'] },
-    { create: () => new PerfectBalanceRelic(), pools: ['general', 'boss'] }
+    { create: () => new ChainReactorRelic(), pools: ['boss'] },
+    { create: () => new BatteryIncludedRelic(), pools: ['boss'] },
+    { create: () => new BlockbusterRelic(), pools: ['general'] },
+    { create: () => new BeefyRelic(), pools: ['general'] },
+    { create: () => new FamilyRelic(), pools: ['general'] },
+    { create: () => new ReRollWithItRelic(), pools: ['general'] },
+    { create: () => new WildOneRelic(), pools: ['boss'] },
+    { create: () => new StraightSudsRelic(), pools: ['general'] },
+    { create: () => new RainRelic(), pools: ['general'] },
+    { create: () => new PrepperRelic(), pools: ['boss'] },
+    { create: () => new PerfectBalanceRelic(), pools: ['general'] }
 ];
 
 function toPool(records, poolKey) {
