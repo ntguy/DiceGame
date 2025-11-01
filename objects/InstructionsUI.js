@@ -426,7 +426,7 @@ export class InstructionsUI {
         const spacingAfter = BULLET_SPACING;
 
         const bullet = this.scene.add.text(bulletX, startY, '•', {
-            fontSize: '20px',
+            fontSize: '32px',
             color: BULLET_COLOR,
             fontStyle: 'bold'
         }).setOrigin(0, 0);
@@ -445,7 +445,7 @@ export class InstructionsUI {
 
             const isWhitespace = token.type === 'space';
             const tokenStyle = {
-                fontSize: '20px',
+                fontSize: '32px',
                 color: token.color || BODY_TEXT_COLOR,
                 wordWrap: { width: maxLineWidth }
             };
