@@ -59,7 +59,7 @@ export class DiceRewardUI {
             },
             subtitle: 'Select one die to add to your collection.',
             subtitleStyle: {
-                fontSize: '22px',
+                fontSize: '32px',
                 color: '#f9e79f'
             }
         });
@@ -83,18 +83,19 @@ export class DiceRewardUI {
         const toggleBackground = this.scene.add.rectangle(0, 0, TOGGLE_WIDTH, TOGGLE_HEIGHT, 0x000000, 0)
             .setInteractive({ useHandCursor: true });
 
-        const boxX = -TOGGLE_WIDTH / 2 + TOGGLE_BOX_SIZE / 2 + 12;
-        const box = this.scene.add.rectangle(boxX, 0, TOGGLE_BOX_SIZE, TOGGLE_BOX_SIZE, 0x271438, 0.9)
+        const boxX = 80;
+        const boxY = -10;
+        const box = this.scene.add.rectangle(boxX, boxY, TOGGLE_BOX_SIZE, TOGGLE_BOX_SIZE, 0x271438, 0.9)
             .setStrokeStyle(2, 0xf1c40f, 0.85);
 
-        const checkmark = this.scene.add.text(boxX, 0, '✔', {
+        const checkmark = this.scene.add.text(boxX, boxY, '✔', {
             fontSize: '20px',
             color: '#f1c40f'
         }).setOrigin(0.5);
         checkmark.setVisible(false);
 
-        const label = this.scene.add.text(boxX + TOGGLE_BOX_SIZE / 2 + 16, 0, 'View Upgrade', {
-            fontSize: '20px',
+        const label = this.scene.add.text(boxX - 120, boxY, 'View Upgrade', {
+            fontSize: '17px',
             color: '#f9e79f'
         }).setOrigin(0, 0.5);
 
@@ -180,7 +181,7 @@ export class DiceRewardUI {
             }).setOrigin(0.5);
 
             const descriptionText = this.scene.add.text(0, nameText.y + 28, option.description || '', {
-                fontSize: '16px',
+                fontSize: '17px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
             }).setOrigin(0.5, 0);
@@ -283,8 +284,8 @@ export class DiceRewardUI {
         const messageY = PANEL_HEIGHT / 2 - 60;
         const skipX = PANEL_WIDTH / 2 - 140;
 
-        const capacityText = this.scene.add.text(-PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack (🎒) to make space.', {
-            fontSize: '18px',
+        const capacityText = this.scene.add.text(-PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack to make space.', {
+            fontSize: '17px',
             color: '#f9e79f'
         }).setOrigin(0, 0.5);
         capacityText.setVisible(false);
@@ -294,7 +295,7 @@ export class DiceRewardUI {
             .setInteractive({ useHandCursor: true });
 
         const skipButtonText = this.scene.add.text(skipX, messageY, 'Skip', {
-            fontSize: '18px',
+            fontSize: '32px',
             color: '#f9e79f'
         }).setOrigin(0.5);
 
