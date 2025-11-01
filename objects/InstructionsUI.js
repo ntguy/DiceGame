@@ -482,11 +482,16 @@ export class InstructionsUI {
     }
 
     measureTokenWidth(text, style) {
-        const measurement = this.scene.make.text({
-            add: false,
-            text,
-            style
-        });
+        const measurement = this.scene.add.text(0, 0, text, style);
+
+        if (measurement) {
+            if (typeof measurement.setVisible === 'function') {
+                measurement.setVisible(false);
+            }
+            if (typeof measurement.setActive === 'function') {
+                measurement.setActive(false);
+            }
+        }
 
         const width = measurement ? measurement.width : 0;
 
