@@ -4696,7 +4696,7 @@ export class GameScene extends Phaser.Scene {
         let color = '#5dade2';
 
         if (outcome === 'cashout' && gold > 0) {
-            message = `Tower of Ten: Total ${total} → +${gold} gold`;
+            message = `Tower of Ten: Total ${total} - +${gold} gold`;
             color = '#f7c873';
         } else if (outcome === 'cashout') {
             message = `Tower of Ten: Total ${total} (0 gold)`;

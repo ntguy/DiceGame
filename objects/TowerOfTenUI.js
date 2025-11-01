@@ -115,13 +115,13 @@ export class TowerOfTenUI {
         this.diceCountButtons = [];
         const topY = -PANEL_HEIGHT / 2 + 150;
         const configs = [
-            { count: 2, label: '2 Dice', x: -150 },
-            { count: 3, label: '3 Dice', x: -50 }
+            { count: 2, label: '2 Dice', x: -160 },
+            { count: 3, label: '3 Dice', x: -40 }
         ];
 
         configs.forEach(({ count, label, x }) => {
             const container = this.scene.add.container(x, topY);
-            const background = this.scene.add.rectangle(0, 0, 100, 52, COLORS.button, 0.92)
+            const background = this.scene.add.rectangle(0, 0, 120, 52, COLORS.button, 0.92)
                 .setStrokeStyle(2, COLORS.buttonStroke, 0.9)
                 .setInteractive({ useHandCursor: true });
 
@@ -129,7 +129,7 @@ export class TowerOfTenUI {
                 baseColor: COLORS.button,
                 baseAlpha: 0.92,
                 hoverBlend: 0.16,
-                pressBlend: 0.28,
+                pressBlend: 0.3,
                 disabledBlend: 0.45,
                 enabledAlpha: 1,
                 disabledAlpha: 0.4
@@ -140,7 +140,7 @@ export class TowerOfTenUI {
             });
 
             const text = this.scene.add.text(0, 0, label, {
-                fontSize: '18px',
+                fontSize: '32px',
                 color: '#eaf2f8'
             }).setOrigin(0.5);
 
@@ -170,9 +170,9 @@ export class TowerOfTenUI {
             const y = -totalHeight / 2 + i * (TOWER_STEP_SIZE + TOWER_STEP_SPACING) + TOWER_STEP_SIZE / 2;
             const stepRect = this.scene.add.rectangle(0, y, TOWER_STEP_SIZE, TOWER_STEP_SIZE, COLORS.towerBase, 0.7)
                 .setStrokeStyle(2, COLORS.buttonStroke, 0.6);
-            const labelText = level === 11 ? '11+' : `${level}`;
+            const labelText = level === 11 ? 'X' : `${level}`;
             const label = this.scene.add.text(0, y, labelText, {
-                fontSize: '18px',
+                fontSize: '32px',
                 color: '#0b1a2b'
             }).setOrigin(0.5);
 
@@ -180,7 +180,7 @@ export class TowerOfTenUI {
                 ? { text: this.getBustPenaltyText(), color: COLORS.rewardBust }
                 : (TOWER_REWARD_INFO[level] || { text: '', color: '#ffffff' });
             const rewardLabel = this.scene.add.text(-(TOWER_STEP_SIZE / 2) - 12, y, rewardInfo.text, {
-                fontSize: '16px',
+                fontSize: '32px',
                 color: rewardInfo.color
             }).setOrigin(1, 0.5);
 
@@ -199,21 +199,23 @@ export class TowerOfTenUI {
     }
 
     createStatusTexts() {
-        const totalY = PANEL_HEIGHT / 2 - 180;
+        const totalY = PANEL_HEIGHT / 2 - 150;
         this.totalText = this.scene.add.text(-100, totalY, 'Total: --', {
-            fontSize: '22px',
+            fontSize: '32px',
             color: '#d6eaf8',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
         this.payoutText = this.scene.add.text(-100, totalY + 34, 'Potential Reward: --', {
-            fontSize: '18px',
+            fontSize: '24px',
             color: '#d6eaf8'
         }).setOrigin(0.5);
 
-        this.statusText = this.scene.add.text(-100, totalY - 180, '', {
-            fontSize: '18px',
-            color: COLORS.statusInfo
+        this.statusText = this.scene.add.text(-100, totalY - 250, '', {
+            fontSize: '32px',
+            color: COLORS.statusInfo,
+            wordWrap: { width: 350 },
+            align: 'center'
         }).setOrigin(0.5);
 
         this.container.add(this.totalText);
@@ -229,7 +231,7 @@ export class TowerOfTenUI {
             y: bottomY,
             label: 'Roll Dice',
             onClick: () => this.handleRollAction(),
-            width: 160,
+            width: 200,
         });
 
         this.finishButton = this.createActionButton({
@@ -237,7 +239,7 @@ export class TowerOfTenUI {
             y: bottomY,
             label: 'Leave (0g)',
             onClick: () => this.handleFinish(),
-            width: 200,
+            width: 280,
         });
     }
 
@@ -250,7 +252,7 @@ export class TowerOfTenUI {
             .setStrokeStyle(2, COLORS.instructionsStroke, 0.8);
 
         const title = this.scene.add.text(0, -panelHeight / 2 + 24, 'Instructions', {
-            fontSize: '22px',
+            fontSize: '32px',
             color: '#eaf6fb',
             fontStyle: 'bold'
         }).setOrigin(0.5, 0);
@@ -258,7 +260,7 @@ export class TowerOfTenUI {
         const bodyText = this.scene.add.text(-INSTRUCTIONS_WIDTH / 2 + 16, title.y + 40,
             '',
             {
-                fontSize: '16px',
+                fontSize: '18px',
                 color: '#d6f1ff',
                 wordWrap: { width: INSTRUCTIONS_WIDTH - 16 },
                 lineSpacing: 16
@@ -292,7 +294,7 @@ export class TowerOfTenUI {
         });
 
         const text = this.scene.add.text(0, 0, label, {
-            fontSize: '18px',
+            fontSize: '32px',
             color: '#eaf2f8'
         }).setOrigin(0.5);
 
@@ -350,7 +352,7 @@ export class TowerOfTenUI {
             });
 
             const selectionText = this.scene.add.text(0, DICE_SIZE / 2 + 18, 'Roll', {
-                fontSize: '16px',
+                fontSize: '18px',
                 color: '#f7c873'
             }).setOrigin(0.5);
 
@@ -381,9 +383,9 @@ export class TowerOfTenUI {
             if (style) {
                 style.baseColor = fillColor;
             }
-            background.setFillStyle(fillColor, 0.95);
+            background.setFillStyle(fillColor, isSelected ? 0.95 : 0.8);
             background.setStrokeStyle(2, strokeColor, isSelected ? 1 : 0.8);
-            background.setAlpha(isSelected ? 1 : 0.9);
+            background.setAlpha(isSelected ? 1 : 0.7);
             if (isSelected) {
                 background.disableInteractive();
             } else {
@@ -509,15 +511,11 @@ export class TowerOfTenUI {
             }
             if (this.rerollUsed) {
                 this.statusText.setText(
-                    penalty > 0
-                        ? `Busted! You'll lose ${penalty} gold.`
-                        : 'Busted! No gold to lose.'
+                    `Busted! You'll lose ${penalty} gold.`
                 );
             } else {
                 this.statusText.setText(
-                    penalty > 0
-                        ? `Bust! Re-roll to avoid losing ${penalty} gold.`
-                        : 'Bust! Re-roll to try again.'
+                    `Bust! Re-roll to avoid losing ${penalty} gold.`
                 );
             }
             this.statusText.setTint(getBitmapTint(COLORS.statusWarning));
@@ -526,7 +524,7 @@ export class TowerOfTenUI {
         } else {
             this.payoutText.setText(`Potential Reward: ${payout} gold`);
             if (this.rerollUsed) {
-                this.statusText.setText('Final result locked in.\n Cash out to continue.');
+                this.statusText.setText('Final result locked in. Cash out to continue.');
             } else {
                 this.statusText.setText('Select dice to re-roll, or cash out.');
             }
@@ -663,10 +661,10 @@ export class TowerOfTenUI {
         });
         if (this.instructionsBodyText) {
             const instructionLines = [
-                '• Roll either 2 or 3 dice.',
-                '• Aim for a total as close to 10 without going over.',
-                `• 11+ loses (${penaltyText}) gold.`,
-                '• After rolling: cash out early, or re-roll some/all dice once.',
+                '- Roll either 2 or 3 dice.',
+                '- Aim for a total as close to 10 without going over.',
+                `- 11+ loses (${penaltyText}) gold.`,
+                '- After rolling: cash out early, or re-roll some/all dice once.',
             ];
             this.instructionsBodyText.setText(instructionLines.join('\n'));
         }
