@@ -160,6 +160,7 @@ export class GameScene extends Phaser.Scene {
         this.relicPools = { general: [], boss: [] };
         this.bossRelicRewardUI = null;
         this.bossRelicBonusClaimed = false;
+        this.bossRelicBonusExtraChoicePending = false;
         this.additionalRelicSlots = 0;
 
         this.maps = Array.isArray(MAP_CONFIGS) ? [...MAP_CONFIGS] : [];
@@ -229,6 +230,7 @@ export class GameScene extends Phaser.Scene {
         this.relicPools = { general: [], boss: [] };
         this.additionalRelicSlots = 0;
         this.bossRelicBonusClaimed = false;
+        this.bossRelicBonusExtraChoicePending = false;
         this.destroyBossRelicRewardUI();
         this.hasBlockbusterRelic = false;
         this.hasFamilyRelic = false;
@@ -4425,7 +4427,9 @@ export class GameScene extends Phaser.Scene {
     presentBossRelicReward() {
         this.destroyBossRelicRewardUI();
 
-        const relicChoices = this.rollBossRelicOptions(BOSS_RELIC_CHOICE_COUNT);
+        const extraRelicChoices = this.bossRelicBonusExtraChoicePending ? 1 : 0;
+        const relicChoiceCount = BOSS_RELIC_CHOICE_COUNT + extraRelicChoices;
+        const relicChoices = this.rollBossRelicOptions(relicChoiceCount);
         const choices = relicChoices.map(relic => ({
             type: 'relic',
             id: relic.id,
@@ -4477,6 +4481,7 @@ export class GameScene extends Phaser.Scene {
 
             const granted = this.grantRelicDirectly(relic);
             if (granted) {
+                this.bossRelicBonusExtraChoicePending = false;
                 if (this.relicUI && typeof this.relicUI.showRelicDetails === 'function') {
                     this.relicUI.showRelicDetails(relic);
                 }
@@ -4493,6 +4498,7 @@ export class GameScene extends Phaser.Scene {
             }
 
             this.bossRelicBonusClaimed = true;
+            this.bossRelicBonusExtraChoicePending = true;
             this.addGold(100);
             this.increaseRelicSlotLimit(1);
             this.showNodeMessage('Relic capacity increased (+100 gold)', '#f9e79f');
