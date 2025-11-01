@@ -169,7 +169,7 @@ export function setupHealthBar(scene) {
     damageFill.displayHeight = barHeight;
 
     const text = scene.add.text(20, y + 2 + barHeight + 8, "", {
-        fontSize: "20px",
+        fontSize: "32px",
         color: "#ffffff"
     });
 
@@ -205,28 +205,28 @@ export function setupEnemyUI(scene, enemyName) {
     damageFill.displayHeight = barHeight;
 
     const text = scene.add.text(x + barWidth, y + barHeight + 8, "", {
-        fontSize: "20px",
+        fontSize: "32px",
         color: "#ffffff"
     }).setOrigin(1, 0);
 
-    const nameText = scene.add.text(x + barWidth, y - 24, enemyName, {
-        fontSize: "18px",
+    const nameText = scene.add.text(x + barWidth, y - 32, enemyName, {
+        fontSize: "32px",
         color: "#ffffff"
     }).setOrigin(1, 0);
 
     const intentText = scene.add.text(scene.scale.width - 20, y + barHeight + 40, "", {
-        fontSize: "20px",
+        fontSize: "32px",
         color: "#f1c40f"
     }).setOrigin(1, 0);
 
     const statusText = scene.add.text(scene.scale.width - 20, y + barHeight + 66, "", {
-        fontSize: "16px",
+        fontSize: "32px",
         color: "#ecf0f1",
         align: "right"
     }).setOrigin(1, 0);
 
     const burnText = scene.add.text(x - 12, y + barHeight + 10, "", {
-        fontSize: "16px",
+        fontSize: "32px",
         color: "#ff7675",
         fontStyle: "bold"
     }).setOrigin(1, 0.5);
