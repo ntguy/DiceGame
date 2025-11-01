@@ -25,40 +25,43 @@ export class RelicUIManager {
         this.destroyStaticElements();
 
         const slotLimit = this.getSlotLimit();
+        const isDefaultMax = slotLimit == CONSTANTS.RELIC_MAX_SLOTS;
+        const rightShift = isDefaultMax ? 0 : (CONSTANTS.RELIC_ICON_SIZE / 3);
         const offsetSpan = CONSTANTS.RELIC_ICON_SPACING * Math.max(0, slotLimit - 1);
         const infoCenterX = CONSTANTS.RIGHT_COLUMN_X - (offsetSpan / 2);
         const infoTitleY = CONSTANTS.RELIC_INFO_TITLE_Y;
 
         this.relicInfoBackground = this.scene.add.rectangle(
-            infoCenterX,
+            infoCenterX + rightShift,
             infoTitleY,
             CONSTANTS.RELIC_INFO_WRAP_WIDTH + 32,
-            120,
+            70,
             0x000000,
             0.45
         ).setOrigin(0.5, 0);
         this.relicInfoBackground.setStrokeStyle(2, 0xf1c40f, 0.25);
 
-        this.relicInfoTitleText = this.scene.add.text(infoCenterX, infoTitleY + 20, '', {
-            fontSize: '20px',
+        this.relicInfoTitleText = this.scene.add.text(infoCenterX + rightShift, infoTitleY + 4, '', {
+            fontSize: '24px',
             color: '#f1c40f',
             fontStyle: 'bold',
             align: 'center'
         }).setOrigin(0.5, 0);
 
-        this.relicInfoDescriptionText = this.scene.add.text(infoCenterX, infoTitleY + 45, '', {
-            fontSize: '18px',
+        this.relicInfoDescriptionText = this.scene.add.text(infoCenterX + rightShift, infoTitleY + 28, '', {
+            fontSize: '17px',
             color: '#f9e79f',
             wordWrap: { width: CONSTANTS.RELIC_INFO_WRAP_WIDTH },
             lineSpacing: 6,
             align: 'center'
         }).setOrigin(0.5, 0);
 
-        const trayWidth = CONSTANTS.RELIC_ICON_SIZE + (CONSTANTS.RELIC_ICON_SPACING * Math.max(0, slotLimit - 1));
+        const adjustedIconSpacing = isDefaultMax ? CONSTANTS.RELIC_ICON_SPACING : CONSTANTS.RELIC_ICON_SPACING - 5;
+        const trayWidth = CONSTANTS.RELIC_ICON_SIZE + (adjustedIconSpacing * Math.max(0, slotLimit - 1));
         const trayCenterX = CONSTANTS.RIGHT_COLUMN_X - (offsetSpan / 2);
 
         this.relicTrayBorder = this.scene.add.rectangle(
-            trayCenterX,
+            trayCenterX + rightShift,
             CONSTANTS.RELIC_TRAY_Y,
             trayWidth + 16,
             CONSTANTS.RELIC_ICON_SIZE + 24,
@@ -84,7 +87,7 @@ export class RelicUIManager {
 
         const startX = CONSTANTS.RIGHT_COLUMN_X;
         const baseY = CONSTANTS.RELIC_TRAY_Y;
-        const spacing = CONSTANTS.RELIC_ICON_SPACING;
+        const spacing = slotLimit == CONSTANTS.RELIC_MAX_SLOTS ? CONSTANTS.RELIC_ICON_SPACING : CONSTANTS.RELIC_ICON_SPACING - 5;
         const iconSize = CONSTANTS.RELIC_ICON_SIZE;
 
         for (let index = 0; index < slotLimit; index += 1) {
