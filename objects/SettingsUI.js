@@ -27,6 +27,7 @@ export function createSettingsUI(scene) {
 
     const muteButtonY = contentTop + 52;
     const toggleSpacing = 64;
+    const musicButtonY = muteButtonY + toggleSpacing;
 
     scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
         fontSize: '22px',
@@ -54,7 +55,33 @@ export function createSettingsUI(scene) {
     scene.muteButton.on('pointerdown', () => scene.toggleMute());
     settingsPanel.add(scene.muteButton);
 
-    const testingButtonY = muteButtonY + toggleSpacing;
+    scene.musicButton = scene.add.text(panelWidth / 2, musicButtonY, '', {
+        fontSize: '22px',
+        color: '#ecf0f1',
+        padding: { x: 18, y: 10 },
+        forceNormalText: true
+    }).setOrigin(0.5);
+    applyTextButtonStyle(scene.musicButton, {
+        baseColor: '#34495e',
+        textColor: '#ecf0f1',
+        hoverBlend: 0.2,
+        pressBlend: 0.3,
+        disabledBlend: 0.45,
+        background: {
+            paddingX: 72,
+            paddingY: 28,
+            baseColor: '#1f2a38',
+            baseAlpha: 0.96,
+            strokeColor: '#0d141f',
+            strokeAlpha: 0.55,
+            strokeWidth: 2
+        }
+    });
+    setTextButtonEnabled(scene.musicButton, true);
+    scene.musicButton.on('pointerdown', () => scene.toggleMusicMute());
+    settingsPanel.add(scene.musicButton);
+
+    const testingButtonY = musicButtonY + toggleSpacing;
     scene.testingModeButton = scene.add.text(panelWidth / 2, testingButtonY, '', {
         fontSize: '22px',
         color: '#ecf0f1',
@@ -117,6 +144,7 @@ export function createSettingsUI(scene) {
     scene.isSettingsOpen = false;
     scene.updateSettingsButtonLabel();
     scene.updateMuteButtonState();
+    scene.updateMusicButtonState();
     scene.updateTestingModeButtonState();
     scene.updateMapSkipButtonState();
 }

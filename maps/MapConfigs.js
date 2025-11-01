@@ -147,6 +147,7 @@ export const MAP_CONFIGS = [
         pathTextureKey: 'path_ladder_clean',
         wallTextureKey: 'wall2',
         backgroundTextureKey: 'path_background',
+        musicKey: 'Map1Music',
         outsideBackgroundLayerKeys: [
             'outside_background_1',
             'outside_background_2',
@@ -162,6 +163,7 @@ export const MAP_CONFIGS = [
         pathTextureKey: 'path_ladder_metal',
         wallTextureKey: 'wall',
         backgroundTextureKey: 'path_background_brightest',
+        musicKey: 'Map2Music',
         outsideBackgroundLayerKeys: [
             'outside_background_world2_1',
             'outside_background_world2_2',
@@ -178,6 +180,7 @@ export const MAP_CONFIGS = [
         pathTextureKey: 'path_ladder',
         wallTextureKey: 'wall2',
         backgroundTextureKey: 'path_background_bright',
+        musicKey: 'Map3Music',
         outsideBackgroundLayerKeys: [
             'outside_background_world3_1',
             'outside_background_world3_2',

@@ -59,7 +59,11 @@ export class VictoryScreen {
             if (typeof window !== 'undefined' && window.location && typeof window.location.reload === 'function') {
                 window.location.reload();
             } else if (this.scene && this.scene.scene && typeof this.scene.scene.restart === 'function') {
-                this.scene.scene.restart();
+                this.scene.scene.restart({
+                    isMuted: this.scene.isMuted,
+                    isMusicMuted: this.scene.isMusicMuted,
+                    testingModeEnabled: this.scene.testingModeEnabled
+                });
             }
         });
 
