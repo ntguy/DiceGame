@@ -55,6 +55,8 @@ const CHAIN_REACTOR_BONUS_OVERRIDES = {
     'YAHTZEE': 30
 };
 
+const ICON_VOLUME_RESTORE_VALUE = 0.5;
+
 function getRandomIndexExclusive(maxExclusive) {
     if (!Number.isFinite(maxExclusive) || maxExclusive <= 0) {
         return 0;
@@ -5268,7 +5270,7 @@ export class GameScene extends Phaser.Scene {
     updateMusicVolumeUI() {
         if (this.musicIcon) {
             const isSilent = this.musicVolume <= 0;
-            this.musicIcon.setAlpha(isSilent ? 0.55 : 1);
+            this.musicIcon.setAlpha(isSilent ? 0.35 : 1);
         }
 
         if (this.musicSlider && typeof this.musicSlider.setValue === 'function') {
@@ -5281,10 +5283,20 @@ export class GameScene extends Phaser.Scene {
         this.updateSfxVolumeUI();
     }
 
+    toggleSfxMute() {
+        const targetVolume = this.sfxVolume <= 0 ? ICON_VOLUME_RESTORE_VALUE : 0;
+        this.setSfxVolume(targetVolume);
+    }
+
     setMusicVolume(value) {
         this.musicVolume = this.clampVolume(value, CONSTANTS.DEFAULT_MUSIC_VOLUME);
         this.updateBackgroundMusicState();
         this.updateMusicVolumeUI();
+    }
+
+    toggleMusicMute() {
+        const targetVolume = this.musicVolume <= 0 ? ICON_VOLUME_RESTORE_VALUE : 0;
+        this.setMusicVolume(targetVolume);
     }
 
     updateBackgroundMusicState() {

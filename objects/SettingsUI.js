@@ -137,7 +137,7 @@ export function createSettingsUI(scene) {
         color: '#ecf0f1'
     }).setOrigin(0.5);
     scene.sfxIcon.setInteractive({ useHandCursor: true });
-    scene.sfxIcon.on('pointerdown', () => scene.setSfxVolume(0));
+    scene.sfxIcon.on('pointerdown', () => scene.toggleSfxMute());
     scene.sfxIcon.on('pointerover', () => scene.sfxIcon.setScale(1.1));
     scene.sfxIcon.on('pointerout', () => scene.sfxIcon.setScale(1));
     settingsPanel.add(scene.sfxIcon);
@@ -155,7 +155,7 @@ export function createSettingsUI(scene) {
         color: '#ecf0f1'
     }).setOrigin(0.5);
     scene.musicIcon.setInteractive({ useHandCursor: true });
-    scene.musicIcon.on('pointerdown', () => scene.setMusicVolume(0));
+    scene.musicIcon.on('pointerdown', () => scene.toggleMusicMute());
     scene.musicIcon.on('pointerover', () => scene.musicIcon.setScale(1.1));
     scene.musicIcon.on('pointerout', () => scene.musicIcon.setScale(1));
     settingsPanel.add(scene.musicIcon);
