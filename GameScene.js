@@ -128,7 +128,9 @@ export class GameScene extends Phaser.Scene {
         this.gameOverManager = null;
         this.victoryScreen = null;
         this.muteButton = null;
+        this.musicButton = null;
         this.isMuted = false;
+        this.isMusicMuted = false;
         this.isGameOver = false;
         this.testingModeEnabled = false;
         this.pathManager = null;
@@ -158,6 +160,9 @@ export class GameScene extends Phaser.Scene {
         this.resetMenuState();
 
         this.relicPools = { general: [], boss: [] };
+
+        this.backgroundMusic = null;
+        this.currentMusicKey = null;
         this.bossRelicRewardUI = null;
         this.bossRelicBonusClaimed = false;
         this.additionalRelicSlots = 0;
@@ -280,6 +285,7 @@ export class GameScene extends Phaser.Scene {
         this.menuPanel = null;
         this.menuCloseButton = null;
         this.muteButton = null;
+        this.musicButton = null;
         this.testingModeButton = null;
         this.isMenuOpen = false;
         this.settingsButton = null;
@@ -301,6 +307,7 @@ export class GameScene extends Phaser.Scene {
     init(data) {
         this.destroyFacilityUI();
         this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
+        this.isMusicMuted = data && typeof data.isMusicMuted === 'boolean' ? data.isMusicMuted : false;
         this.testingModeEnabled = data && typeof data.testingModeEnabled === 'boolean'
             ? data.testingModeEnabled
             : false;
@@ -333,6 +340,10 @@ export class GameScene extends Phaser.Scene {
         this.currentZoneBackgroundTextureKey = null;
 
         this.mapTitleText = null;
+
+        this.stopBackgroundMusic();
+        this.backgroundMusic = null;
+        this.currentMusicKey = null;
     }
 
     preload() {
@@ -346,6 +357,9 @@ export class GameScene extends Phaser.Scene {
         this.load.audio('towerOfTenEnter', './audio/ToT-enter.mp3');
         this.load.audio('towerOfTenWin', './audio/ToT-win.mp3');
         this.load.audio('towerOfTenBust', './audio/ToT-lose.mp3');
+        this.load.audio('Map1Music', './audio/Map1Music.mp3');
+        this.load.audio('Map2Music', './audio/Map2Music.mp3');
+        this.load.audio('Map3Music', './audio/Map3Music.mp3');
         this.load.image('path_ladder', './sprites/Ladder-rotting.png');
         this.load.image('path_ladder_clean', './sprites/Ladder-clean.png');
         this.load.image('path_ladder_metal', './sprites/Ladder-metal.png');
@@ -411,6 +425,15 @@ export class GameScene extends Phaser.Scene {
             boss: Array.isArray(registry?.pools?.boss) ? registry.pools.boss : []
         };
         this.resetMenuState();
+
+        if (this.events && typeof this.events.once === 'function') {
+            this.events.once('shutdown', () => {
+                this.stopBackgroundMusic();
+            });
+            this.events.once('destroy', () => {
+                this.stopBackgroundMusic();
+            });
+        }
 
         this.cameras.main.setBounds(0, -CONSTANTS.HEADER_HEIGHT, this.scale.width, this.scale.height + CONSTANTS.HEADER_HEIGHT);
         this.cameras.main.setScroll(0, -CONSTANTS.HEADER_HEIGHT);
@@ -932,6 +955,7 @@ export class GameScene extends Phaser.Scene {
 
         this.updateSettingsButtonLabel();
         this.updateMuteButtonState();
+        this.updateMusicButtonState();
         this.updateTestingModeButtonState();
     }
 
@@ -3454,6 +3478,7 @@ export class GameScene extends Phaser.Scene {
         this.currentMapIndex = mapIndex;
         this.currentMapConfig = config;
         this.updateMapTitleText();
+        this.playBackgroundMusicForConfig(config);
 
         const enemyFactory = config && typeof config.createEnemies === 'function'
             ? config.createEnemies
@@ -5192,6 +5217,7 @@ export class GameScene extends Phaser.Scene {
         this.isMuted = !this.isMuted;
         this.sound.mute = this.isMuted;
         this.updateMuteButtonState();
+        this.updateMusicButtonState();
     }
 
     updateMuteButtonState() {
@@ -5201,6 +5227,139 @@ export class GameScene extends Phaser.Scene {
 
         const statusText = this.isMuted ? 'Sound: Off 🔇' : 'Sound: On 🔊';
         this.muteButton.setText(statusText);
+    }
+
+    toggleMusicMute() {
+        this.isMusicMuted = !this.isMusicMuted;
+
+        if (this.backgroundMusic) {
+            const isPlaying = this.backgroundMusic.isPlaying;
+            if (this.isMusicMuted && isPlaying) {
+                this.backgroundMusic.stop();
+            } else if (!this.isMusicMuted && !isPlaying) {
+                if (typeof this.backgroundMusic.setLoop === 'function') {
+                    this.backgroundMusic.setLoop(true);
+                }
+                if (typeof this.backgroundMusic.setVolume === 'function') {
+                    this.backgroundMusic.setVolume(this.getDefaultMusicVolume());
+                }
+                this.backgroundMusic.play();
+            }
+        }
+
+        this.updateMusicButtonState();
+    }
+
+    updateMusicButtonState() {
+        if (!this.musicButton) {
+            return;
+        }
+
+        const statusText = this.isMusicMuted ? 'Music: Off 🔕' : 'Music: On 🎵';
+        this.musicButton.setText(statusText);
+    }
+
+    getDefaultMusicVolume() {
+        const configuredVolume = CONSTANTS.DEFAULT_MUSIC_VOLUME;
+        if (typeof configuredVolume === 'number' && Number.isFinite(configuredVolume)) {
+            const clampFn = (typeof Phaser !== 'undefined'
+                && Phaser.Math
+                && typeof Phaser.Math.Clamp === 'function')
+                ? Phaser.Math.Clamp
+                : null;
+            if (clampFn) {
+                return clampFn(configuredVolume, 0, 1);
+            }
+            return Math.min(1, Math.max(0, configuredVolume));
+        }
+
+        return 0.4;
+    }
+
+    getMusicKeyForConfig(config) {
+        if (!config || typeof config.musicKey !== 'string') {
+            return null;
+        }
+
+        return config.musicKey;
+    }
+
+    playBackgroundMusicForConfig(config) {
+        const musicKey = this.getMusicKeyForConfig(config);
+
+        if (!musicKey) {
+            if (this.backgroundMusic && this.backgroundMusic.isPlaying) {
+                this.backgroundMusic.stop();
+            }
+            this.backgroundMusic = null;
+            this.currentMusicKey = null;
+            this.updateMusicButtonState();
+            return;
+        }
+
+        if (this.backgroundMusic && this.currentMusicKey === musicKey) {
+            const volume = this.getDefaultMusicVolume();
+            this.backgroundMusic.setVolume(volume);
+            this.backgroundMusic.setLoop(true);
+
+            if (this.isMusicMuted && this.backgroundMusic.isPlaying) {
+                this.backgroundMusic.stop();
+            } else if (!this.isMusicMuted && !this.backgroundMusic.isPlaying) {
+                this.backgroundMusic.play();
+            }
+            this.updateMusicButtonState();
+            return;
+        }
+
+        if (this.backgroundMusic && this.backgroundMusic.isPlaying) {
+            this.backgroundMusic.stop();
+        }
+
+        let musicInstance = null;
+        if (this.sound) {
+            if (typeof this.sound.get === 'function') {
+                musicInstance = this.sound.get(musicKey) || null;
+            }
+
+            if (!musicInstance && typeof this.sound.add === 'function') {
+                musicInstance = this.sound.add(musicKey, { loop: true });
+            }
+        }
+
+        if (!musicInstance) {
+            this.backgroundMusic = null;
+            this.currentMusicKey = null;
+            this.updateMusicButtonState();
+            return;
+        }
+
+        const volume = this.getDefaultMusicVolume();
+        if (typeof musicInstance.setLoop === 'function') {
+            musicInstance.setLoop(true);
+        }
+        if (typeof musicInstance.setVolume === 'function') {
+            musicInstance.setVolume(volume);
+        }
+
+        this.backgroundMusic = musicInstance;
+        this.currentMusicKey = musicKey;
+
+        if (!this.isMusicMuted) {
+            musicInstance.play();
+        }
+
+        this.updateMusicButtonState();
+    }
+
+    stopBackgroundMusic() {
+        const hasBackgroundMusic = this.backgroundMusic && typeof this.backgroundMusic.stop === 'function';
+        if (hasBackgroundMusic && this.backgroundMusic.isPlaying) {
+            this.backgroundMusic.stop();
+        } else if (!hasBackgroundMusic && this.sound && typeof this.sound.stopByKey === 'function' && this.currentMusicKey) {
+            this.sound.stopByKey(this.currentMusicKey);
+        }
+        this.backgroundMusic = null;
+        this.currentMusicKey = null;
     }
 
     toggleTestingMode() {
@@ -5342,6 +5501,7 @@ export class GameScene extends Phaser.Scene {
 
         this.scene.restart({
             isMuted: this.isMuted,
+            isMusicMuted: this.isMusicMuted,
             testingModeEnabled: this.testingModeEnabled
         });
     }
