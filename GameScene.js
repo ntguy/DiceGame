@@ -417,6 +417,7 @@ export class GameScene extends Phaser.Scene {
     }
     
     create() {
+        this.cameras.main.fadeIn(300, 0, 0, 0);
         this.dice = [];
         this.lockedDice = new Set();
         this.pendingLockCount = 0;

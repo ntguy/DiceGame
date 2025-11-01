@@ -55,7 +55,7 @@ export class StartScene extends Phaser.Scene {
     }
 
     preload() {
-        this.cameras.main.setBackgroundColor('#1a1a1a');
+        this.cameras.main.setBackgroundColor('#111111');
         this.load.bitmapFont('boldPixels', './BoldPixels/BoldPixels.png', './BoldPixels/BoldPixels.xml');
     }
 
@@ -79,22 +79,22 @@ export class StartScene extends Phaser.Scene {
 
         const button = this.add.text(width / 2, buttonY, 'PLAY', {
             fontFamily: 'monospace',
-            fontSize: '48px',
-            color: '#ffffff',
+            fontSize: '64px',
+            color: '#f1c40f',
             fontStyle: 'bold',
             align: 'center'
         }).setOrigin(0.5);
 
         button.setInteractive({ useHandCursor: true })
             .on('pointerover', () => {
-                button.setScale(1.08);
+                button.setScale(1.1);
             })
             .on('pointerout', () => {
                 button.setScale(1);
             })
             .on('pointerdown', () => {
                 button.disableInteractive();
-                const transitionDuration = 250;
+                const transitionDuration = 700;
 
                 this.scene.transition({
                     target: 'GameScene',
@@ -107,13 +107,13 @@ export class StartScene extends Phaser.Scene {
                     targets: this.titleDice,
                     alpha: 0,
                     duration: transitionDuration,
-                    ease: 'Cubic.easeIn'
+                    ease: 'Sine.easeOut'
                 });
                 this.tweens.add({
                     targets: button,
                     alpha: 0,
                     duration: transitionDuration,
-                    ease: 'Cubic.easeIn'
+                    ease: 'Sine.easeOut'
                 });
             });
     }
