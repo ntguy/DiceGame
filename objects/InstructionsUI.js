@@ -23,10 +23,10 @@ const WORD_CHAR_REGEX = /[A-Za-z0-9'\-]/;
 
 const PAGES = [
     {
-        title: 'Welcome to Dice Game (WIP)!',
+        title: 'Welcome to Drop + Roll!',
         points: [
             {
-                text: 'Descend through multiple maps, battling monsters and growing your collection of dice.',
+                text: 'Drop through multiple maps, battling monsters and growing your collection of dice.',
             },
             {
                 text: 'Choose your path wisely to power up between battles.',

@@ -60,8 +60,8 @@ export class VictoryScreen {
                 window.location.reload();
             } else if (this.scene && this.scene.scene && typeof this.scene.scene.restart === 'function') {
                 this.scene.scene.restart({
-                    isMuted: this.scene.isMuted,
-                    isMusicMuted: this.scene.isMusicMuted,
+                    sfxVolume: this.scene.sfxVolume,
+                    musicVolume: this.scene.musicVolume,
                     testingModeEnabled: this.scene.testingModeEnabled
                 });
             }
@@ -96,8 +96,8 @@ export class VictoryScreen {
             ease: 'Quad.easeOut'
         });
 
-        if (!this.hasPlayedSound && this.scene && this.scene.sound && typeof this.scene.sound.play === 'function') {
-            this.scene.sound.play('towerOfTenWin', { volume: 0.9 });
+        if (!this.hasPlayedSound && this.scene && typeof this.scene.playSound === 'function') {
+            this.scene.playSound('towerOfTenWin', { volume: 0.9 });
             this.hasPlayedSound = true;
         }
     }

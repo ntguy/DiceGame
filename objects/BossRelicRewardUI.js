@@ -147,8 +147,8 @@ export class BossRelicRewardUI {
                     }
                     const accepted = this.onSelect(choice);
                     if (accepted) {
-                        if (this.scene && this.scene.sound && typeof this.scene.sound.play === 'function') {
-                            this.scene.sound.play('chimeShort', { volume: 0.65 });
+                        if (this.scene && typeof this.scene.playSound === 'function') {
+                            this.scene.playSound('chimeShort', { volume: 0.65 });
                         }
                         this.destroy();
                     }
