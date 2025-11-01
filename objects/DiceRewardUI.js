@@ -180,7 +180,7 @@ export class DiceRewardUI {
             }).setOrigin(0.5);
 
             const descriptionText = this.scene.add.text(0, nameText.y + 28, option.description || '', {
-                fontSize: '16px',
+                fontSize: '17px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
             }).setOrigin(0.5, 0);
@@ -283,7 +283,7 @@ export class DiceRewardUI {
         const messageY = PANEL_HEIGHT / 2 - 60;
         const skipX = PANEL_WIDTH / 2 - 140;
 
-        const capacityText = this.scene.add.text(-PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack (🎒) to make space.', {
+        const capacityText = this.scene.add.text(-PANEL_WIDTH / 2 + 40, messageY, 'Discard a die from your pack to make space.', {
             fontSize: '18px',
             color: '#f9e79f'
         }).setOrigin(0, 0.5);

@@ -4931,7 +4931,7 @@ export class GameScene extends Phaser.Scene {
             this.nodeMessage = null;
         }
 
-        this.nodeMessage = this.add.text(this.scale.width / 2, 110, message, {
+        this.nodeMessage = this.add.text(this.scale.width / 2, 60, message, {
             fontSize: '32px',
             color,
             fontStyle: 'bold',

@@ -34,13 +34,13 @@ export class VictoryScreen {
 
         this.playAgainButton = this.scene.add.text(width / 2, height / 2 + 120, 'PLAY AGAIN', {
             fontSize: '36px',
-            color: '#1b1300',
+            color: '#f1c40f',
             padding: { x: 32, y: 18 }
         }).setOrigin(0.5);
 
         applyTextButtonStyle(this.playAgainButton, {
             baseColor: '#f1c40f',
-            textColor: '#1b1300',
+            textColor: '#f1c40f',
             hoverBlend: 0.14,
             pressBlend: 0.25,
             disabledBlend: 0.45,
