@@ -37,11 +37,11 @@ const PAGES = [
                 keywords: [{ phrase: 'roll', color: KEYWORD_COLOR }]
             },
             {
-                text: 'You have 2 re-rolls to use on any number of dice, aiming to form combos to place in the Defend (🛡️) and Attack (⚔️) zones.',
+                text: 'You have 2 re-rolls to use on any number of dice, aiming to form combos to place in the Defend zone (shield icon) and Attack zone (sword icon).',
                 keywords: [
                     { phrase: '2 re-rolls', color: KEYWORD_COLOR },
-                    { phrase: 'Defend (🛡️)', color: DEFENSE_COLOR },
-                    { phrase: 'Attack (⚔️)', color: ATTACK_COLOR }
+                    { phrase: 'Defend zone (shield icon)', color: DEFENSE_COLOR },
+                    { phrase: 'Attack zone (sword icon)', color: ATTACK_COLOR }
                 ]
             },
             {
@@ -66,7 +66,7 @@ const PAGES = [
                 keywords: [{ phrase: 'Face Value', color: KEYWORD_COLOR }]
             },
             {
-                text: 'Combo Bonus: rewards rarer patterns — check the menu (☰) for exact values.',
+                text: 'Combo Bonus: rewards rarer patterns — check the menu (menu icon) for exact values.',
                 keywords: [{ phrase: 'Combo Bonus', color: KEYWORD_COLOR }]
             }
         ]
@@ -515,20 +515,12 @@ export class InstructionsUI {
             const isWhitespace = /^\s+$/.test(token.text);
             const lastEntry = combined[combined.length - 1];
 
-            if (!lastEntry) {
-                if (isWhitespace) {
-                    return;
-                }
+            if (isWhitespace) {
                 combined.push({ text: token.text, color: token.color });
                 return;
             }
 
-            if (isWhitespace) {
-                lastEntry.text += token.text;
-                return;
-            }
-
-            if (lastEntry.color === token.color) {
+            if (lastEntry && !/^\s+$/.test(lastEntry.text) && lastEntry.color === token.color) {
                 lastEntry.text += token.text;
                 return;
             }
