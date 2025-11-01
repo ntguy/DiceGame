@@ -627,11 +627,11 @@ export class GameScene extends Phaser.Scene {
         const baseWidth = CONSTANTS.DEFAULT_ZONE_WIDTH;
         const ratio = this.getMaxDicePerZone() / CONSTANTS.DICE_PER_SET;
         const clampedWidth = Math.max(180, baseWidth * ratio);
-        return includePadding ? clampedWidth + 6 : clampedWidth;
+        return includePadding ? clampedWidth + 16 : clampedWidth;
     }
 
     getZoneHeight() {
-        return 100;
+        return 90;
     }
 
     resetZoneConstraints() {
@@ -783,8 +783,8 @@ export class GameScene extends Phaser.Scene {
             const zoneAreaHeight = zoneAreaBottom - zoneAreaTop;
             const zoneAreaCenterY = zoneAreaTop + zoneAreaHeight / 2;
 
-            this.zoneAreaBackground.setPosition(zoneAreaCenterX, zoneAreaCenterY);
-            this.zoneAreaBackground.setSize(zoneAreaWidth, zoneAreaHeight);
+            this.zoneAreaBackground.setPosition(zoneAreaCenterX, zoneAreaCenterY + 10);
+            this.zoneAreaBackground.setSize(zoneAreaWidth, zoneAreaHeight + 30);
         }
 
         this.layoutZoneDice('defend');

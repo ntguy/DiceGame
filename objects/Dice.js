@@ -91,7 +91,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
         }
     };
 
-    const emojiY = CONSTANTS.DIE_SIZE / 2 + 20;
+    const emojiY = CONSTANTS.DIE_SIZE / 2 + 15;
     const emojiText = scene.add.text(0, emojiY, getDieEmoji(container), {
         fontSize: '32px',
         padding: CONSTANTS.EMOJI_TEXT_PADDING
