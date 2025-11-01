@@ -197,8 +197,8 @@ export class DiceUpgradeUI {
 
             const upgraded = this.onUpgrade(selections, this.currentUpgradeCost || 0);
             if (upgraded) {
-                if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                    this.scene.sound.play('chimeLong', {
+                if (typeof this.scene.playSound === 'function') {
+                    this.scene.playSound('chimeLong', {
                         volume: 0.5,
                         seek: 1,
                         rate: 2.5
@@ -244,8 +244,8 @@ export class DiceUpgradeUI {
                 return;
             }
 
-            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                this.scene.sound.play('tock', { volume: 0.5 });
+            if (typeof this.scene.playSound === 'function') {
+                this.scene.playSound('tock', { volume: 0.5 });
             }
 
             this.destroy();
@@ -302,16 +302,16 @@ export class DiceUpgradeUI {
         }
 
         if (this.selectedEntries.has(uid)) {
-            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                this.scene.sound.play('tock', {volume: 0.5});
+            if (typeof this.scene.playSound === 'function') {
+                this.scene.playSound('tock', { volume: 0.5 });
             }
             this.selectedEntries.delete(uid);
         } else {
             const option = this.options.find(opt => opt.uid === uid);
             if (option) {
                 this.selectedEntries.set(uid, option);
-                if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                    this.scene.sound.play('tick', {volume: 0.5});
+                if (typeof this.scene.playSound === 'function') {
+                    this.scene.playSound('tick', { volume: 0.5 });
                 }
             }
         }

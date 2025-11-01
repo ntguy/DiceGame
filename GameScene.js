@@ -127,10 +127,12 @@ export class GameScene extends Phaser.Scene {
         this.activeTimeBombResolveBonus = 0;
         this.gameOverManager = null;
         this.victoryScreen = null;
-        this.muteButton = null;
-        this.musicButton = null;
-        this.isMuted = false;
-        this.isMusicMuted = false;
+        this.sfxIcon = null;
+        this.musicIcon = null;
+        this.sfxSlider = null;
+        this.musicSlider = null;
+        this.sfxVolume = CONSTANTS.DEFAULT_SFX_VOLUME;
+        this.musicVolume = CONSTANTS.DEFAULT_MUSIC_VOLUME;
         this.isGameOver = false;
         this.testingModeEnabled = false;
         this.pathManager = null;
@@ -286,8 +288,10 @@ export class GameScene extends Phaser.Scene {
         this.menuButton = null;
         this.menuPanel = null;
         this.menuCloseButton = null;
-        this.muteButton = null;
-        this.musicButton = null;
+        this.sfxIcon = null;
+        this.musicIcon = null;
+        this.sfxSlider = null;
+        this.musicSlider = null;
         this.testingModeButton = null;
         this.isMenuOpen = false;
         this.settingsButton = null;
@@ -308,8 +312,23 @@ export class GameScene extends Phaser.Scene {
 
     init(data) {
         this.destroyFacilityUI();
-        this.isMuted = data && typeof data.isMuted === 'boolean' ? data.isMuted : false;
-        this.isMusicMuted = data && typeof data.isMusicMuted === 'boolean' ? data.isMusicMuted : false;
+        const defaultSfx = CONSTANTS.DEFAULT_SFX_VOLUME;
+        const defaultMusic = CONSTANTS.DEFAULT_MUSIC_VOLUME;
+        if (data && typeof data.sfxVolume === 'number') {
+            this.sfxVolume = this.clampVolume(data.sfxVolume, defaultSfx);
+        } else if (data && typeof data.isMuted === 'boolean') {
+            this.sfxVolume = data.isMuted ? 0 : defaultSfx;
+        } else {
+            this.sfxVolume = defaultSfx;
+        }
+
+        if (data && typeof data.musicVolume === 'number') {
+            this.musicVolume = this.clampVolume(data.musicVolume, defaultMusic);
+        } else if (data && typeof data.isMusicMuted === 'boolean') {
+            this.musicVolume = data.isMusicMuted ? 0 : defaultMusic;
+        } else {
+            this.musicVolume = defaultMusic;
+        }
         this.testingModeEnabled = data && typeof data.testingModeEnabled === 'boolean'
             ? data.testingModeEnabled
             : false;
@@ -517,8 +536,7 @@ export class GameScene extends Phaser.Scene {
             this.prepareNextEnemyMove();
         }
 
-        this.sound.mute = this.isMuted;
-        this.updateMuteButtonState();
+        this.refreshVolumeUI();
 
         this.gameOverManager = new GameOverManager(this);
         this.gameOverManager.create();
@@ -956,8 +974,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateSettingsButtonLabel();
-        this.updateMuteButtonState();
-        this.updateMusicButtonState();
+        this.updateSfxVolumeUI();
+        this.updateMusicVolumeUI();
         this.updateTestingModeButtonState();
     }
 
@@ -2115,7 +2133,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        this.sound.play('swoosh', { volume: CONSTANTS.DEFAULT_SFX_VOLUME });
+        this.playSound('swoosh', { volume: CONSTANTS.DEFAULT_SFX_VOLUME });
         this.dice.sort((a, b) => a.value - b.value);
         const layout = this.getHandSlotLayout({ totalSlots: this.getHandSlotCount() });
         const startX = layout.startX;
@@ -2189,8 +2207,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         // Play resolve sound effect
-        this.sound.play('chimeShort', { volume: 0.7 });
-        this.sound.play('chimeLong', {
+        this.playSound('chimeShort', { volume: 0.7 });
+        this.playSound('chimeLong', {
             volume: 0.4,
             seek: 1.5,
             duration: 1,
@@ -4591,7 +4609,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.sound || typeof this.sound.play !== 'function') {
             return;
         }
-        this.sound.play('towerOfTenEnter', { volume: 0.85 });
+        this.playSound('towerOfTenEnter', { volume: 0.85 });
     }
 
     playTowerOfTenExitSound({ outcome, gold = 0 } = {}) {
@@ -4600,9 +4618,9 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (outcome === 'cashout' && gold > 0) {
-            this.sound.play('towerOfTenWin', { volume: 0.9 });
+            this.playSound('towerOfTenWin', { volume: 0.9 });
         } else if (outcome === 'bust') {
-            this.sound.play('towerOfTenBust', { volume: 0.9 });
+            this.playSound('towerOfTenBust', { volume: 0.9 });
         }
     }
 
@@ -5219,67 +5237,106 @@ export class GameScene extends Phaser.Scene {
         setTextButtonEnabled(this.rollButton, anySelected);
     }
 
-    toggleMute() {
-        this.isMuted = !this.isMuted;
-        this.sound.mute = this.isMuted;
-        this.updateMuteButtonState();
-        this.updateMusicButtonState();
+    clampVolume(value, fallback = 1) {
+        const fallbackValue = Number.isFinite(fallback) ? fallback : 1;
+        const numericValue = Number.isFinite(value) ? value : fallbackValue;
+        const clampFn = (typeof Phaser !== 'undefined'
+            && Phaser.Math
+            && typeof Phaser.Math.Clamp === 'function')
+            ? Phaser.Math.Clamp
+            : (val, min, max) => Math.min(max, Math.max(min, val));
+        return clampFn(numericValue, 0, 1);
     }
 
-    updateMuteButtonState() {
-        if (!this.muteButton) {
+    refreshVolumeUI() {
+        this.updateSfxVolumeUI();
+        this.updateMusicVolumeUI();
+    }
+
+    updateSfxVolumeUI() {
+        if (this.sfxIcon) {
+            const isSilent = this.sfxVolume <= 0;
+            this.sfxIcon.setText(isSilent ? '🔇' : '🔊');
+            this.sfxIcon.setAlpha(isSilent ? 0.55 : 1);
+        }
+
+        if (this.sfxSlider && typeof this.sfxSlider.setValue === 'function') {
+            this.sfxSlider.setValue(this.sfxVolume, { emit: false });
+        }
+    }
+
+    updateMusicVolumeUI() {
+        if (this.musicIcon) {
+            const isSilent = this.musicVolume <= 0;
+            this.musicIcon.setAlpha(isSilent ? 0.55 : 1);
+        }
+
+        if (this.musicSlider && typeof this.musicSlider.setValue === 'function') {
+            this.musicSlider.setValue(this.musicVolume, { emit: false });
+        }
+    }
+
+    setSfxVolume(value) {
+        this.sfxVolume = this.clampVolume(value, CONSTANTS.DEFAULT_SFX_VOLUME);
+        this.updateSfxVolumeUI();
+    }
+
+    setMusicVolume(value) {
+        this.musicVolume = this.clampVolume(value, CONSTANTS.DEFAULT_MUSIC_VOLUME);
+        this.updateBackgroundMusicState();
+        this.updateMusicVolumeUI();
+    }
+
+    updateBackgroundMusicState() {
+        if (!this.backgroundMusic) {
             return;
         }
 
-        const statusText = this.isMuted ? 'Sound: Off 🔇' : 'Sound: On 🔊';
-        this.muteButton.setText(statusText);
-    }
-
-    toggleMusicMute() {
-        this.isMusicMuted = !this.isMusicMuted;
-
-        if (this.backgroundMusic) {
-            const isPlaying = this.backgroundMusic.isPlaying;
-            if (this.isMusicMuted && isPlaying) {
+        if (this.musicVolume <= 0) {
+            if (this.backgroundMusic.isPlaying) {
                 this.backgroundMusic.stop();
-            } else if (!this.isMusicMuted && !isPlaying) {
-                if (typeof this.backgroundMusic.setLoop === 'function') {
-                    this.backgroundMusic.setLoop(true);
-                }
-                if (typeof this.backgroundMusic.setVolume === 'function') {
-                    this.backgroundMusic.setVolume(this.getDefaultMusicVolume());
-                }
-                this.backgroundMusic.play();
             }
-        }
-
-        this.updateMusicButtonState();
-    }
-
-    updateMusicButtonState() {
-        if (!this.musicButton) {
             return;
         }
 
-        const statusText = this.isMusicMuted ? 'Music: Off 🔕' : 'Music: On 🎵';
-        this.musicButton.setText(statusText);
+        if (typeof this.backgroundMusic.setLoop === 'function') {
+            this.backgroundMusic.setLoop(true);
+        }
+        if (typeof this.backgroundMusic.setVolume === 'function') {
+            this.backgroundMusic.setVolume(this.musicVolume);
+        }
+        if (!this.backgroundMusic.isPlaying) {
+            this.backgroundMusic.play();
+        }
     }
 
-    getDefaultMusicVolume() {
-        const configuredVolume = CONSTANTS.DEFAULT_MUSIC_VOLUME;
-        if (typeof configuredVolume === 'number' && Number.isFinite(configuredVolume)) {
-            const clampFn = (typeof Phaser !== 'undefined'
-                && Phaser.Math
-                && typeof Phaser.Math.Clamp === 'function')
-                ? Phaser.Math.Clamp
-                : null;
-            if (clampFn) {
-                return clampFn(configuredVolume, 0, 1);
-            }
-            return Math.min(1, Math.max(0, configuredVolume));
+    playSound(key, config = {}) {
+        if (!this.sound || typeof this.sound.play !== 'function') {
+            return null;
         }
 
-        return 0.4;
+        const effectiveVolume = this.sfxVolume;
+        if (effectiveVolume <= 0) {
+            return null;
+        }
+
+        let configObject;
+        if (config && typeof config === 'object' && !Array.isArray(config)) {
+            configObject = { ...config };
+        } else {
+            configObject = {};
+        }
+
+        const baseVolume = typeof configObject.volume === 'number'
+            ? configObject.volume
+            : 1;
+        const scaledVolume = this.clampVolume(baseVolume * effectiveVolume, baseVolume);
+        if (scaledVolume <= 0) {
+            return null;
+        }
+
+        configObject.volume = scaledVolume;
+        return this.sound.play(key, configObject);
     }
 
     getMusicKeyForConfig(config) {
@@ -5294,32 +5351,18 @@ export class GameScene extends Phaser.Scene {
         const musicKey = this.getMusicKeyForConfig(config);
 
         if (!musicKey) {
-            if (this.backgroundMusic && this.backgroundMusic.isPlaying) {
-                this.backgroundMusic.stop();
-            }
-            this.backgroundMusic = null;
-            this.currentMusicKey = null;
-            this.updateMusicButtonState();
+            this.stopBackgroundMusic();
+            this.updateMusicVolumeUI();
             return;
         }
 
         if (this.backgroundMusic && this.currentMusicKey === musicKey) {
-            const volume = this.getDefaultMusicVolume();
-            this.backgroundMusic.setVolume(volume);
-            this.backgroundMusic.setLoop(true);
-
-            if (this.isMusicMuted && this.backgroundMusic.isPlaying) {
-                this.backgroundMusic.stop();
-            } else if (!this.isMusicMuted && !this.backgroundMusic.isPlaying) {
-                this.backgroundMusic.play();
-            }
-            this.updateMusicButtonState();
+            this.updateBackgroundMusicState();
+            this.updateMusicVolumeUI();
             return;
         }
 
-        if (this.backgroundMusic && this.backgroundMusic.isPlaying) {
-            this.backgroundMusic.stop();
-        }
+        this.stopBackgroundMusic();
 
         let musicInstance = null;
         if (this.sound) {
@@ -5335,26 +5378,18 @@ export class GameScene extends Phaser.Scene {
         if (!musicInstance) {
             this.backgroundMusic = null;
             this.currentMusicKey = null;
-            this.updateMusicButtonState();
+            this.updateMusicVolumeUI();
             return;
         }
 
-        const volume = this.getDefaultMusicVolume();
         if (typeof musicInstance.setLoop === 'function') {
             musicInstance.setLoop(true);
-        }
-        if (typeof musicInstance.setVolume === 'function') {
-            musicInstance.setVolume(volume);
         }
 
         this.backgroundMusic = musicInstance;
         this.currentMusicKey = musicKey;
-
-        if (!this.isMusicMuted) {
-            musicInstance.play();
-        }
-
-        this.updateMusicButtonState();
+        this.updateBackgroundMusicState();
+        this.updateMusicVolumeUI();
     }
 
     stopBackgroundMusic() {
@@ -5506,8 +5541,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.scene.restart({
-            isMuted: this.isMuted,
-            isMusicMuted: this.isMusicMuted,
+            sfxVolume: this.sfxVolume,
+            musicVolume: this.musicVolume,
             testingModeEnabled: this.testingModeEnabled
         });
     }

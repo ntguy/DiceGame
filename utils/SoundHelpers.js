@@ -16,16 +16,28 @@ export function playDiceRollSounds(scene, {
         return;
     }
 
-    const playSingleRoll = (volume, delay = 0) => {
-        if (delay > 0 && scene.time && typeof scene.time.delayedCall === 'function') {
-            scene.time.delayedCall(delay, () => scene.sound.play('diceRoll', { volume }));
-        } else {
+    const playDiceRoll = volume => {
+        if (typeof scene.playSound === 'function') {
+            scene.playSound('diceRoll', { volume });
+        } else if (scene.sound && typeof scene.sound.play === 'function') {
             scene.sound.play('diceRoll', { volume });
         }
     };
 
+    const playSingleRoll = (volume, delay = 0) => {
+        if (delay > 0 && scene.time && typeof scene.time.delayedCall === 'function') {
+            scene.time.delayedCall(delay, () => playDiceRoll(volume));
+        } else {
+            playDiceRoll(volume);
+        }
+    };
+
     if (isFirstRoll || (diceTotal > 0 && diceSelected >= diceTotal)) {
-        scene.sound.play('multiDiceRoll');
+        if (typeof scene.playSound === 'function') {
+            scene.playSound('multiDiceRoll');
+        } else if (scene.sound && typeof scene.sound.play === 'function') {
+            scene.sound.play('multiDiceRoll');
+        }
         playSingleRoll(0.75);
         const delay = Phaser.Math.Between(100, 300);
         playSingleRoll(0.5, delay);

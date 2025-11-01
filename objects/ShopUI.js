@@ -146,8 +146,8 @@ export class ShopUI {
                 });
                 buttonBg.on('pointerup', () => {
                     const purchased = this.onPurchase(relic.id);
-                    if (purchased) {
-                        this.scene.sound.play('chimeShort', { volume: 0.6 });
+                    if (purchased && typeof this.scene.playSound === 'function') {
+                        this.scene.playSound('chimeShort', { volume: 0.6 });
                     }
                 });
             }

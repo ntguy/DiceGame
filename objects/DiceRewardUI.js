@@ -99,13 +99,13 @@ export class DiceRewardUI {
         }).setOrigin(0, 0.5);
 
         toggleBackground.on('pointerup', () => {
-            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                switch (this.viewUpgrade){
+            if (typeof this.scene.playSound === 'function') {
+                switch (this.viewUpgrade) {
                     case true:
-                        this.scene.sound.play('tick', { volume: 0.5 });
+                        this.scene.playSound('tick', { volume: 0.5 });
                         break;
                     case false:
-                        this.scene.sound.play('tock', { volume: 0.5 });
+                        this.scene.playSound('tock', { volume: 0.5 });
                         break;
                     default:
                         break;
@@ -211,7 +211,9 @@ export class DiceRewardUI {
                 }
                 const selected = this.onSelect(option.id, option);
                 if (selected) {
-                    this.scene.sound.play('chimeShort', { volume: 0.6 });
+                    if (typeof this.scene.playSound === 'function') {
+                        this.scene.playSound('chimeShort', { volume: 0.6 });
+                    }
                     this.destroy();
                     this.onClose();
                 }
@@ -307,8 +309,8 @@ export class DiceRewardUI {
         });
 
         skipButtonBg.on('pointerup', () => {
-            if (this.scene.sound && typeof this.scene.sound.play === 'function') {
-                this.scene.sound.play('tick', { volume: 0.5 });
+            if (typeof this.scene.playSound === 'function') {
+                this.scene.playSound('tick', { volume: 0.5 });
             }
 
             const shouldClose = this.onSkip ? this.onSkip() : true;

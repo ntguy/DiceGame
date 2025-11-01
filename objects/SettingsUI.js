@@ -1,6 +1,105 @@
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 import { createSidePanel } from './ui/SidePanelFactory.js';
 
+function createVolumeSlider(scene, settingsPanel, {
+    x,
+    y,
+    width,
+    initialValue = 1,
+    onChange
+}) {
+    const clampFn = (typeof Phaser !== 'undefined'
+        && Phaser.Math
+        && typeof Phaser.Math.Clamp === 'function')
+        ? Phaser.Math.Clamp
+        : (value, min, max) => Math.min(max, Math.max(min, value));
+    const clamp = value => clampFn(value, 0, 1);
+    const sliderWidth = Math.max(0, Number.isFinite(width) ? width : 0);
+    const track = scene.add.rectangle(x, y, sliderWidth, 6, 0xffffff, 0.22)
+        .setOrigin(0, 0.5)
+        .setInteractive({ useHandCursor: true });
+    const fill = scene.add.rectangle(x, y, sliderWidth, 6, 0x76d7c4, 0.85)
+        .setOrigin(0, 0.5);
+    const handle = scene.add.circle(x, y, 10, 0x76d7c4, 1)
+        .setStrokeStyle(2, 0xffffff, 0.9)
+        .setInteractive({ useHandCursor: true });
+
+    settingsPanel.add([track, fill, handle]);
+
+    const getPointerX = pointer => {
+        if (pointer && typeof pointer.worldX === 'number') {
+            return pointer.worldX;
+        }
+        if (pointer && typeof pointer.x === 'number') {
+            return pointer.x;
+        }
+        return 0;
+    };
+
+    const updateVisuals = value => {
+        const clamped = clamp(value);
+        fill.displayWidth = sliderWidth * clamped;
+        handle.x = x + sliderWidth * clamped;
+    };
+
+    const applyValue = (value, { emit = true } = {}) => {
+        const clamped = clamp(value);
+        updateVisuals(clamped);
+        if (emit && typeof onChange === 'function') {
+            onChange(clamped);
+        }
+    };
+
+    const pointerToValue = pointer => {
+        const pointerX = getPointerX(pointer);
+        const matrix = track.getWorldTransformMatrix();
+        const left = matrix ? matrix.tx : x;
+        if (sliderWidth <= 0) {
+            return 0;
+        }
+        const normalized = (pointerX - left) / sliderWidth;
+        return clamp(normalized);
+    };
+
+    track.on('pointerdown', pointer => {
+        applyValue(pointerToValue(pointer));
+    });
+    track.on('pointermove', pointer => {
+        if (pointer && pointer.isDown) {
+            applyValue(pointerToValue(pointer));
+        }
+    });
+
+    handle.on('pointerdown', pointer => {
+        applyValue(pointerToValue(pointer));
+    });
+
+    if (scene.input && typeof scene.input.setDraggable === 'function') {
+        scene.input.setDraggable(handle);
+        handle.on('drag', pointer => {
+            applyValue(pointerToValue(pointer));
+        });
+    }
+
+    handle.on('pointerover', () => handle.setScale(1.1));
+    handle.on('pointerout', () => handle.setScale(1));
+
+    applyValue(clamp(initialValue), { emit: false });
+
+    return {
+        track,
+        fill,
+        handle,
+        setValue(value, options = {}) {
+            applyValue(value, options);
+        },
+        getValue() {
+            const currentWidth = sliderWidth > 0 ? fill.displayWidth / sliderWidth : 0;
+            return clamp(currentWidth);
+        }
+    };
+}
+
 export function createSettingsUI(scene) {
     if (scene.settingsPanel) {
         scene.settingsPanel.destroy(true);
@@ -14,7 +113,7 @@ export function createSettingsUI(scene) {
         titleColor: '#76d7c4',
         closeLabel: 'Close Settings'
     });
-    const { container: settingsPanel, panelWidth, sectionWidth } = panel;
+    const { container: settingsPanel, panelWidth, sectionWidth, padding } = panel;
 
     const contentTop = 90;
     const contentHeight = 260;
@@ -25,63 +124,51 @@ export function createSettingsUI(scene) {
         .setStrokeStyle(2, 0x76d7c4, 0.18);
     settingsPanel.add(settingsBg);
 
-    const muteButtonY = contentTop + 52;
-    const toggleSpacing = 64;
-    const musicButtonY = muteButtonY + toggleSpacing;
+    const volumeRowY = contentTop + 52;
+    const controlSpacing = 72;
+    const musicRowY = volumeRowY + controlSpacing;
+    const leftPadding = Number.isFinite(padding) ? padding : 24;
+    const iconX = leftPadding + 34;
+    const sliderStartX = leftPadding + 96;
+    const sliderWidth = Math.max(120, sectionWidth - (sliderStartX - leftPadding) - 24);
 
-    scene.muteButton = scene.add.text(panelWidth / 2, muteButtonY, '', {
-        fontSize: '22px',
-        color: '#ecf0f1',
-        padding: { x: 18, y: 10 },
-        forceNormalText: true
+    scene.sfxIcon = scene.add.text(iconX, volumeRowY, '🔊', {
+        fontSize: '36px',
+        color: '#ecf0f1'
     }).setOrigin(0.5);
-    applyTextButtonStyle(scene.muteButton, {
-        baseColor: '#34495e',
-        textColor: '#ecf0f1',
-        hoverBlend: 0.2,
-        pressBlend: 0.3,
-        disabledBlend: 0.45,
-        background: {
-            paddingX: 72,
-            paddingY: 28,
-            baseColor: '#1f2a38',
-            baseAlpha: 0.96,
-            strokeColor: '#0d141f',
-            strokeAlpha: 0.55,
-            strokeWidth: 2
-        }
-    });
-    setTextButtonEnabled(scene.muteButton, true);
-    scene.muteButton.on('pointerdown', () => scene.toggleMute());
-    settingsPanel.add(scene.muteButton);
+    scene.sfxIcon.setInteractive({ useHandCursor: true });
+    scene.sfxIcon.on('pointerdown', () => scene.setSfxVolume(0));
+    scene.sfxIcon.on('pointerover', () => scene.sfxIcon.setScale(1.1));
+    scene.sfxIcon.on('pointerout', () => scene.sfxIcon.setScale(1));
+    settingsPanel.add(scene.sfxIcon);
 
-    scene.musicButton = scene.add.text(panelWidth / 2, musicButtonY, '', {
-        fontSize: '22px',
-        color: '#ecf0f1',
-        padding: { x: 18, y: 10 },
-        forceNormalText: true
+    scene.sfxSlider = createVolumeSlider(scene, settingsPanel, {
+        x: sliderStartX,
+        y: volumeRowY,
+        width: sliderWidth,
+        initialValue: scene.sfxVolume,
+        onChange: value => scene.setSfxVolume(value)
+    });
+
+    scene.musicIcon = scene.add.text(iconX, musicRowY, '🎵', {
+        fontSize: '36px',
+        color: '#ecf0f1'
     }).setOrigin(0.5);
-    applyTextButtonStyle(scene.musicButton, {
-        baseColor: '#34495e',
-        textColor: '#ecf0f1',
-        hoverBlend: 0.2,
-        pressBlend: 0.3,
-        disabledBlend: 0.45,
-        background: {
-            paddingX: 72,
-            paddingY: 28,
-            baseColor: '#1f2a38',
-            baseAlpha: 0.96,
-            strokeColor: '#0d141f',
-            strokeAlpha: 0.55,
-            strokeWidth: 2
-        }
-    });
-    setTextButtonEnabled(scene.musicButton, true);
-    scene.musicButton.on('pointerdown', () => scene.toggleMusicMute());
-    settingsPanel.add(scene.musicButton);
+    scene.musicIcon.setInteractive({ useHandCursor: true });
+    scene.musicIcon.on('pointerdown', () => scene.setMusicVolume(0));
+    scene.musicIcon.on('pointerover', () => scene.musicIcon.setScale(1.1));
+    scene.musicIcon.on('pointerout', () => scene.musicIcon.setScale(1));
+    settingsPanel.add(scene.musicIcon);
 
-    const testingButtonY = musicButtonY + toggleSpacing;
+    scene.musicSlider = createVolumeSlider(scene, settingsPanel, {
+        x: sliderStartX,
+        y: musicRowY,
+        width: sliderWidth,
+        initialValue: scene.musicVolume,
+        onChange: value => scene.setMusicVolume(value)
+    });
+
+    const testingButtonY = musicRowY + controlSpacing;
     scene.testingModeButton = scene.add.text(panelWidth / 2, testingButtonY, '', {
         fontSize: '22px',
         color: '#ecf0f1',
@@ -108,7 +195,7 @@ export function createSettingsUI(scene) {
     scene.testingModeButton.on('pointerdown', () => scene.toggleTestingMode());
     settingsPanel.add(scene.testingModeButton);
 
-    const skipButtonY = testingButtonY + toggleSpacing;
+    const skipButtonY = testingButtonY + controlSpacing;
     scene.mapSkipButton = scene.add.text(panelWidth / 2, skipButtonY, 'Skip Map ▶', {
         fontSize: '22px',
         color: '#ecf0f1',
@@ -143,8 +230,7 @@ export function createSettingsUI(scene) {
     scene.settingsPanel = settingsPanel;
     scene.isSettingsOpen = false;
     scene.updateSettingsButtonLabel();
-    scene.updateMuteButtonState();
-    scene.updateMusicButtonState();
+    scene.refreshVolumeUI();
     scene.updateTestingModeButtonState();
     scene.updateMapSkipButtonState();
 }
