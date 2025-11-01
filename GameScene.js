@@ -6,7 +6,8 @@ import {
     ZONE_AREA_PADDING_TOP,
     ZONE_AREA_PADDING_BOTTOM,
     ZONE_LABEL_FONT_SIZE,
-    ZONE_LABEL_OFFSET
+    ZONE_LABEL_OFFSET,
+    ZONE_BACKGROUND_TILE_SCALE
 } from './objects/DiceZone.js';
 import { setupButtons, setupHealthBar, setupEnemyUI } from './objects/UI.js';
 import { setTextButtonEnabled } from './objects/ui/ButtonStyles.js';
@@ -333,6 +334,7 @@ export class GameScene extends Phaser.Scene {
         this.currentZoneBackgroundTextureKey = null;
 
         this.mapTitleText = null;
+        this.diceAreaBackground = null;
     }
 
     preload() {
@@ -434,6 +436,7 @@ export class GameScene extends Phaser.Scene {
         // --- Buttons ---
         setupButtons(this);
         this.updateRollButtonState();
+        this.createDiceAreaBackground();
         createMenuUI(this);
         createSettingsUI(this);
         this.instructionsUI = new InstructionsUI(this);
@@ -569,6 +572,130 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.updateZonePreviewText();
+    }
+
+    createDiceAreaBackground() {
+        if (this.diceAreaBackground) {
+            if (Array.isArray(this.zoneVisuals)) {
+                this.zoneVisuals = this.zoneVisuals.filter(item => item !== this.diceAreaBackground);
+            }
+            this.diceAreaBackground.destroy();
+            this.diceAreaBackground = null;
+        }
+
+        const textureKey = this.getZoneBackgroundTextureKey();
+        const metrics = this.getDiceAreaBackgroundMetrics();
+        const {
+            centerX = this.scale.width / 2,
+            centerY = CONSTANTS.GRID_Y + (CONSTANTS.BUTTONS_Y - CONSTANTS.GRID_Y) / 2,
+            width = 600,
+            height = 220
+        } = metrics || {};
+
+        this.diceAreaBackground = this.add.tileSprite(centerX, centerY, width, height, textureKey)
+            .setOrigin(0.5)
+            .setTileScale(ZONE_BACKGROUND_TILE_SCALE, ZONE_BACKGROUND_TILE_SCALE)
+            .setAlpha(0.9);
+        this.diceAreaBackground.setDepth(-5);
+
+        if (!Array.isArray(this.zoneVisuals)) {
+            this.zoneVisuals = [];
+        }
+        if (!this.zoneVisuals.includes(this.diceAreaBackground)) {
+            this.zoneVisuals.push(this.diceAreaBackground);
+        }
+
+        this.updateDiceAreaBackgroundLayout();
+    }
+
+    getDiceAreaButtonBounds() {
+        const buttons = [this.rollButton, this.sortButton, this.resolveButton]
+            .filter(button => button && button.scene);
+
+        if (buttons.length === 0) {
+            const firstSlotX = CONSTANTS.SLOT_START_X;
+            const lastSlotX = firstSlotX + (CONSTANTS.DICE_PER_SET - 1) * CONSTANTS.SLOT_SPACING;
+            const left = firstSlotX - CONSTANTS.DIE_SIZE / 2;
+            const right = lastSlotX + CONSTANTS.DIE_SIZE / 2;
+            return {
+                minX: left,
+                maxX: right,
+                minY: CONSTANTS.BUTTONS_Y,
+                maxY: CONSTANTS.BUTTONS_Y
+            };
+        }
+
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+
+        buttons.forEach(button => {
+            const width = button.displayWidth || button.width || 0;
+            const height = button.displayHeight || button.height || 0;
+            const halfWidth = width / 2;
+            const halfHeight = height / 2;
+            const x = button.x || 0;
+            const y = button.y || 0;
+
+            minX = Math.min(minX, x - halfWidth);
+            maxX = Math.max(maxX, x + halfWidth);
+            minY = Math.min(minY, y - halfHeight);
+            maxY = Math.max(maxY, y + halfHeight);
+        });
+
+        return { minX, maxX, minY, maxY };
+    }
+
+    getDiceAreaBackgroundMetrics() {
+        const diceCount = Array.isArray(this.dice) && this.dice.length > 0
+            ? this.dice.length
+            : CONSTANTS.DICE_PER_SET;
+        const clampedCount = Math.max(1, diceCount);
+        const firstSlotX = CONSTANTS.SLOT_START_X;
+        const lastSlotX = firstSlotX + (clampedCount - 1) * CONSTANTS.SLOT_SPACING;
+        const diceLeft = firstSlotX - CONSTANTS.DIE_SIZE / 2;
+        const diceRight = lastSlotX + CONSTANTS.DIE_SIZE / 2;
+
+        const buttonBounds = this.getDiceAreaButtonBounds();
+
+        const paddingX = 60;
+        const paddingTop = 50;
+        const paddingBottom = 70;
+
+        const left = Math.min(diceLeft, buttonBounds.minX || diceLeft) - paddingX;
+        const right = Math.max(diceRight, buttonBounds.maxX || diceRight) + paddingX;
+        const topBase = CONSTANTS.GRID_Y - CONSTANTS.DIE_SIZE / 2;
+        const bottomBase = CONSTANTS.BUTTONS_Y;
+        const top = Math.min(topBase, buttonBounds.minY || topBase) - paddingTop;
+        const bottom = Math.max(bottomBase, buttonBounds.maxY || bottomBase) + paddingBottom;
+
+        const width = Math.max(0, right - left);
+        const height = Math.max(0, bottom - top);
+        const centerX = left + width / 2;
+        const centerY = top + height / 2;
+
+        return { centerX, centerY, width, height };
+    }
+
+    updateDiceAreaBackgroundLayout() {
+        if (!this.diceAreaBackground || !this.diceAreaBackground.scene) {
+            return;
+        }
+
+        const metrics = this.getDiceAreaBackgroundMetrics();
+        if (!metrics) {
+            return;
+        }
+
+        const { centerX, centerY, width, height } = metrics;
+        this.diceAreaBackground.setPosition(centerX, centerY);
+        if (typeof this.diceAreaBackground.setSize === 'function') {
+            this.diceAreaBackground.setSize(width, height);
+        }
+        if (typeof this.diceAreaBackground.setDisplaySize === 'function') {
+            this.diceAreaBackground.setDisplaySize(width, height);
+        }
     }
 
     getMaxDicePerZone() {
@@ -741,6 +868,8 @@ export class GameScene extends Phaser.Scene {
             this.zoneAreaBackground.setPosition(zoneAreaCenterX, zoneAreaCenterY);
             this.zoneAreaBackground.setSize(zoneAreaWidth, zoneAreaHeight);
         }
+
+        this.updateDiceAreaBackgroundLayout();
 
         this.layoutZoneDice('defend');
         this.layoutZoneDice('attack');
@@ -3415,6 +3544,7 @@ export class GameScene extends Phaser.Scene {
 
         applyTexture(this.defendZoneBackground);
         applyTexture(this.attackZoneBackground);
+        applyTexture(this.diceAreaBackground);
     }
 
     getOutsideBackgroundLayerKeysForConfig(config) {
