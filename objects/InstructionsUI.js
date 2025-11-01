@@ -17,6 +17,48 @@ const BULLET_LINE_HEIGHT = 30;
 const BULLET_SPACING = 16;
 const BODY_PADDING = 80;
 
+function hasExtendedCharacters(text) {
+    if (text === null || text === undefined) {
+        return false;
+    }
+    const content = Array.isArray(text) ? text.join('') : String(text);
+    return /[^\u0000-\u007f]/.test(content);
+}
+
+function splitByCharacterSupport(text) {
+    if (!text) {
+        return [];
+    }
+
+    const result = [];
+    let buffer = '';
+    let bufferIsExtended = null;
+
+    Array.from(text).forEach((char) => {
+        const isExtended = hasExtendedCharacters(char);
+        if (bufferIsExtended === null) {
+            buffer = char;
+            bufferIsExtended = isExtended;
+            return;
+        }
+
+        if (isExtended === bufferIsExtended) {
+            buffer += char;
+            return;
+        }
+
+        result.push({ text: buffer, useBitmap: !bufferIsExtended });
+        buffer = char;
+        bufferIsExtended = isExtended;
+    });
+
+    if (buffer) {
+        result.push({ text: buffer, useBitmap: !bufferIsExtended });
+    }
+
+    return result;
+}
+
 const PAGES = [
     {
         title: 'Welcome to Dice Game (WIP)!',
@@ -439,20 +481,14 @@ export class InstructionsUI {
                 return;
             }
 
-            const isWhitespace = /^\s+$/.test(token.text);
+            const isWhitespace = token.isWhitespace;
             const tokenStyle = {
                 fontSize: '20px',
                 color: token.color || BODY_TEXT_COLOR,
-                wordWrap: { width: maxLineWidth }
+                forceNormalText: !token.useBitmap
             };
 
-            const measurement = this.scene.make.text({
-                add: false,
-                text: token.text,
-                style: tokenStyle
-            });
-            const tokenWidth = measurement.width;
-            measurement.destroy();
+            const tokenWidth = this.measureTokenWidth(token.text, tokenStyle);
 
             if (!isWhitespace && cursorX > textStartX && cursorX - textStartX + tokenWidth > maxLineWidth) {
                 cursorX = textStartX;
@@ -493,7 +529,25 @@ export class InstructionsUI {
                 if (part.length === 0) {
                     return;
                 }
-                tokens.push({ text: part, color });
+
+                const isWhitespace = /^\s+$/.test(part);
+                if (isWhitespace) {
+                    tokens.push({ text: part, color, isWhitespace: true, useBitmap: !hasExtendedCharacters(part) });
+                    return;
+                }
+
+                const glyphSegments = splitByCharacterSupport(part);
+                glyphSegments.forEach((glyphSegment) => {
+                    if (!glyphSegment.text) {
+                        return;
+                    }
+                    tokens.push({
+                        text: glyphSegment.text,
+                        color,
+                        isWhitespace: false,
+                        useBitmap: glyphSegment.useBitmap
+                    });
+                });
             });
         });
 
@@ -512,28 +566,33 @@ export class InstructionsUI {
                 return;
             }
 
-            const isWhitespace = /^\s+$/.test(token.text);
             const lastEntry = combined[combined.length - 1];
 
-            if (!lastEntry) {
-                if (isWhitespace) {
+            if (token.isWhitespace) {
+                if (lastEntry && lastEntry.isWhitespace) {
+                    lastEntry.text += token.text;
                     return;
                 }
-                combined.push({ text: token.text, color: token.color });
+                combined.push({
+                    text: token.text,
+                    color: token.color,
+                    isWhitespace: true,
+                    useBitmap: token.useBitmap
+                });
                 return;
             }
 
-            if (isWhitespace) {
-                lastEntry.text += token.text;
+            if (!lastEntry || lastEntry.isWhitespace || lastEntry.color !== token.color || lastEntry.useBitmap !== token.useBitmap) {
+                combined.push({
+                    text: token.text,
+                    color: token.color,
+                    isWhitespace: false,
+                    useBitmap: token.useBitmap
+                });
                 return;
             }
 
-            if (lastEntry.color === token.color) {
-                lastEntry.text += token.text;
-                return;
-            }
-
-            combined.push({ text: token.text, color: token.color });
+            combined[combined.length - 1].text += token.text;
         });
 
         return combined;
@@ -592,5 +651,25 @@ export class InstructionsUI {
         }
 
         return segments;
+    }
+
+    measureTokenWidth(text, style) {
+        if (!text) {
+            return 0;
+        }
+
+        const measurement = this.scene.make.text({
+            add: false,
+            text,
+            style
+        });
+
+        const width = measurement ? measurement.width : 0;
+
+        if (measurement) {
+            measurement.destroy();
+        }
+
+        return width;
     }
 }
