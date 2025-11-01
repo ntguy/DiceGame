@@ -96,32 +96,6 @@ export function applyTextButtonStyle(button, {
             };
         };
 
-        const updateInteractiveArea = (target, width, height) => {
-            if (!target || !target.input || !target.input.hitArea) {
-                return;
-            }
-
-            const originX = typeof target.originX === 'number' ? target.originX : 0.5;
-            const originY = typeof target.originY === 'number' ? target.originY : 0.5;
-            const resolvedWidth = Math.max(1, width);
-            const resolvedHeight = Math.max(1, height);
-
-            const hitArea = target.input.hitArea;
-            if (typeof hitArea.setTo === 'function') {
-                hitArea.setTo(
-                    -resolvedWidth * originX,
-                    -resolvedHeight * originY,
-                    resolvedWidth,
-                    resolvedHeight
-                );
-            } else {
-                hitArea.x = -resolvedWidth * originX;
-                hitArea.y = -resolvedHeight * originY;
-                hitArea.width = resolvedWidth;
-                hitArea.height = resolvedHeight;
-            }
-        };
-
         const { width, height } = computeDimensions();
         const baseColorObj = getColorObject(backgroundBaseColor);
         const baseColorInt = toInt(baseColorObj);
@@ -165,12 +139,6 @@ export function applyTextButtonStyle(button, {
             if (typeof backgroundRect.setDisplaySize === 'function') {
                 backgroundRect.setDisplaySize(dims.width, dims.height);
             }
-
-            updateInteractiveArea(backgroundRect, dims.width, dims.height);
-
-            const buttonWidth = Math.max(1, button.displayWidth || button.width || 0);
-            const buttonHeight = Math.max(1, button.displayHeight || button.height || 0);
-            updateInteractiveArea(button, buttonWidth, buttonHeight);
         };
 
         const updateTransform = () => {
@@ -323,8 +291,7 @@ export function applyTextButtonStyle(button, {
         baseY: button.y,
         pressOffset,
         backgroundRect,
-        backgroundState,
-        syncSize: typeof syncSize === 'function' ? syncSize : () => {}
+        backgroundState
     };
 
     button.setDataEnabled();
@@ -430,9 +397,6 @@ export function setTextButtonEnabled(button, enabled, overrides = {}) {
             state.backgroundRect.setFillStyle(color, alpha);
             state.backgroundRect.setAlpha(state.enabledAlpha);
         }
-        if (typeof state.syncSize === 'function') {
-            state.syncSize();
-        }
     } else {
         button.disableInteractive();
         button.setTint(state.disabledTint);
@@ -444,9 +408,6 @@ export function setTextButtonEnabled(button, enabled, overrides = {}) {
             const alpha = state.backgroundState ? state.backgroundState.baseAlpha : 1;
             state.backgroundRect.setFillStyle(color, alpha);
             state.backgroundRect.setAlpha(state.disabledAlpha);
-        }
-        if (typeof state.syncSize === 'function') {
-            state.syncSize();
         }
     }
 }
