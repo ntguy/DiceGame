@@ -184,7 +184,8 @@ export class BackpackUI {
             const emojiText = this.scene.add.text(0, 0, '', {
                 fontSize: '32px',
                 color: '#ffffff',
-                forceNormalText: true
+                forceNormalText: true,
+                padding: CONSTANTS.EMOJI_TEXT_PADDING,
             }).setOrigin(0.5);
 
             const labelText = this.scene.add.text(0, DICE_SLOT_SIZE / 2 + 16, '', {
@@ -371,7 +372,8 @@ export class BackpackUI {
             const iconText = this.scene.add.text(0, 0, '', {
                 fontSize: '32px',
                 color: '#ffffff',
-                forceNormalText: true
+                forceNormalText: true,
+                padding: CONSTANTS.EMOJI_TEXT_PADDING,
             }).setOrigin(0.5);
 
             const labelText = this.scene.add.text(0, radius + 16, '', {
