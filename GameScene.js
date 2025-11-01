@@ -55,8 +55,6 @@ const CHAIN_REACTOR_BONUS_OVERRIDES = {
     'YAHTZEE': 30
 };
 
-const ICON_VOLUME_RESTORE_VALUE = 0.5;
-
 function getRandomIndexExclusive(maxExclusive) {
     if (!Number.isFinite(maxExclusive) || maxExclusive <= 0) {
         return 0;
@@ -135,6 +133,8 @@ export class GameScene extends Phaser.Scene {
         this.musicSlider = null;
         this.sfxVolume = CONSTANTS.DEFAULT_SFX_VOLUME;
         this.musicVolume = CONSTANTS.DEFAULT_MUSIC_VOLUME;
+        this.sfxVolumeBeforeMute = this.sfxVolume;
+        this.musicVolumeBeforeMute = this.musicVolume;
         this.isGameOver = false;
         this.testingModeEnabled = false;
         this.pathManager = null;
@@ -5279,24 +5279,48 @@ export class GameScene extends Phaser.Scene {
     }
 
     setSfxVolume(value) {
-        this.sfxVolume = this.clampVolume(value, CONSTANTS.DEFAULT_SFX_VOLUME);
+        const clamped = this.clampVolume(value, CONSTANTS.DEFAULT_SFX_VOLUME);
+        this.sfxVolume = clamped;
+        if (clamped > 0) {
+            this.sfxVolumeBeforeMute = clamped;
+        }
         this.updateSfxVolumeUI();
     }
 
     toggleSfxMute() {
-        const targetVolume = this.sfxVolume <= 0 ? ICON_VOLUME_RESTORE_VALUE : 0;
-        this.setSfxVolume(targetVolume);
+        if (this.sfxVolume <= 0) {
+            const restore = Number.isFinite(this.sfxVolumeBeforeMute)
+                ? this.sfxVolumeBeforeMute
+                : CONSTANTS.DEFAULT_SFX_VOLUME;
+            this.setSfxVolume(restore);
+            return;
+        }
+
+        this.sfxVolumeBeforeMute = this.sfxVolume;
+        this.setSfxVolume(0);
     }
 
     setMusicVolume(value) {
-        this.musicVolume = this.clampVolume(value, CONSTANTS.DEFAULT_MUSIC_VOLUME);
+        const clamped = this.clampVolume(value, CONSTANTS.DEFAULT_MUSIC_VOLUME);
+        this.musicVolume = clamped;
+        if (clamped > 0) {
+            this.musicVolumeBeforeMute = clamped;
+        }
         this.updateBackgroundMusicState();
         this.updateMusicVolumeUI();
     }
 
     toggleMusicMute() {
-        const targetVolume = this.musicVolume <= 0 ? ICON_VOLUME_RESTORE_VALUE : 0;
-        this.setMusicVolume(targetVolume);
+        if (this.musicVolume <= 0) {
+            const restore = Number.isFinite(this.musicVolumeBeforeMute)
+                ? this.musicVolumeBeforeMute
+                : CONSTANTS.DEFAULT_MUSIC_VOLUME;
+            this.setMusicVolume(restore);
+            return;
+        }
+
+        this.musicVolumeBeforeMute = this.musicVolume;
+        this.setMusicVolume(0);
     }
 
     updateBackgroundMusicState() {
