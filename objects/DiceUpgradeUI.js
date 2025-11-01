@@ -260,25 +260,13 @@ export class DiceUpgradeUI {
         this.updateSkipButtonLayout();
     }
 
-    getRightmostOptionEdgeX() {
-        if (!Array.isArray(this.cardEntries) || this.cardEntries.length === 0) {
-            return null;
-        }
-
-        return this.cardEntries.reduce((max, entry) => {
-            const edgeX = entry && entry.container ? entry.container.x + CARD_WIDTH / 2 : -Infinity;
-            return Math.max(max, edgeX);
-        }, -Infinity);
-    }
-
     updateSkipButtonLayout() {
         if (!this.skipButton || !this.skipButton.container) {
             return;
         }
 
-        const rightEdge = this.getRightmostOptionEdgeX();
-        const fallbackX = PANEL_WIDTH / 2 - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
-        const targetX = Number.isFinite(rightEdge) ? rightEdge - SKIP_BUTTON_WIDTH / 2 : fallbackX;
+        const modalRightEdge = PANEL_WIDTH / 2;
+        const targetX = modalRightEdge - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
 
         const upgradeButtonY = this.upgradeButton && this.upgradeButton.container
             ? this.upgradeButton.container.y
