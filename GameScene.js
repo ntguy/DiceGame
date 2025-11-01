@@ -5117,6 +5117,24 @@ export class GameScene extends Phaser.Scene {
         this.mapSkipButton.setVisible(shouldShow);
         setTextButtonEnabled(this.mapSkipButton, shouldShow);
 
+        const settingsBg = this.settingsBackground;
+        if (settingsBg) {
+            const baseHeight = Number.isFinite(this.settingsBackgroundBaseHeight)
+                ? this.settingsBackgroundBaseHeight
+                : settingsBg.height;
+            const expandedHeight = Number.isFinite(this.settingsBackgroundExpandedHeight)
+                ? this.settingsBackgroundExpandedHeight
+                : baseHeight;
+            const targetHeight = shouldShow ? expandedHeight : baseHeight;
+
+            if (typeof settingsBg.setSize === 'function') {
+                settingsBg.setSize(settingsBg.width, targetHeight);
+            }
+            if (typeof settingsBg.setDisplaySize === 'function') {
+                settingsBg.setDisplaySize(settingsBg.width, targetHeight);
+            }
+        }
+
         if (typeof this.layoutHeaderButtons === 'function') {
             this.layoutHeaderButtons();
         }
