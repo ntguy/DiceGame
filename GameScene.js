@@ -4436,7 +4436,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     rollShopRelics(count = SHOP_RELIC_COUNT) {
-        const available = this.getUnownedRelics();
+        const available = this.getUnownedGeneralRelics();
         const pool = available.slice();
         const selections = [];
 
@@ -4446,6 +4446,15 @@ export class GameScene extends Phaser.Scene {
         }
 
         return selections;
+    }
+
+    getGeneralRelicPool() {
+        return Array.isArray(this.relicPools?.general) ? this.relicPools.general : [];
+    }
+
+    getUnownedGeneralRelics() {
+        const pool = this.getGeneralRelicPool();
+        return pool.filter(relic => relic && relic.id && !this.ownedRelicIds.has(relic.id));
     }
 
     getBossRelicPool() {
