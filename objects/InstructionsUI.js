@@ -17,6 +17,10 @@ const BULLET_LINE_HEIGHT = 30;
 const BULLET_SPACING = 16;
 const BODY_PADDING = 80;
 
+const ASCII_RANGE_REGEX = /[^\u0000-\u007f]/;
+const WHITESPACE_REGEX = /\s/;
+const WORD_CHAR_REGEX = /[A-Za-z0-9'\-]/;
+
 const PAGES = [
     {
         title: 'Welcome to Dice Game (WIP)!',
@@ -422,7 +426,7 @@ export class InstructionsUI {
         const spacingAfter = BULLET_SPACING;
 
         const bullet = this.scene.add.text(bulletX, startY, '•', {
-            fontSize: '20px',
+            fontSize: '32px',
             color: BULLET_COLOR,
             fontStyle: 'bold'
         }).setOrigin(0, 0);
@@ -430,7 +434,7 @@ export class InstructionsUI {
         this.bodyContainer.add(bullet);
         this.bodyEntries.push(bullet);
 
-        const tokens = this.combineTokens(this.createTokens(point));
+        const tokens = this.createTokens(point);
         let cursorX = textStartX;
         let lineIndex = 0;
 
@@ -439,20 +443,18 @@ export class InstructionsUI {
                 return;
             }
 
-            const isWhitespace = /^\s+$/.test(token.text);
+            const isWhitespace = token.type === 'space';
             const tokenStyle = {
-                fontSize: '20px',
+                fontSize: '32px',
                 color: token.color || BODY_TEXT_COLOR,
                 wordWrap: { width: maxLineWidth }
             };
 
-            const measurement = this.scene.make.text({
-                add: false,
-                text: token.text,
-                style: tokenStyle
-            });
-            const tokenWidth = measurement.width;
-            measurement.destroy();
+            if (token.requiresNormalText) {
+                tokenStyle.forceNormalText = true;
+            }
+
+            const tokenWidth = this.measureTokenWidth(token.text, tokenStyle);
 
             if (!isWhitespace && cursorX > textStartX && cursorX - textStartX + tokenWidth > maxLineWidth) {
                 cursorX = textStartX;
@@ -479,6 +481,27 @@ export class InstructionsUI {
         return startY + (lineIndex + 1) * lineHeight + spacingAfter;
     }
 
+    measureTokenWidth(text, style) {
+        const measurement = this.scene.add.text(0, 0, text, style);
+
+        if (measurement) {
+            if (typeof measurement.setVisible === 'function') {
+                measurement.setVisible(false);
+            }
+            if (typeof measurement.setActive === 'function') {
+                measurement.setActive(false);
+            }
+        }
+
+        const width = measurement ? measurement.width : 0;
+
+        if (measurement && typeof measurement.destroy === 'function') {
+            measurement.destroy();
+        }
+
+        return width;
+    }
+
     createTokens(point) {
         const baseColor = BODY_TEXT_COLOR;
         const text = point && point.text ? point.text : '';
@@ -488,55 +511,70 @@ export class InstructionsUI {
 
         segments.forEach((segment) => {
             const color = segment.color || baseColor;
-            const parts = segment.text.split(/(\s+)/);
-            parts.forEach((part) => {
-                if (part.length === 0) {
+            this.tokenizeSegment(segment.text).forEach((part) => {
+                if (!part.text) {
                     return;
                 }
-                tokens.push({ text: part, color });
+                tokens.push({
+                    text: part.text,
+                    color,
+                    type: part.type,
+                    requiresNormalText: part.requiresNormalText
+                });
             });
         });
 
         return tokens;
     }
 
-    combineTokens(tokens) {
-        if (!Array.isArray(tokens) || tokens.length === 0) {
+    tokenizeSegment(text) {
+        if (!text) {
             return [];
         }
 
-        const combined = [];
+        const tokens = [];
+        let buffer = '';
 
-        tokens.forEach((token) => {
-            if (!token || typeof token.text !== 'string' || token.text.length === 0) {
+        const flushBuffer = () => {
+            if (buffer.length === 0) {
                 return;
             }
+            tokens.push({
+                text: buffer,
+                type: 'word',
+                requiresNormalText: ASCII_RANGE_REGEX.test(buffer)
+            });
+            buffer = '';
+        };
 
-            const isWhitespace = /^\s+$/.test(token.text);
-            const lastEntry = combined[combined.length - 1];
-
-            if (!lastEntry) {
-                if (isWhitespace) {
-                    return;
-                }
-                combined.push({ text: token.text, color: token.color });
-                return;
+        for (const char of text) {
+            if (WHITESPACE_REGEX.test(char)) {
+                flushBuffer();
+                tokens.push({
+                    text: char,
+                    type: 'space',
+                    requiresNormalText: ASCII_RANGE_REGEX.test(char)
+                });
+                continue;
             }
 
-            if (isWhitespace) {
-                lastEntry.text += token.text;
-                return;
+            if (WORD_CHAR_REGEX.test(char)) {
+                buffer += char;
+                continue;
             }
 
-            if (lastEntry.color === token.color) {
-                lastEntry.text += token.text;
-                return;
-            }
+            flushBuffer();
 
-            combined.push({ text: token.text, color: token.color });
-        });
+            tokens.push({
+                text: char,
+                type: 'symbol',
+                requiresNormalText: ASCII_RANGE_REGEX.test(char)
+            });
+        }
 
-        return combined;
+        flushBuffer();
+
+        return tokens;
     }
 
     splitByKeywords(text, keywords, baseColor) {
