@@ -39,16 +39,16 @@ export function setupButtons(scene) {
             styles: {
                 baseColor: '#f1c40f',
                 textColor: '#1b1300',
-                hoverBlend: 0.16,
-                pressBlend: 0.3,
+                hoverBlend: 0.25,
+                pressBlend: 0.4,
                 disabledBlend: 0.45,
                 enabledAlpha: 1,
                 disabledAlpha: 0.45,
                 background: {
                     paddingX: 56,
                     paddingY: 28,
-                    strokeColor: '#1b1300',
-                    strokeAlpha: 0.4,
+                    strokeColor: '#2b2300',
+                    strokeAlpha: 1,
                     strokeWidth: 4
                 }
             },
@@ -62,16 +62,16 @@ export function setupButtons(scene) {
             styles: {
                 baseColor: '#1abc9c',
                 textColor: '#002f29',
-                hoverBlend: 0.14,
-                pressBlend: 0.28,
+                hoverBlend: 0.20,
+                pressBlend: 0.4,
                 disabledBlend: 0.35,
                 enabledAlpha: 1,
                 disabledAlpha: 0.45,
                 background: {
                     paddingX: 56,
                     paddingY: 28,
-                    strokeColor: '#002f29',
-                    strokeAlpha: 0.45,
+                    strokeColor: '#002819',
+                    strokeAlpha: 1,
                     strokeWidth: 4
                 }
             },
@@ -81,20 +81,20 @@ export function setupButtons(scene) {
         {
             key: 'resolveButton',
             label: 'RESOLVE',
-            textColor: '#f7ecff',
+            textColor: '#001f19',
             styles: {
                 baseColor: '#9b59b6',
-                textColor: '#f7ecff',
+                textColor: '#001f19',
                 hoverBlend: 0.14,
                 pressBlend: 0.3,
                 disabledBlend: 0.38,
                 enabledAlpha: 1,
                 disabledAlpha: 0.45,
                 background: {
-                    paddingX: 64,
+                    paddingX: 32,
                     paddingY: 28,
-                    strokeColor: '#4a235a',
-                    strokeAlpha: 0.5,
+                    strokeColor: '#1a0324',
+                    strokeAlpha: 1,
                     strokeWidth: 4
                 }
             },
