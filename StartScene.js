@@ -94,20 +94,26 @@ export class StartScene extends Phaser.Scene {
             })
             .on('pointerdown', () => {
                 button.disableInteractive();
+                const transitionDuration = 250;
+
+                this.scene.transition({
+                    target: 'GameScene',
+                    duration: transitionDuration,
+                    moveAbove: true,
+                    allowInput: false
+                });
+
                 this.tweens.add({
                     targets: this.titleDice,
                     alpha: 0,
-                    duration: 200,
+                    duration: transitionDuration,
                     ease: 'Cubic.easeIn'
                 });
                 this.tweens.add({
                     targets: button,
                     alpha: 0,
-                    duration: 200,
-                    ease: 'Cubic.easeIn',
-                    onComplete: () => {
-                        this.scene.start('GameScene');
-                    }
+                    duration: transitionDuration,
+                    ease: 'Cubic.easeIn'
                 });
             });
     }
