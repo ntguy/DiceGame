@@ -172,11 +172,11 @@ export function createSettingsUI(scene) {
     });
 
     const testingButtonY = musicRowY + controlSpacing;
-    scene.testingModeButton = scene.add.text(panelWidth / 2, testingButtonY, '', {
+    scene.testingModeButton = scene.add.text(leftPadding + 10, testingButtonY, 'Testing Mode: OFF', {
         fontSize: '32px',
         color: '#ecf0f1',
         padding: { x: 18, y: 10 }
-    }).setOrigin(0.5);
+    }).setOrigin(0);
     applyTextButtonStyle(scene.testingModeButton, {
         baseColor: '#34495e',
         textColor: '#ecf0f1',
@@ -194,8 +194,14 @@ export function createSettingsUI(scene) {
         }
     });
     setTextButtonEnabled(scene.testingModeButton, true);
+    // scene.testingModeButton.setVisible(false);
     scene.testingModeButton.on('pointerdown', () => scene.toggleTestingMode());
     settingsPanel.add(scene.testingModeButton);
+
+    // scene.time.delayedCall(10, () => {
+    //     scene.testingModeButton.setVisible(true);
+    //     setTextButtonEnabled(scene.testingModeButton, true);
+    // });
 
     const skipButtonY = testingButtonY + controlSpacing;
     const expandedContentHeight = contentHeight + controlSpacing;

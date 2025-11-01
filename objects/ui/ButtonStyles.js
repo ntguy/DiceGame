@@ -324,7 +324,7 @@ export function applyTextButtonStyle(button, {
         pressOffset,
         backgroundRect,
         backgroundState,
-        syncSize
+        syncSize: typeof syncSize === 'function' ? syncSize : () => {}
     };
 
     button.setDataEnabled();
