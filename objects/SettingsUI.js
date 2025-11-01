@@ -173,7 +173,7 @@ export function createSettingsUI(scene) {
 
     const testingButtonY = musicRowY + controlSpacing;
     scene.testingModeButton = scene.add.text(panelWidth / 2, testingButtonY, '', {
-        fontSize: '22px',
+        fontSize: '32px',
         color: '#ecf0f1',
         padding: { x: 18, y: 10 }
     }).setOrigin(0.5);
@@ -204,7 +204,7 @@ export function createSettingsUI(scene) {
     scene.settingsBackgroundExpandedHeight = expandedContentHeight;
 
     scene.mapSkipButton = scene.add.text(panelWidth / 2, skipButtonY, 'Skip Map', {
-        fontSize: '22px',
+        fontSize: '32px',
         color: '#ecf0f1',
         padding: { x: 18, y: 10 }
     }).setOrigin(0.5);
