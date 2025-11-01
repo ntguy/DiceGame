@@ -6,7 +6,7 @@ const MAX_NULLIFY_COUNT = 4;
 
 export class LeechEnemy extends BaseEnemy {
     constructor() {
-        super({ name: 'Leech', maxHealth: 80 });
+        super({ name: 'Leech', maxHealth: 88 });
 
         this.nullifyCount = BASE_NULLIFY_COUNT;
 

@@ -3,7 +3,7 @@ import { attackAction, burnAction, defendAction, lockAction, weakenAction } from
 
 export class LockdownEnemy extends BaseEnemy {
     constructor() {
-        super({ name: 'Lockdown', maxHealth: 180 });
+        super({ name: 'Lockdown', maxHealth: 150 });
 
         this.baseDefensePerReroll = 1;
         this.defensePerReroll = this.baseDefensePerReroll;
@@ -76,7 +76,8 @@ export class LockdownEnemy extends BaseEnemy {
                 key: 'lockdown_escalate',
                 title: 'Total Control',
                 components: [
-                    { type: 'defend', value: 10 },
+                    { type: 'defend', value: 8 },
+                    { type: 'attack', value: 8 },
                     { type: 'lock', value: 1 },
                     { type: 'weaken', value: 1 }
                 ],

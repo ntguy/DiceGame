@@ -84,17 +84,17 @@ const mapTwoEnemySequence = [
     },
     {
         enemyIndex: 2,
-        rewardGold: 140,
+        rewardGold: 120,
         label: 'Battle'
     },
     {
         enemyIndex: 3,
-        rewardGold: 180,
+        rewardGold: 150,
         label: 'Battle'
     },
     {
         enemyIndex: 4,
-        rewardGold: 220,
+        rewardGold: 200,
         label: 'Boss',
         isBoss: true
     }
@@ -111,28 +111,28 @@ const mapThreeEnemyFactories = () => [
 const mapThreeEnemySequence = [
     {
         enemyIndex: 0,
-        rewardGold: 90,
+        rewardGold: 80,
         label: 'Battle',
         start: true
     },
     {
         enemyIndex: 1,
-        rewardGold: 130,
+        rewardGold: 110,
         label: 'Battle'
     },
     {
         enemyIndex: 2,
-        rewardGold: 170,
+        rewardGold: 150,
         label: 'Battle'
     },
     {
         enemyIndex: 3,
-        rewardGold: 210,
+        rewardGold: 180,
         label: 'Battle'
     },
     {
         enemyIndex: 4,
-        rewardGold: 320,
+        rewardGold: 300,
         label: 'Boss',
         isBoss: true
     }

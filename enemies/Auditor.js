@@ -5,7 +5,7 @@ const INITIAL_BURN_DEFEND_VALUE = 0;
 
 export class AuditorEnemy extends BaseEnemy {
     constructor() {
-        super({ name: 'Auditor', maxHealth: 100 });
+        super({ name: 'Auditor', maxHealth: 111 });
 
         this.statusActivated = false;
         this.statusActivationPending = false;
