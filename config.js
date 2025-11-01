@@ -12,7 +12,7 @@ export const CONSTANTS = {
     DIE_SIZE: 60,
     GRID_Y: 500,
     SLOT_SPACING: 80, // dieSize + 20
-    SLOT_START_X: 175,
+    SLOT_START_X: 200,
     BUTTONS_Y: 630,
     RESOLVE_TEXT_Y: 250,
     DICE_PER_SET: 6,
