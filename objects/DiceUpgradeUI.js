@@ -105,7 +105,7 @@ export class DiceUpgradeUI {
             }).setOrigin(0.5);
 
             const descriptionText = this.scene.add.text(0, nameText.y + 28, option.description || '', {
-                fontSize: '16px',
+                fontSize: '17px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
             }).setOrigin(0.5, 0);
@@ -170,7 +170,7 @@ export class DiceUpgradeUI {
             .setInteractive({ useHandCursor: true });
 
         const buttonText = this.scene.add.text(0, 0, 'Select dice', {
-            fontSize: '22px',
+            fontSize: '32px',
             color: '#f9e79f',
             fontStyle: 'bold'
         }).setOrigin(0.5);
@@ -224,7 +224,7 @@ export class DiceUpgradeUI {
             .setInteractive({ useHandCursor: true });
 
         const buttonText = this.scene.add.text(0, 0, 'Skip', {
-            fontSize: '20px',
+            fontSize: '32px',
             color: '#f9e79f',
             fontStyle: 'bold'
         }).setOrigin(0.5);
@@ -260,25 +260,13 @@ export class DiceUpgradeUI {
         this.updateSkipButtonLayout();
     }
 
-    getRightmostOptionEdgeX() {
-        if (!Array.isArray(this.cardEntries) || this.cardEntries.length === 0) {
-            return null;
-        }
-
-        return this.cardEntries.reduce((max, entry) => {
-            const edgeX = entry && entry.container ? entry.container.x + CARD_WIDTH / 2 : -Infinity;
-            return Math.max(max, edgeX);
-        }, -Infinity);
-    }
-
     updateSkipButtonLayout() {
         if (!this.skipButton || !this.skipButton.container) {
             return;
         }
 
-        const rightEdge = this.getRightmostOptionEdgeX();
-        const fallbackX = PANEL_WIDTH / 2 - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
-        const targetX = Number.isFinite(rightEdge) ? rightEdge - SKIP_BUTTON_WIDTH / 2 : fallbackX;
+        const modalRightEdge = PANEL_WIDTH / 2;
+        const targetX = modalRightEdge - SKIP_BUTTON_WIDTH / 2 - SKIP_BUTTON_MARGIN;
 
         const upgradeButtonY = this.upgradeButton && this.upgradeButton.container
             ? this.upgradeButton.container.y

@@ -7,7 +7,7 @@ export class PerfectBalanceRelic extends Relic {
             name: 'Perfect Balance',
             description: '+4 to zone totals when they contain an equal number of dice.',
             icon: '☯️',
-            cost: 140
+            cost: 101
         });
     }
 

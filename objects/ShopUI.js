@@ -92,7 +92,7 @@ export class ShopUI {
             }).setOrigin(0.5);
 
             const descText = this.scene.add.text(0, nameText.y + 28, relic.description, {
-                fontSize: '16px',
+                fontSize: '17px',
                 color: '#f8f9f9',
                 wordWrap: { width: CARD_WIDTH - 48 }
             }).setOrigin(0.5, 0);
