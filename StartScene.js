@@ -55,7 +55,7 @@ export class StartScene extends Phaser.Scene {
     }
 
     preload() {
-        this.cameras.main.setBackgroundColor('#111111');
+        this.cameras.main.setBackgroundColor('#212121');
         this.load.bitmapFont('boldPixels', './BoldPixels/BoldPixels.png', './BoldPixels/BoldPixels.xml');
     }
 
@@ -94,7 +94,7 @@ export class StartScene extends Phaser.Scene {
             })
             .on('pointerdown', () => {
                 button.disableInteractive();
-                const transitionDuration = 700;
+                const transitionDuration = 2000;
 
                 this.scene.transition({
                     target: 'GameScene',
@@ -107,13 +107,13 @@ export class StartScene extends Phaser.Scene {
                     targets: this.titleDice,
                     alpha: 0,
                     duration: transitionDuration,
-                    ease: 'Sine.easeOut'
+                    ease: 'Back.easeOut'
                 });
                 this.tweens.add({
                     targets: button,
                     alpha: 0,
                     duration: transitionDuration,
-                    ease: 'Sine.easeOut'
+                    ease: 'Back.easeOut'
                 });
             });
     }
