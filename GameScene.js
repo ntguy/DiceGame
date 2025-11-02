@@ -34,10 +34,32 @@ import { computeDieContribution, doesDieActAsWildcardForCombo } from './dice/Cus
 import { DiceRewardUI } from './objects/DiceRewardUI.js';
 import { playDiceRollSounds } from './utils/SoundHelpers.js';
 import { VictoryScreen } from './systems/VictoryScreen.js';
+import { createModal, destroyModal } from './objects/ui/ModalComponents.js';
 
 const SHOP_RELIC_COUNT = 3;
 const BOSS_RELIC_CHOICE_COUNT = 2;
 const BOSS_BONUS_REWARD_ID = 'boss-capacity-bonus';
+
+const TUTORIAL_CONFIG = {
+    'game-start': { title: 'Welcome to Drop + Roll!' },
+    'first-battle': { title: 'Battles' },
+    'first-zone-placement': { title: 'Zone Scoring' },
+    'first-enemy-defeated': { title: 'Collecting Dice' },
+    'first-boss-defeated': { title: 'Boss Rewards' },
+    'first-shop': { title: 'Shop' },
+    'first-upgrade': { title: 'Upgrading Dice' },
+    'first-infirmary': { title: 'Infirmary' },
+    'curse-lock': { title: 'Curse: Lock' },
+    'curse-weaken': { title: 'Curse: Weaken' },
+    'curse-nullify': { title: 'Curse: Nullify' },
+    'status-effects': { title: 'Status Effects' },
+    'curse-burn': { title: 'Burn' },
+    'wild-power': { title: 'Wild' }
+};
+
+const TUTORIAL_MODAL_DIMENSIONS = { width: 600, height: 360 };
+const TUTORIAL_MODAL_MARGIN = 32;
+const TUTORIAL_CLOSE_BUTTON = { width: 140, height: 48 };
 
 const CHAIN_REACTOR_BONUS_OVERRIDES = {
     'Pair': 3,
@@ -190,6 +212,10 @@ export class GameScene extends Phaser.Scene {
         this.isFirstCombatTurn = false;
         this.modalInputLockCount = 0;
         this.previousInputTopOnly = null;
+        this.tutorialEnabled = false;
+        this.shownTutorialKeys = new Set();
+        this.tutorialQueue = [];
+        this.activeTutorialModal = null;
     }
 
     acquireModalInputLock() {
@@ -331,6 +357,10 @@ export class GameScene extends Phaser.Scene {
         } else {
             this.musicVolume = defaultMusic;
         }
+        this.tutorialEnabled = !!(data && data.tutorialEnabled);
+        this.shownTutorialKeys = new Set();
+        this.tutorialQueue = [];
+        this.activeTutorialModal = null;
         this.testingModeEnabled = data && typeof data.testingModeEnabled === 'boolean'
             ? data.testingModeEnabled
             : false;
@@ -558,6 +588,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.enterMapState();
+        this.triggerTutorialEvent('game-start');
     }
 
     createZonePreviewTexts() {
@@ -734,6 +765,10 @@ export class GameScene extends Phaser.Scene {
             diceList.length = 0;
             orderedDice.forEach(die => diceList.push(die));
         }
+    }
+
+    handleDiePlacedInZone() {
+        this.triggerTutorialEvent('first-zone-placement');
     }
 
     updateZoneVisualLayout() {
@@ -1596,6 +1631,9 @@ export class GameScene extends Phaser.Scene {
         if (typeof relic.apply === 'function') {
             relic.apply(this);
         }
+        if (relic.id === 'wild-one') {
+            this.triggerTutorialEvent('wild-power');
+        }
 
         if (!skipUiUpdate && this.relicUI) {
             this.relicUI.updateDisplay();
@@ -1710,6 +1748,9 @@ export class GameScene extends Phaser.Scene {
 
         const blueprint = createDieBlueprint(id, { isUpgraded: !!options.isUpgraded });
         this.customDiceLoadout = [...this.customDiceLoadout, blueprint];
+        if (id === 'wild') {
+            this.triggerTutorialEvent('wild-power');
+        }
         this.refreshBackpackContents();
         this.updateDiceRewardHandState();
         return true;
@@ -4162,6 +4203,7 @@ export class GameScene extends Phaser.Scene {
 
         this.pendingPostCombatTransition = false;
         this.inCombat = true;
+        this.triggerTutorialEvent('first-battle');
         if (this.pathUI) {
             this.pathUI.hide();
         }
@@ -4203,6 +4245,7 @@ export class GameScene extends Phaser.Scene {
                 this.restoreEnemyBaseStats(enemy);
             }
         }
+        this.evaluateTutorialEnemyTraits(enemy);
         if (this.enemyHealthBar && this.enemyHealthBar.nameText) {
             const baseName = enemy ? enemy.name : '???';
             const displayName = node.isBoss ? `${baseName} (Boss)` : baseName;
@@ -4240,6 +4283,7 @@ export class GameScene extends Phaser.Scene {
             onPurchase: relicId => this.handleShopPurchase(relicId),
             onClose: () => this.closeShop()
         });
+        this.triggerTutorialEvent('first-shop');
     }
 
     getUpgradeableDiceOptions(count = 3) {
@@ -4289,6 +4333,7 @@ export class GameScene extends Phaser.Scene {
             onUpgrade: (selections, cost) => this.handleDiceUpgradeSelection(selections, cost),
             onClose: () => this.completeFacilityNode()
         });
+        this.triggerTutorialEvent('first-upgrade');
     }
 
     handleDiceUpgradeSelection(selections = [], cost = 0) {
@@ -4601,6 +4646,7 @@ export class GameScene extends Phaser.Scene {
             onIncreaseMax: () => this.handleInfirmaryChoice('max'),
             onHealFull: () => this.handleInfirmaryChoice('full')
         });
+        this.triggerTutorialEvent('first-infirmary');
     }
 
     openTowerOfTen() {
@@ -4634,6 +4680,292 @@ export class GameScene extends Phaser.Scene {
         } else if (outcome === 'bust') {
             this.playSound('towerOfTenBust', { volume: 0.9 });
         }
+    }
+
+    triggerTutorialEvent(key) {
+        if (!this.tutorialEnabled || !key) {
+            return;
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(TUTORIAL_CONFIG, key)) {
+            return;
+        }
+
+        if (!(this.shownTutorialKeys instanceof Set)) {
+            this.shownTutorialKeys = new Set();
+        }
+
+        if (this.shownTutorialKeys.has(key)) {
+            return;
+        }
+
+        this.shownTutorialKeys.add(key);
+
+        if (!Array.isArray(this.tutorialQueue)) {
+            this.tutorialQueue = [];
+        }
+
+        const config = TUTORIAL_CONFIG[key];
+        this.tutorialQueue.push({ key, title: config.title });
+        this.processTutorialQueue();
+    }
+
+    processTutorialQueue() {
+        if (!this.tutorialEnabled) {
+            return;
+        }
+
+        if (this.activeTutorialModal) {
+            return;
+        }
+
+        if (!Array.isArray(this.tutorialQueue) || this.tutorialQueue.length === 0) {
+            return;
+        }
+
+        const step = this.tutorialQueue.shift();
+        if (!step || !step.title) {
+            this.processTutorialQueue();
+            return;
+        }
+
+        this.showTutorialModal(step);
+    }
+
+    showTutorialModal(step) {
+        if (!step || !step.title) {
+            this.processTutorialQueue();
+            return;
+        }
+
+        const modal = createModal(this, {
+            width: TUTORIAL_MODAL_DIMENSIONS.width,
+            height: TUTORIAL_MODAL_DIMENSIONS.height,
+            title: step.title
+        });
+
+        this.acquireModalInputLock();
+
+        const buttonWidth = TUTORIAL_CLOSE_BUTTON.width;
+        const buttonHeight = TUTORIAL_CLOSE_BUTTON.height;
+        const panelHalfWidth = TUTORIAL_MODAL_DIMENSIONS.width / 2;
+        const panelHalfHeight = TUTORIAL_MODAL_DIMENSIONS.height / 2;
+        const buttonX = panelHalfWidth - TUTORIAL_MODAL_MARGIN - buttonWidth / 2;
+        const buttonY = panelHalfHeight - TUTORIAL_MODAL_MARGIN - buttonHeight / 2;
+
+        const closeButton = this.add.rectangle(buttonX, buttonY, buttonWidth, buttonHeight, 0x271438, 0.95)
+            .setOrigin(0.5)
+            .setStrokeStyle(2, 0xf1c40f, 0.85)
+            .setInteractive({ useHandCursor: true });
+        const closeText = this.add.text(buttonX, buttonY, 'Close', {
+            fontSize: '24px',
+            color: '#f9e79f',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        closeButton.on('pointerover', () => {
+            closeButton.setFillStyle(0x332040, 0.95);
+        });
+        closeButton.on('pointerout', () => {
+            closeButton.setFillStyle(0x271438, 0.95);
+        });
+        closeButton.on('pointerdown', () => {
+            this.closeTutorialModal();
+        });
+
+        modal.container.add(closeButton);
+        modal.container.add(closeText);
+
+        this.activeTutorialModal = { modal, closeButton, closeText };
+    }
+
+    closeTutorialModal() {
+        if (!this.activeTutorialModal) {
+            return;
+        }
+
+        const { modal, closeButton } = this.activeTutorialModal;
+        if (closeButton && typeof closeButton.disableInteractive === 'function') {
+            closeButton.disableInteractive();
+        }
+        if (modal) {
+            destroyModal(modal);
+        }
+        this.activeTutorialModal = null;
+        this.releaseModalInputLock();
+        this.processTutorialQueue();
+    }
+
+    evaluateTutorialEnemyTraits(enemy) {
+        if (!enemy) {
+            return;
+        }
+
+        const flags = this.getEnemyEffectFlags(enemy);
+        if (flags.hasLock) {
+            this.triggerTutorialEvent('curse-lock');
+        }
+        if (flags.hasWeaken) {
+            this.triggerTutorialEvent('curse-weaken');
+        }
+        if (flags.hasNullify) {
+            this.triggerTutorialEvent('curse-nullify');
+        }
+        if (flags.hasBurn) {
+            this.triggerTutorialEvent('curse-burn');
+        }
+        if (flags.hasStatus) {
+            this.triggerTutorialEvent('status-effects');
+        }
+    }
+
+    getEnemyEffectFlags(enemy) {
+        const flags = {
+            hasLock: false,
+            hasWeaken: false,
+            hasNullify: false,
+            hasBurn: false,
+            hasStatus: false
+        };
+
+        if (!enemy) {
+            return flags;
+        }
+
+        const inspectComponent = (component) => {
+            if (!component || typeof component.type !== 'string') {
+                return;
+            }
+
+            switch (component.type) {
+                case 'lock':
+                    flags.hasLock = true;
+                    break;
+                case 'weaken':
+                    flags.hasWeaken = true;
+                    break;
+                case 'nullify':
+                    flags.hasNullify = true;
+                    break;
+                case 'burn':
+                    flags.hasBurn = true;
+                    break;
+                case 'status':
+                    flags.hasStatus = true;
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        const inspectAction = (action) => {
+            if (!action || typeof action.type !== 'string') {
+                return;
+            }
+
+            switch (action.type) {
+                case 'lock':
+                    flags.hasLock = true;
+                    break;
+                case 'weaken':
+                    flags.hasWeaken = true;
+                    break;
+                case 'nullify':
+                    flags.hasNullify = true;
+                    break;
+                case 'burn':
+                    flags.hasBurn = true;
+                    break;
+                case 'crowd_control': {
+                    const lockCount = Number.isFinite(action.lock) ? action.lock : 0;
+                    const weakenCount = Number.isFinite(action.weaken) ? action.weaken : 0;
+                    const nullifyCount = Number.isFinite(action.nullify) ? action.nullify : 0;
+                    if (lockCount > 0) {
+                        flags.hasLock = true;
+                    }
+                    if (weakenCount > 0) {
+                        flags.hasWeaken = true;
+                    }
+                    if (nullifyCount > 0) {
+                        flags.hasNullify = true;
+                    }
+                    break;
+                }
+                case 'set_max_dice_per_zone':
+                    flags.hasStatus = true;
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        const moveLists = [];
+        if (Array.isArray(enemy.moves)) {
+            moveLists.push(enemy.moves);
+        }
+        if (Array.isArray(enemy.baseMoves)) {
+            moveLists.push(enemy.baseMoves);
+        }
+
+        moveLists.forEach(list => {
+            list.forEach(move => {
+                if (!move) {
+                    return;
+                }
+
+                const components = Array.isArray(move.intentComponents) ? move.intentComponents : [];
+                components.forEach(component => inspectComponent(component));
+
+                const actions = Array.isArray(move.actions) ? move.actions : [];
+                actions.forEach(action => inspectAction(action));
+            });
+        });
+
+        const statusDescription = this.safeGetEnemyStatusDescription(enemy);
+        if (typeof enemy.getStatusDescription === 'function') {
+            flags.hasStatus = true;
+        }
+        if (typeof statusDescription === 'string' && statusDescription.trim().length > 0) {
+            const lower = statusDescription.toLowerCase();
+            if (lower.includes('lock')) {
+                flags.hasLock = true;
+            }
+            if (lower.includes('weaken')) {
+                flags.hasWeaken = true;
+            }
+            if (lower.includes('nullify')) {
+                flags.hasNullify = true;
+            }
+            if (lower.includes('burn')) {
+                flags.hasBurn = true;
+            }
+        }
+
+        return flags;
+    }
+
+    safeGetEnemyStatusDescription(enemy) {
+        if (!enemy || typeof enemy.getStatusDescription !== 'function') {
+            return '';
+        }
+
+        const tryGet = (arg) => {
+            try {
+                const result = enemy.getStatusDescription(arg);
+                if (typeof result === 'string' && result.trim().length > 0) {
+                    return result.trim();
+                }
+            } catch (error) {
+                return '';
+            }
+            return '';
+        };
+
+        let description = tryGet(undefined);
+        if (!description) {
+            description = tryGet(this.upcomingEnemyMove || null);
+        }
+        return description || '';
     }
 
     handleInfirmaryChoice(selection) {
@@ -4972,6 +5304,12 @@ export class GameScene extends Phaser.Scene {
         const defeatedNode = this.pathManager && defeatedNodeId
             ? this.pathManager.getNode(defeatedNodeId)
             : null;
+        const defeatedIsBoss = !!(defeatedNode && defeatedNode.isBoss);
+        if (defeatedIsBoss) {
+            this.triggerTutorialEvent('first-boss-defeated');
+        } else {
+            this.triggerTutorialEvent('first-enemy-defeated');
+        }
 
         let totalGoldReward = 0;
         if (defeatedNode && defeatedNode.rewardGold) {
@@ -4986,7 +5324,7 @@ export class GameScene extends Phaser.Scene {
             this.showNodeMessage(`+${totalGoldReward} Gold`, '#f1c40f');
         }
 
-        if (defeatedNode && defeatedNode.isBoss) {
+        if (defeatedIsBoss) {
             const missing = this.playerMaxHealth - this.playerHealth;
             if (missing > 0) {
                 const healAmount = Math.ceil(missing / 2);
@@ -5014,7 +5352,7 @@ export class GameScene extends Phaser.Scene {
         this.resetZoneConstraints();
         this.prepareNextEnemyMove();
 
-        const defeatedFinalBoss = defeatedNode && defeatedNode.isBoss
+        const defeatedFinalBoss = defeatedIsBoss
             && this.isOnFinalMap()
             && (!this.pathManager || !this.pathManager.hasPendingNodes());
 
@@ -5026,7 +5364,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        if (defeatedNode && defeatedNode.isBoss) {
+        if (defeatedIsBoss) {
             this.presentBossRelicReward();
             return;
         }

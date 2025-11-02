@@ -160,4 +160,5 @@ export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     }
 
     callSceneMethod(scene, 'updateZonePreviewText');
+    callSceneMethod(scene, 'handleDiePlacedInZone', { die, zoneType });
 }
