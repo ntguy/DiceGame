@@ -47,6 +47,7 @@ export function setupZones(scene) {
         0x000000,
         ZONE_AREA_BACKGROUND_ALPHA
     ).setOrigin(0.5);
+    zoneAreaBackground.setStrokeStyle(4, 0x000000, 1);
     visuals.push(zoneAreaBackground);
 
     const defendZone = scene.add.zone(defendZoneX, zoneY, zoneWidth, zoneHeight).setRectangleDropZone(zoneWidth, zoneHeight);

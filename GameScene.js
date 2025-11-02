@@ -785,7 +785,7 @@ export class GameScene extends Phaser.Scene {
             const zoneAreaCenterY = zoneAreaTop + zoneAreaHeight / 2;
 
             this.zoneAreaBackground.setPosition(zoneAreaCenterX, zoneAreaCenterY + 10);
-            this.zoneAreaBackground.setSize(zoneAreaWidth, zoneAreaHeight + 30);
+            this.zoneAreaBackground.setSize(zoneAreaWidth - 32, zoneAreaHeight + 30);
         }
 
         this.layoutZoneDice('defend');
