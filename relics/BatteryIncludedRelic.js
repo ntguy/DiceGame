@@ -7,7 +7,7 @@ export class BatteryIncludedRelic extends Relic {
             name: 'Battery Included',
             description: '+1 die that can be resolved three times per battle.',
             icon: '🔋',
-            cost: 130
+            cost: 200
         });
     }
 

@@ -191,7 +191,7 @@ export class DiceRewardUI {
                 .setInteractive({ useHandCursor: true });
 
             const buttonText = this.scene.add.text(0, buttonY, this.selectionEnabledLabel, {
-                fontSize: '18px',
+                fontSize: '17px',
                 color: '#f9e79f'
             }).setOrigin(0.5);
 

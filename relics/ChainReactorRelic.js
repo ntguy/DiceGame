@@ -7,7 +7,7 @@ export class ChainReactorRelic extends Relic {
             name: 'Chain Reactor',
             description: 'Combo bonuses are significantly stronger.',
             icon: '⛓️',
-            cost: 150
+            cost: 200
         });
     }
 
