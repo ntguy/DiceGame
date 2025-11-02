@@ -1350,7 +1350,7 @@ export class GameScene extends Phaser.Scene {
             const isWildcard = wildcardMap.has(die)
                 ? wildcardMap.get(die)
                 : (this.hasWildOneRelic && die.value === 1) || doesDieActAsWildcardForCombo(die);
-            const pipColor = isWildcard ? 0x000000 : 0xffffff;
+            const pipColor = isWildcard ? 0xcc1111 : 0x000000;
             die.renderFace(die.value, { pipColor, updateValue: false });
             die.wildAssignedValue = null;
             if (typeof die.hideWildBaseValueOverlay === 'function') {
@@ -1385,8 +1385,8 @@ export class GameScene extends Phaser.Scene {
                 }
 
                 const boundedValue = Math.max(1, Math.min(6, assignedValue));
-                // Wild visuals: show chosen wildcard value with black pips.
-                die.renderFace(boundedValue, { pipColor: 0x000000, updateValue: false });
+                // Wild visuals: show chosen wildcard value with red pips.
+                die.renderFace(boundedValue, { pipColor: 0xcc1111, updateValue: false });
                 die.wildAssignedValue = boundedValue;
                 if (boundedValue !== die.value && typeof die.showWildBaseValueOverlay === 'function') {
                     die.showWildBaseValueOverlay(die.value);

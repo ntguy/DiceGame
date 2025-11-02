@@ -18,21 +18,12 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
 
     const bg = scene.add.rectangle(0, 0, CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE, 0x444444)
         .setOrigin(0.5)
-        .setStrokeStyle(2, 0xffffff, 0.35);
+        .setStrokeStyle(2, 0x000000, 0.35);
     container.add(bg);
     container.bg = bg;
 
-    container.baseStrokeStyle = { width: 2, color: 0xffffff, alpha: 0.35 };
-    container.highlightStrokeStyle = { width: 2, color: 0xf1c40f, alpha: 0.7 };
+    container.baseStrokeStyle = { width: 4, color: 0x000000, alpha: 1 };
     container.currentZone = null;
-
-    container.updateFaceValueHighlight = function() {
-        const zone = typeof this.currentZone === 'string' ? this.currentZone : null;
-        const shouldHighlight = doesDieFaceValueTriggerRule(this, { zone });
-        const style = shouldHighlight ? this.highlightStrokeStyle : this.baseStrokeStyle;
-        this.bg.setStrokeStyle(style.width, style.color, style.alpha);
-        this.isFaceValueHighlighted = shouldHighlight;
-    };
 
     const lockIndicator = scene.add.text(0, -CONSTANTS.DIE_SIZE / 2 - 16, '🔒', {
         fontSize: '32px',
@@ -52,24 +43,21 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     container.isWeakened = false;
     container.isNullified = false;
     container.displayValue = container.value;
-    container.displayPipColor = 0xffffff;
+    container.displayPipColor = 0x000000;
     container.isFaceValueHighlighted = false;
 
     container.renderFace = function(faceValue, { pipColor, updateValue = true } = {}) {
-        // Wild One relic: render rolled 1s with black pips when active.
-        const color = typeof pipColor === 'number' ? pipColor : (faceValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff);
+        // Wild One relic: render rolled 1s with red pips when active.
+        const color = typeof pipColor === 'number' ? pipColor : (faceValue === 1 && scene.hasWildOneRelic ? 0xcc1111 : 0x000000);
         drawDiePips(scene, container, faceValue, { pipColor: color, updateValue });
     };
 
-    const wildBaseValueText = scene.add.text(0, 0, '', {
-        fontSize: '36px',
-        color: '#cccccc',
-        fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 4,
+    const wildBaseValueText = scene.add.text(0, -16, '1', {
+        fontSize: '32px',
+        color: '#000000',
         align: 'center',
-    }).setOrigin(0.5).setVisible(false);
-    wildBaseValueText.setAlpha(0.25);
+    }).setOrigin(0.5).setVisible(true);
+    wildBaseValueText.setAlpha(0.5);
     container.add(wildBaseValueText);
     container.wildBaseValueText = wildBaseValueText;
 
@@ -79,7 +67,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
         }
         this.wildBaseValueText.setText(`${value}`);
         this.wildBaseValueText.setVisible(true);
-        this.bringToTop(this.wildBaseValueText);
+        // container.bringToTop(this.wildBaseValueText);
         if (this.lockIndicator) {
             this.bringToTop(this.lockIndicator);
         }
@@ -98,6 +86,33 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     }).setOrigin(0.5, 0);
     container.add(emojiText);
     container.emojiText = emojiText;
+
+    const highlightShadow = scene.add.circle(0, emojiY, 20, 0xf1c40f, 0.5)
+        .setOrigin(0.5, 0)
+        .setVisible(false);
+    container.add(highlightShadow);
+    container.highlightShadow = highlightShadow;
+
+    container.updateFaceValueHighlight = function() {
+        this.bg.setStrokeStyle(this.baseStrokeStyle.width, this.baseStrokeStyle.color, this.baseStrokeStyle.alpha);
+        const shouldHighlight = doesDieFaceValueTriggerRule(this);
+        if (shouldHighlight) {
+            this.highlightShadow.setVisible(shouldHighlight);
+            container.sendToBack(this.highlightShadow);
+            if (!this._highlightTween && this.scene && this.scene.tweens) {
+                // start a subtle bounce (fade) tween on the shadow alpha
+                this.highlightShadow.setAlpha(0);
+                this._highlightTween = this.scene.tweens.add({
+                    targets: this.highlightShadow,
+                    alpha: 1,
+                    duration: 2000,
+                    ease: 'Sine.easeOut',
+                    yoyo: true,
+                    repeat: -1
+                });
+            }
+        }
+    };
 
     const leftStatusText = scene.add.text(0, emojiY, '', {
         fontSize: '20px',
@@ -190,8 +205,8 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     // Add die methods
     container.roll = function() {
         const rolledValue = rollCustomDieValue(scene, container);
-        // Wild One relic: default rerolls of 1 should appear as wild (black) pips.
-        const pipColor = rolledValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
+        // Wild One relic: default rerolls of 1 should appear as wild red pips.
+        const pipColor = rolledValue === 1 && scene.hasWildOneRelic ? 0xcc1111 : 0x000000;
         this.renderFace(rolledValue, { pipColor, updateValue: true });
     };
 
@@ -222,7 +237,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     container.updateVisualState = function() {
         const dieAlpha = this.isWeakened ? 0.4 : 1;
 
-        this.bg.fillColor = this.selected ? 0x2ecc71 : 0x444444;
+        this.bg.fillColor = this.selected ? 0x21c151 : 0xccccb5;
         this.bg.setAlpha(dieAlpha);
 
         if (Array.isArray(this.pips)) {
@@ -264,7 +279,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     };
 
     const initialValue = rollCustomDieValue(scene, container);
-    const initialPipColor = initialValue === 1 && scene.hasWildOneRelic ? 0x000000 : 0xffffff;
+    const initialPipColor = initialValue === 1 && scene.hasWildOneRelic ? 0xcc1111 : 0x000000;
     container.renderFace(initialValue, { pipColor: initialPipColor, updateValue: true });
     container.updateVisualState();
     container.updateEmoji();
@@ -326,7 +341,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     return container;
 }
 
-function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue = true } = {}) {
+function drawDiePips(scene, container, value, { pipColor = 0x000000, updateValue = true } = {}) {
     if (updateValue) {
         container.value = value;
     }
@@ -346,7 +361,7 @@ function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue
 
     const pipPositions = positions[value] || [];
     pipPositions.forEach(([dx, dy]) => {
-        const pip = scene.add.circle(dx, dy, 6, pipColor);
+        const pip = scene.add.rectangle(dx, dy, 9, 9, pipColor);
         container.add(pip);
         pip.setAlpha(container.isWeakened ? 0.5 : 1);
         container.pips.push(pip);
@@ -359,9 +374,9 @@ function drawDiePips(scene, container, value, { pipColor = 0xffffff, updateValue
     if (container.lockIndicator) {
         container.bringToTop(container.lockIndicator);
     }
-    if (container.wildBaseValueText) {
-        container.bringToTop(container.wildBaseValueText);
-    }
+    // if (container.wildBaseValueText) {
+    //     container.bringToTop(container.wildBaseValueText);
+    // }
     container.sendToBack(container.bg);
 }
 

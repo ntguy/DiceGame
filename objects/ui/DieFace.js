@@ -28,7 +28,7 @@ export function createDieFace(scene, {
     strokeColor = 0xffffff,
     strokeWidth = 3,
     strokeAlpha = 0.35,
-    pipColor = 0xffffff,
+    pipColor = 0x000000,
     questionMarkStyle
 } = {}) {
     const container = scene.add.container(0, 0);

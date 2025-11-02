@@ -178,7 +178,7 @@ export class StartScene extends Phaser.Scene {
     createDiceSquare(x, y) {
         const container = this.add.container(x + this.dieSize / 2, y + this.dieSize / 2);
         const outlineColor = 0x111111;
-        const backgroundColor = 0xf7f3e9;
+        const backgroundColor = 0xccccb5;
         const pipColor = 0x111111;
 
         const rect = this.add.rectangle(0, 0, this.dieSize, this.dieSize, backgroundColor, 1);

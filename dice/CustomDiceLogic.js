@@ -74,7 +74,7 @@ export function getDieEmoji(dieOrId) {
     return typeof definition.emoji === 'string' ? definition.emoji : '';
 }
 
-export function doesDieFaceValueTriggerRule(die, { zone } = {}) {
+export function doesDieFaceValueTriggerRule(die = {}) {
     if (!die) {
         return false;
     }
