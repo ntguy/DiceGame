@@ -4,9 +4,9 @@ import { createDieFace, setDieBackgroundFill } from './ui/DieFace.js';
 import { playDiceRollSounds } from '../utils/SoundHelpers.js';
 import { getBitmapTint } from '../utils/bitmapTextFactory.js';
 
-const PANEL_WIDTH = 820;
+const PANEL_WIDTH = 900;
 const PANEL_HEIGHT = 550;
-const INSTRUCTIONS_WIDTH = 280;
+const INSTRUCTIONS_WIDTH = 320;
 const DICE_SIZE = 80;
 const DICE_SPACING = 100;
 const TOWER_STEP_COUNT = 11;
@@ -161,7 +161,7 @@ export class TowerOfTenUI {
     }
 
     createTowerDisplay() {
-        const towerX = -PANEL_WIDTH / 2 + 100;
+        const towerX = -PANEL_WIDTH / 2 + 130;
         const towerContainer = this.scene.add.container(towerX, 20);
         const totalHeight = TOWER_STEP_COUNT * TOWER_STEP_SIZE + (TOWER_STEP_COUNT - 1) * TOWER_STEP_SPACING;
 
@@ -239,7 +239,7 @@ export class TowerOfTenUI {
             y: bottomY,
             label: 'Leave (0g)',
             onClick: () => this.handleFinish(),
-            width: 280,
+            width: INSTRUCTIONS_WIDTH,
         });
     }
 
@@ -666,7 +666,7 @@ export class TowerOfTenUI {
                 `- 11+ loses (${penaltyText}) gold.`,
                 '- After rolling: cash out early, or re-roll some/all dice once.',
             ];
-            this.instructionsBodyText.setText(instructionLines.join('\n'));
+            this.instructionsBodyText.setText(instructionLines.join('\n\n'));
         }
     }
 }
