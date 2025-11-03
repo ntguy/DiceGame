@@ -5,7 +5,7 @@ export class ChainReactorRelic extends Relic {
         super({
             id: 'chain-reactor',
             name: 'Chain Reactor',
-            description: 'Combo bonuses are significantly stronger.',
+            description: 'Combo bonuses are stronger.',
             icon: '⛓️',
             cost: 200
         });

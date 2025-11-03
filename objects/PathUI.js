@@ -1,5 +1,5 @@
 import { PATH_NODE_TYPES } from '../systems/PathManager.js';
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 
 const COLORS = {
     [PATH_NODE_TYPES.ENEMY]: 0xe74c3c,

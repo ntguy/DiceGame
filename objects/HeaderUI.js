@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 
 const HEADER_BUTTON_WIDTH = 52;
 const HEADER_BUTTON_BASE_COLOR = 0x1c2833;

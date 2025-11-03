@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 import { isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
 import { snapToGrid } from './Dice.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';

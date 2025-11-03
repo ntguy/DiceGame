@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 import { getCustomDieDefinitionById, MAX_CUSTOM_DICE, createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle, setRectangleButtonEnabled } from './ui/ButtonStyles.js';

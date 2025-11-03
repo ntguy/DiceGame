@@ -1,17 +1,14 @@
 import { createModal, destroyModal } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
 import { createDieFace, setDieBackgroundFill, setDieStroke } from './ui/DieFace.js';
+import { COLORS } from '../constants.js';
+import { populateContainerWithPoints } from '../systems/InstructionsRenderer.js';
 
 const PANEL_WIDTH = 920;
 const PANEL_HEIGHT = 540;
 const BODY_WIDTH = PANEL_WIDTH - 160;
 const PAGE_SPACING = 60;
 
-const KEYWORD_COLOR = '#f4d03f';
-const DEFENSE_COLOR = '#5dade2';
-const ATTACK_COLOR = '#e74c3c';
-const BODY_TEXT_COLOR = '#ecf0f1';
-const BULLET_COLOR = '#f7dc6f';
 const BULLET_INDENT = 28;
 const BULLET_LINE_HEIGHT = 30;
 const BULLET_SPACING = 16;
@@ -38,19 +35,19 @@ const PAGES = [
         points: [
             {
                 text: 'At the start of each battle, roll all your dice to form your opening hand.',
-                keywords: [{ phrase: 'roll', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'roll', color: COLORS.KEYWORD_COLOR }]
             },
             {
                 text: 'You have 2 re-rolls to use on any number of dice, aiming to form combos to place in the Defend (🛡️) and Attack (⚔️) zones.',
                 keywords: [
-                    { phrase: '2 re-rolls', color: KEYWORD_COLOR },
-                    { phrase: 'Defend (🛡️)', color: DEFENSE_COLOR },
-                    { phrase: 'Attack (⚔️)', color: ATTACK_COLOR }
+                    { phrase: '2 re-rolls', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Defend (🛡️)', color: COLORS.DEFENSE_COLOR },
+                    { phrase: 'Attack (⚔️)', color: COLORS.ATTACK_COLOR }
                 ]
             },
             {
                 text: 'Press Resolve to play your turn.',
-                keywords: [{ phrase: 'Resolve', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'Resolve', color: COLORS.KEYWORD_COLOR }]
             }
         ]
     },
@@ -60,18 +57,18 @@ const PAGES = [
             {
                 text: 'Zone Total equals Face Value plus any Combo Bonus.',
                 keywords: [
-                    { phrase: 'Zone Total', color: KEYWORD_COLOR },
-                    { phrase: 'Face Value', color: KEYWORD_COLOR },
-                    { phrase: 'Combo Bonus', color: KEYWORD_COLOR }
+                    { phrase: 'Zone Total', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Face Value', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Combo Bonus', color: COLORS.KEYWORD_COLOR }
                 ]
             },
             {
                 text: 'Face Value: adds the sum of die faces placed in a zone.',
-                keywords: [{ phrase: 'Face Value', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'Face Value', color: COLORS.KEYWORD_COLOR }]
             },
             {
                 text: 'Combo Bonus: rewards rarer patterns — check the menu (☰) for exact values.',
-                keywords: [{ phrase: 'Combo Bonus', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'Combo Bonus', color: COLORS.KEYWORD_COLOR }]
             }
         ]
     },
@@ -80,11 +77,11 @@ const PAGES = [
         points: [
             {
                 text: 'Choose a special die after each battle to improve your hand.',
-                keywords: [{ phrase: 'special die', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'special die', color: COLORS.KEYWORD_COLOR }]
             },
             {
-                text: 'Carry up to 6 dice. Discard within your pack to make room for new finds.',
-                keywords: [{ phrase: '6', color: KEYWORD_COLOR }]
+                text: 'Carry up to 6 dice. Discard within your pack 🎒 to make room for new finds.',
+                keywords: [{ phrase: '6', color: COLORS.KEYWORD_COLOR }]
             },
             {
                 text: 'Tap a die icon during battle for a reminder of its effect.',
@@ -96,11 +93,11 @@ const PAGES = [
         points: [
             {
                 text: 'Relics are found in shops or after bosses.',
-                keywords: [{ phrase: 'Relics', color: KEYWORD_COLOR }, { phrase: 'shops', color: KEYWORD_COLOR }, { phrase: 'bosses', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'Relics', color: COLORS.KEYWORD_COLOR }, { phrase: 'shops', color: COLORS.KEYWORD_COLOR }, { phrase: 'bosses', color: COLORS.KEYWORD_COLOR }]
             },
             {
                 text: 'Carry up to 6 relics at once. Sell within your pack to make room for new finds.',
-                keywords: [{ phrase: '6', color: KEYWORD_COLOR }, { phrase: 'Sell', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: '6', color: COLORS.KEYWORD_COLOR }, { phrase: 'Sell', color: COLORS.KEYWORD_COLOR }]
             },
             {
                 text: 'Tap a relic icon during battle for a reminder of its effect.',
@@ -112,17 +109,17 @@ const PAGES = [
         points: [
             {
                 text: 'Some enemies can apply curses to your dice, which are cleansed if the die is unused for a turn.',
-                keywords: [{ phrase: 'curses', color: KEYWORD_COLOR }, { phrase: 'cleansed', color: KEYWORD_COLOR }, { phrase: 'unused', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'curses', color: COLORS.KEYWORD_COLOR }, { phrase: 'cleansed', color: COLORS.KEYWORD_COLOR }, { phrase: 'unused', color: COLORS.KEYWORD_COLOR }]
             },
             {
                 text: 'Locked dice cannot be re-rolled.',
-                keywords: [{ phrase: 'Locked', color: KEYWORD_COLOR }]
+                keywords: [{ phrase: 'Locked', color: COLORS.KEYWORD_COLOR }]
             },
             {
                 text: 'Weakened dice contribute no FV in zone scoring.',
                 keywords: [
-                    { phrase: 'Weakened', color: KEYWORD_COLOR },
-                    { phrase: 'FV', color: KEYWORD_COLOR }
+                    { phrase: 'Weakened', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'FV', color: COLORS.KEYWORD_COLOR }
                 ]
             }
         ]
@@ -337,7 +334,7 @@ export class InstructionsUI {
         }
         if (this.bodyContainer) {
             this.bodyContainer.y = (this.titleText ? this.titleText.y : 0) + 36;
-            this.populateBody(entry.points || []);
+            populateContainerWithPoints(this.scene, this.bodyContainer, entry.points || [], { bodyWidth: BODY_WIDTH });
         }
         this.updatePageDiceStyles();
     }
@@ -427,7 +424,7 @@ export class InstructionsUI {
 
         const bullet = this.scene.add.text(bulletX, startY, '•', {
             fontSize: '32px',
-            color: BULLET_COLOR,
+            color: COLORS.BULLET_COLOR,
             fontStyle: 'bold'
         }).setOrigin(0, 0);
 
@@ -600,7 +597,7 @@ export class InstructionsUI {
                     phrase,
                     index,
                     order: idx,
-                    color: entry.color || KEYWORD_COLOR
+                    color: entry.color || COLORS.KEYWORD_COLOR
                 };
             })
             .filter(Boolean)

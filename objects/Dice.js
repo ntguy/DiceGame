@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 import { createDieBlueprint } from '../dice/CustomDiceDefinitions.js';
 import { rollCustomDieValue, getDieEmoji, isZoneAllowedForDie, doesDieFaceValueTriggerRule } from '../dice/CustomDiceLogic.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';

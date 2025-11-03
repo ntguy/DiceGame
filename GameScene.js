@@ -1,4 +1,4 @@
-import { CONSTANTS } from './config.js';
+import { CONSTANTS, COLORS } from './constants.js';
 import { createDie, snapToGrid } from './objects/Dice.js';
 import {
     setupZones,
@@ -35,29 +35,226 @@ import { DiceRewardUI } from './objects/DiceRewardUI.js';
 import { playDiceRollSounds } from './utils/SoundHelpers.js';
 import { VictoryScreen } from './systems/VictoryScreen.js';
 import { createModal, destroyModal } from './objects/ui/ModalComponents.js';
+import { populateContainerWithPoints } from '../systems/InstructionsRenderer.js';
 
 const SHOP_RELIC_COUNT = 3;
 const BOSS_RELIC_CHOICE_COUNT = 2;
 const BOSS_BONUS_REWARD_ID = 'boss-capacity-bonus';
 
 const TUTORIAL_CONFIG = {
-    'game-start': { title: 'Welcome to Drop + Roll!' },
-    'first-battle': { title: 'Battles' },
-    'first-zone-placement': { title: 'Zone Scoring' },
-    'first-enemy-defeated': { title: 'Collecting Dice' },
-    'first-boss-defeated': { title: 'Boss Rewards' },
-    'first-shop': { title: 'Shop' },
-    'first-upgrade': { title: 'Upgrading Dice' },
-    'first-infirmary': { title: 'Infirmary' },
-    'curse-lock': { title: 'Curse: Lock' },
-    'curse-weaken': { title: 'Curse: Weaken' },
-    'curse-nullify': { title: 'Curse: Nullify' },
-    'status-effects': { title: 'Status Effects' },
-    'curse-burn': { title: 'Burn' },
-    'wild-power': { title: 'Wild' }
+    'game-start': { title: 'Welcome to Drop + Roll!',
+        modal: { width: 700, height: 360 },
+        points: [
+            {
+                text: 'Drop through multiple maps, battling monsters and growing your collection of dice.',
+            },
+            {
+                text: 'Choose your path wisely to power up between battles.',
+            }
+        ] 
+    },
+    'first-battle': { title: 'Battles',
+        modal: { width: 800, height: 500 },
+        points: [
+            {
+                text: 'At the start of each battle, roll all your dice to form your opening hand.',
+                keywords: [{ phrase: 'roll', color: COLORS.KEYWORD_COLOR }]
+            },
+            {
+                text: 'Your goal: form combos to place in the Defend and Attack zones.',
+                keywords: [
+                    { phrase: 'combos', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Defend', color: COLORS.DEFENSE_COLOR },
+                    { phrase: 'Attack', color: COLORS.ATTACK_COLOR }
+                ]
+            },
+            {
+                text: 'Click on dice to highlight which you want to re-roll. You have 2 re-rolls per turn.',
+                keywords: [
+                    { phrase: '2 re-rolls', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Defend (🛡️)', color: COLORS.DEFENSE_COLOR },
+                    { phrase: 'Attack (⚔️)', color: COLORS.ATTACK_COLOR }
+                ]
+            },
+            {
+                text: 'Under the enemy HP bar, you can see what move they will take on this turn.',
+            },
+            {
+                text: 'Press Resolve to play your turn.',
+                keywords: [{ phrase: 'Resolve', color: COLORS.KEYWORD_COLOR }]
+            }
+        ]
+     },
+    'first-zone-placement': { title: 'Zone Scoring',
+        modal: { width: 800, height: 400 },
+        points: [
+            {
+                text: `A Zone's Total is equal to Face Value plus any Combo Bonus.`,
+                keywords: [
+                    { phrase: 'Total', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Face Value', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Combo Bonus', color: COLORS.KEYWORD_COLOR }
+                ]
+            },
+            {
+                text: 'Face Value: adds the sum of all die faces placed within a zone.',
+                keywords: [{ phrase: 'Face Value', color: COLORS.KEYWORD_COLOR }]
+            },
+            {
+                text: 'Combo Bonus: extra points for patterns, especially complex ones. Check the menu (☰) for exact values.',
+                keywords: [{ phrase: 'Combo Bonus', color: COLORS.KEYWORD_COLOR }]
+            }
+        ]
+    },
+    'first-enemy-defeated': { title: 'Collecting Dice',
+        modal: { width: 800, height: 400 },
+        points: [
+            {
+                text: 'Choose a special die after each battle to improve your hand.',
+                keywords: [{ phrase: 'special die', color: COLORS.KEYWORD_COLOR }]
+            },
+            {
+                text: 'Carry up to 6 dice. Discard within your pack 🎒 to make room for new finds.',
+                keywords: [
+                    { phrase: '6', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'pack', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+            {
+                text: 'Open your pack at any time for a reminder of dice effects.',
+            }
+        ]
+    },
+    'first-boss-defeated': { title: 'Boss Rewards',
+        modal: { width: 700, height: 360 },
+        points: [
+            {
+                text: 'After defeating a boss, you heal for half of your missing HP.',
+                keywords: [{ phrase: 'heal', color: COLORS.KEYWORD_COLOR }]
+            },
+            {
+                text: 'Bosses drop the most powerful relics in the game. Choose wisely!',
+                keywords: [
+                    { phrase: 'relics', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+        ]
+     },
+    'curse-lock': { title: 'Curse: Lock',
+        modal: { width: 800, height: 360 },
+        points: [
+            {
+                text: 'Enemies can inflict a variety of curses upon your dice, such as lock.',
+                keywords: [
+                    { phrase: 'curses', color: COLORS.CURSE_COLOR },
+                    { phrase: 'lock', color: COLORS.CURSE_COLOR },
+                ]  
+            },
+            {
+                text: 'A locked die cannot be re-rolled.',
+                keywords: [
+                    { phrase: 'locked', color: COLORS.CURSE_COLOR },
+                ]  
+            },
+            {
+                text: 'Curses are cleansed if the die is not used (e.g. not placed in a zone) for a turn.',
+                keywords: [
+                    { phrase: 'cleansed', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+        ]
+     },
+    'curse-weaken': { title: 'Curse: Weaken',
+        modal: { width: 800, height: 300 },
+        points: [
+            {
+                text: 'A weakened die contributes no points to the face value of a zone.',
+                keywords: [
+                    { phrase: 'weakened', color: COLORS.CURSE_COLOR },
+                ]  
+            },
+            {
+                text: 'Curses are cleansed if the die is not used (e.g. not placed in a zone) for a turn.',
+                keywords: [
+                    { phrase: 'cleansed', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+        ]
+     },
+    'curse-nullify': { title: 'Curse: Nullify',
+        modal: { width: 800, height: 300 },
+        points: [
+            {
+                text: 'A nullified die loses any special effects, acting as a standard die.',
+                keywords: [
+                    { phrase: 'nullified', color: COLORS.CURSE_COLOR },
+                ]  
+            },
+            {
+                text: 'Curses are cleansed if the die is not used (e.g. not placed in a zone) for a turn.',
+                keywords: [
+                    { phrase: 'cleansed', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+        ]
+     },
+    'status-effects': { title: 'Status Effects',
+        modal: { width: 800, height: 300 },
+        points: [
+            {
+                text: 'Some enemies have permanent status effects.',
+                keywords: [
+                    { phrase: 'status', color: COLORS.KEYWORD_COLOR },
+                ]  
+            },
+            {
+                text: 'Pay attention! You may need to adjust your battle strategy.',
+                keywords: [
+                    { phrase: 'Pay attention!', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+        ]
+     },
+    'curse-burn': { title: 'Burn',
+        modal: { width: 700, height: 360 },
+        points: [
+            {
+                text: `Burn deals damage every turn, and will not fade on it's own.`,
+                keywords: [
+                    { phrase: 'Burn', color: COLORS.KEYWORD_COLOR },
+                ]  
+            },
+            {
+                text: 'Some dice and relics can cleanse burn from you, or even inflict it on enemies.',
+                keywords: [
+                    { phrase: 'cleanse', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'inflict', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+        ]
+     },
+    'wild-power': { title: 'Wild',
+        modal: { width: 800, height: 360 },
+        points: [
+            {
+                text: 'A wild die will morph its face value to create the highest scoring combo possible.',
+                keywords: [
+                    { phrase: 'wild', color: COLORS.ATTACK_COLOR },
+                    { phrase: 'morph', color: COLORS.KEYWORD_COLOR },
+                ]  
+            },
+            {
+                text: `The die's original Face Value, shown as a number when it has morphed, is still used for the Face Value portion of scoring.`,
+                keywords: [
+                    { phrase: 'original', color: COLORS.KEYWORD_COLOR },
+                    { phrase: 'Face Value', color: COLORS.KEYWORD_COLOR },
+                ]            
+            },
+        ]
+     }
 };
 
-const TUTORIAL_MODAL_DIMENSIONS = { width: 600, height: 360 };
+const TUTORIAL_MODAL_DIMENSIONS = { width: 800, height: 500 };
 const TUTORIAL_MODAL_MARGIN = 32;
 const TUTORIAL_CLOSE_BUTTON = { width: 140, height: 48 };
 
@@ -398,56 +595,9 @@ export class GameScene extends Phaser.Scene {
         this.backgroundMusic = null;
         this.currentMusicKey = null;
     }
-
-    preload() {
-        this.load.audio('diceRoll', './audio/single-dice-roll.mp3');
-        this.load.audio('multiDiceRoll', './audio/multi-dice-roll.mp3');
-        this.load.audio('swoosh', './audio/swoosh.mp3');
-        this.load.audio('chimeShort', './audio/chime-short.mp3');
-        this.load.audio('chimeLong', './audio/chime-long.mp3');
-        this.load.audio('tick', './audio/tick.mp3');
-        this.load.audio('tock', './audio/tock.mp3');
-        this.load.audio('towerOfTenEnter', './audio/ToT-enter.mp3');
-        this.load.audio('towerOfTenWin', './audio/ToT-win.mp3');
-        this.load.audio('towerOfTenBust', './audio/ToT-lose.mp3');
-        this.load.audio('Map1Music', './audio/Map1Music.mp3');
-        this.load.audio('Map2Music', './audio/Map2Music.mp3');
-        this.load.audio('Map3Music', './audio/Map3Music.mp3');
-        this.load.image('path_ladder', './sprites/Ladder-rotting.png');
-        this.load.image('path_ladder_clean', './sprites/Ladder-clean.png');
-        this.load.image('path_ladder_metal', './sprites/Ladder-metal.png');
-        this.load.image('path_background', './sprites/Background.png');
-        this.load.image('path_background_bright', './sprites/BackgroundBright.png');
-        this.load.image('path_background_brightest', './sprites/BackgroundBrightest.png');
-        this.load.image('outside_background_1', './sprites/Clouds 3/1.png');
-        this.load.image('outside_background_2', './sprites/Clouds 3/2.png');
-        this.load.image('outside_background_3', './sprites/Clouds 3/3.png');
-        this.load.image('outside_background_4', './sprites/Clouds 3/4.png');
-        this.load.image('outside_background_world2_1', './sprites/World2/1.png');
-        this.load.image('outside_background_world2_2', './sprites/World2/2.png');
-        this.load.image('outside_background_world2_3', './sprites/World2/3.png');
-        this.load.image('outside_background_world2_4', './sprites/World2/4.png');
-        this.load.image('outside_background_world3_1', './sprites/World3/1.png');
-        this.load.image('outside_background_world3_2', './sprites/World3/2.png');
-        this.load.image('outside_background_world3_3', './sprites/World3/3.png');
-        this.load.image('outside_background_world3_4', './sprites/World3/4.png');
-        this.load.image('outside_background_world3_5', './sprites/World3/5.png');
-        this.load.image('outside_background_world3_6', './sprites/World3/6.png');
-        this.load.image('outside_background_world3_7', './sprites/World3/7.png');
-        this.load.image('outside_background_world3_8', './sprites/World3/8.png');
-        this.load.image('outside_background_world3_9', './sprites/World3/9.png');
-        this.load.image('wall', './sprites/Wall.png');
-        this.load.image('wall2', './sprites/Wall2.png');
-        this.load.image('wall_highlight_center', './sprites/BrightWallCenter.png');
-        this.load.spritesheet('wall_torch', './sprites/spr_torch.png', {
-            frameWidth: 21,
-            frameHeight: 27
-        });
-        this.load.bitmapFont('boldPixels', './BoldPixels/BoldPixels.png', './BoldPixels/BoldPixels.xml');
-    }
     
     create() {
-        this.cameras.main.fadeIn(300, 0, 0, 0);
+        this.cameras.main.fadeIn(500, 25, 25, 37);
         this.dice = [];
         this.lockedDice = new Set();
         this.pendingLockCount = 0;
@@ -4283,7 +4433,6 @@ export class GameScene extends Phaser.Scene {
             onPurchase: relicId => this.handleShopPurchase(relicId),
             onClose: () => this.closeShop()
         });
-        this.triggerTutorialEvent('first-shop');
     }
 
     getUpgradeableDiceOptions(count = 3) {
@@ -4333,7 +4482,6 @@ export class GameScene extends Phaser.Scene {
             onUpgrade: (selections, cost) => this.handleDiceUpgradeSelection(selections, cost),
             onClose: () => this.completeFacilityNode()
         });
-        this.triggerTutorialEvent('first-upgrade');
     }
 
     handleDiceUpgradeSelection(selections = [], cost = 0) {
@@ -4646,7 +4794,6 @@ export class GameScene extends Phaser.Scene {
             onIncreaseMax: () => this.handleInfirmaryChoice('max'),
             onHealFull: () => this.handleInfirmaryChoice('full')
         });
-        this.triggerTutorialEvent('first-infirmary');
     }
 
     openTowerOfTen() {
@@ -4706,7 +4853,13 @@ export class GameScene extends Phaser.Scene {
         }
 
         const config = TUTORIAL_CONFIG[key];
-        this.tutorialQueue.push({ key, title: config.title });
+        this.tutorialQueue.push({
+            key,
+            title: config.title,
+            modal: config.modal && typeof config.modal === 'object' ? config.modal : undefined,
+            points: Array.isArray(config.points) ? config.points : undefined,
+            description: typeof config.description === 'string' ? config.description : undefined
+        });
         this.processTutorialQueue();
     }
 
@@ -4738,18 +4891,27 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        const modalWidth = (step.modal && Number.isFinite(step.modal.width)) ? Number(step.modal.width) : TUTORIAL_MODAL_DIMENSIONS.width;
+        const modalHeight = (step.modal && Number.isFinite(step.modal.height)) ? Number(step.modal.height) : TUTORIAL_MODAL_DIMENSIONS.height;
+
         const modal = createModal(this, {
-            width: TUTORIAL_MODAL_DIMENSIONS.width,
-            height: TUTORIAL_MODAL_DIMENSIONS.height,
-            title: step.title
+            width: modalWidth,
+            height: modalHeight,
+            title: step.title,
+            panelAlpha: 1,
+            depth: 200,
         });
+
+        const contentContainer = this.add.container( 0, -modalHeight/2 + 90 );
+        modal.container.add(contentContainer);
+        populateContainerWithPoints(this, contentContainer, step.points || [{ text: step.description || '' }], { bodyWidth: modalWidth - 80 });
 
         this.acquireModalInputLock();
 
         const buttonWidth = TUTORIAL_CLOSE_BUTTON.width;
         const buttonHeight = TUTORIAL_CLOSE_BUTTON.height;
-        const panelHalfWidth = TUTORIAL_MODAL_DIMENSIONS.width / 2;
-        const panelHalfHeight = TUTORIAL_MODAL_DIMENSIONS.height / 2;
+        const panelHalfWidth = modalWidth / 2;
+        const panelHalfHeight = modalHeight / 2;
         const buttonX = panelHalfWidth - TUTORIAL_MODAL_MARGIN - buttonWidth / 2;
         const buttonY = panelHalfHeight - TUTORIAL_MODAL_MARGIN - buttonHeight / 2;
 
@@ -4916,7 +5078,19 @@ export class GameScene extends Phaser.Scene {
                 const components = Array.isArray(move.intentComponents) ? move.intentComponents : [];
                 components.forEach(component => inspectComponent(component));
 
-                const actions = Array.isArray(move.actions) ? move.actions : [];
+                let actions = [];
+                if (Array.isArray(move.actions)) {
+                    actions = move.actions;
+                } else if (typeof move.createActions === 'function') {
+                    try {
+                        const created = move.createActions();
+                        if (Array.isArray(created)) {
+                            actions = created;
+                        }
+                    } catch (e) {
+                        // ignore errors from factory
+                    }
+                }
                 actions.forEach(action => inspectAction(action));
             });
         });
