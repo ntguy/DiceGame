@@ -111,6 +111,12 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
                     repeat: -1
                 });
             }
+        } else {
+            this.highlightShadow.setVisible(false);
+            if (this._highlightTween) {
+                this._highlightTween.stop();
+                this._highlightTween = null;
+            }
         }
     };
 
