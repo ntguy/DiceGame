@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 import { applyTextButtonStyle, setTextButtonEnabled } from './ui/ButtonStyles.js';
 
 function createBattleButton(scene, { x, label, textColor, styles, enabled, onClick }) {

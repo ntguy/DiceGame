@@ -1,6 +1,6 @@
 import { createModal, destroyModal, createCard } from './ui/ModalComponents.js';
 import { applyRectangleButtonStyle } from './ui/ButtonStyles.js';
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 
 const PANEL_WIDTH = 880;
 const PANEL_HEIGHT = 480;

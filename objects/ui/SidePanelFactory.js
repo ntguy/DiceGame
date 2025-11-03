@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../../config.js';
+import { CONSTANTS } from '../../constants.js';
 import { applyRectangleButtonStyle } from './ButtonStyles.js';
 
 const DEFAULT_PANEL_BACKGROUND = 0x101820;

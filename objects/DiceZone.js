@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 import { isZoneAllowedForDie } from '../dice/CustomDiceLogic.js';
 import { snapToGrid } from './Dice.js';
 import { callSceneMethod } from '../utils/SceneHelpers.js';
@@ -160,4 +160,5 @@ export function snapIntoZone(die, slots, diceList, baseX, y, scene) {
     }
 
     callSceneMethod(scene, 'updateZonePreviewText');
+    callSceneMethod(scene, 'handleDiePlacedInZone', { die, zoneType });
 }

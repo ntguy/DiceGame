@@ -1,4 +1,4 @@
-import { CONSTANTS } from '../config.js';
+import { CONSTANTS } from '../constants.js';
 
 export function playDiceRollSounds(scene, {
     isFirstRoll = false,
