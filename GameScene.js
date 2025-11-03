@@ -40,8 +40,8 @@ const BOSS_RELIC_CHOICE_COUNT = 2;
 const BOSS_BONUS_REWARD_ID = 'boss-capacity-bonus';
 const DICE_AREA_BACKGROUND_TILE_SCALE = 2;
 const DICE_AREA_PADDING_X = 70;
-const DICE_AREA_PADDING_TOP = 50;
-const DICE_AREA_PADDING_BOTTOM = 80;
+const DICE_AREA_PADDING_TOP = 30;
+const DICE_AREA_PADDING_BOTTOM = 50;
 
 function getRandomIndexExclusive(maxExclusive) {
     if (!Number.isFinite(maxExclusive) || maxExclusive <= 0) {
@@ -141,6 +141,7 @@ export class GameScene extends Phaser.Scene {
 
         this.diceAreaBackground = null;
         this.diceAreaBackgroundOverlay = null;
+        this.diceAreaBackgroundBorder = null;
 
         this.relicUI = new RelicUIManager(this);
 
@@ -561,13 +562,17 @@ export class GameScene extends Phaser.Scene {
 
         this.diceAreaBackground = this.add.tileSprite(centerX, centerY, width, height, textureKey)
             .setOrigin(0.5)
-            .setTileScale(DICE_AREA_BACKGROUND_TILE_SCALE, DICE_AREA_BACKGROUND_TILE_SCALE)
-            .setDepth(-4);
+            .setTileScale(DICE_AREA_BACKGROUND_TILE_SCALE, DICE_AREA_BACKGROUND_TILE_SCALE);
 
         this.diceAreaBackgroundOverlay = this.add.rectangle(centerX, centerY, width, height, 0x000000, 0.22)
-            .setOrigin(0.5)
-            .setDepth(-3);
+            .setOrigin(0.5);
 
+        this.diceAreaBackgroundBorder = this.add.rectangle(centerX, centerY, width, height)
+            .setOrigin(0.5)
+            .setFillStyle(0x000000, 0)
+            .setStrokeStyle(4, 0x000000, 1);
+
+        this.updateDiceAreaBackgroundDepth();
         this.updateDiceAreaBackgroundLayout();
     }
 
@@ -578,9 +583,13 @@ export class GameScene extends Phaser.Scene {
         if (this.diceAreaBackgroundOverlay && typeof this.diceAreaBackgroundOverlay.destroy === 'function') {
             this.diceAreaBackgroundOverlay.destroy();
         }
+        if (this.diceAreaBackgroundBorder && typeof this.diceAreaBackgroundBorder.destroy === 'function') {
+            this.diceAreaBackgroundBorder.destroy();
+        }
 
         this.diceAreaBackground = null;
         this.diceAreaBackgroundOverlay = null;
+        this.diceAreaBackgroundBorder = null;
     }
 
     updateDiceAreaBackgroundLayout() {
@@ -605,6 +614,35 @@ export class GameScene extends Phaser.Scene {
                 this.diceAreaBackgroundOverlay.displayWidth = width;
                 this.diceAreaBackgroundOverlay.displayHeight = height;
             }
+        }
+
+        if (this.diceAreaBackgroundBorder) {
+            this.diceAreaBackgroundBorder.setPosition(centerX, centerY);
+            if (typeof this.diceAreaBackgroundBorder.setSize === 'function') {
+                this.diceAreaBackgroundBorder.setSize(width, height);
+            } else {
+                this.diceAreaBackgroundBorder.displayWidth = width;
+                this.diceAreaBackgroundBorder.displayHeight = height;
+            }
+        }
+    }
+
+    updateDiceAreaBackgroundDepth() {
+        const isMapView = !!this.isMapViewActive;
+        const backgroundDepth = isMapView ? -7 : -4;
+        const overlayDepth = isMapView ? -6 : -3;
+        const borderDepth = isMapView ? -5 : -2;
+
+        if (this.diceAreaBackground && typeof this.diceAreaBackground.setDepth === 'function') {
+            this.diceAreaBackground.setDepth(backgroundDepth);
+        }
+
+        if (this.diceAreaBackgroundOverlay && typeof this.diceAreaBackgroundOverlay.setDepth === 'function') {
+            this.diceAreaBackgroundOverlay.setDepth(overlayDepth);
+        }
+
+        if (this.diceAreaBackgroundBorder && typeof this.diceAreaBackgroundBorder.setDepth === 'function') {
+            this.diceAreaBackgroundBorder.setDepth(borderDepth);
         }
     }
 
@@ -4773,6 +4811,7 @@ export class GameScene extends Phaser.Scene {
 
     setMapMode(isMapView) {
         this.isMapViewActive = !!isMapView;
+        this.updateDiceAreaBackgroundDepth();
         const showCombatUI = !isMapView;
         const setVisibility = (obj, visible) => {
             if (obj && typeof obj.setVisible === 'function') {
