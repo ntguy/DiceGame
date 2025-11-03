@@ -35,7 +35,7 @@ import { DiceRewardUI } from './objects/DiceRewardUI.js';
 import { playDiceRollSounds } from './utils/SoundHelpers.js';
 import { VictoryScreen } from './systems/VictoryScreen.js';
 import { createModal, destroyModal } from './objects/ui/ModalComponents.js';
-import { populateContainerWithPoints } from '../systems/InstructionsRenderer.js';
+import { populateContainerWithPoints } from './systems/InstructionsRenderer.js';
 
 const SHOP_RELIC_COUNT = 3;
 const BOSS_RELIC_CHOICE_COUNT = 2;
