@@ -4,12 +4,12 @@ import { attackAction, burnAction, defendAction, healAction } from './EnemyActio
 export class HotfixEnemy extends BaseEnemy {
     constructor() {
         super({ name: 'Hotfix', maxHealth: 75 });
-        this.scalingBurnValue = 3;
+        this.scalingBurnValue = 1;
         this.moves = [
             {
                 key: 'apply_burn',
-                label: () => `Burn ${this.scalingBurnValue + 2}`,
-                createActions: () => [burnAction(this.scalingBurnValue + 2)]
+                label: () => `Burn ${this.scalingBurnValue + 3}`,
+                createActions: () => [burnAction(this.scalingBurnValue + 3)]
             },
             {
                 key: 'heal_attack',
