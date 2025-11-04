@@ -3,7 +3,7 @@ import { attackAction, burnAction, defendAction } from './EnemyActions.js';
 
 export class WallopEnemy extends BaseEnemy {
     constructor() {
-        super({ name: 'Wallop', maxHealth: 111 });
+        super({ name: 'Wallop', maxHealth: 99 });
         this._phaseIndex = 0;
         this._scalingAttackValue = 30;
     }
@@ -13,8 +13,8 @@ export class WallopEnemy extends BaseEnemy {
             this._phaseIndex += 1;
             return {
                 key: 'wallop_opening_strike',
-                label: 'Attack for 25 + Burn 3',
-                actions: [attackAction(25), burnAction(3)]
+                label: 'Attack for 25 + Burn 4',
+                actions: [attackAction(25), burnAction(4)]
             };
         }
 

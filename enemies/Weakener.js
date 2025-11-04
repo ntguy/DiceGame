@@ -3,7 +3,7 @@ import { attackAction, defendAction, healAction, weakenAction } from './EnemyAct
 
 export class WeakenerEnemy extends BaseEnemy {
     constructor() {
-        super({ name: 'Weakener', maxHealth: 140 });
+        super({ name: 'Weakener', maxHealth: 111 });
 
         this.baseAttackValue = 15;
         this.baseDefendValue = 10;
@@ -31,11 +31,11 @@ export class WeakenerEnemy extends BaseEnemy {
             },
             {
                 key: 'weakener_heal',
-                label: 'Rejuvenate: Heal 20',
+                label: `Rejuvenate: Heal 20, Attack ${this.attackValue - 15}`,
                 createActions: () => {
-                    this.attackValue += 10;
-                    this.defendValue += 10;
-                    return [healAction(20)];
+                    this.attackValue += 5;
+                    this.defendValue += 5;
+                    return [healAction(20), attackAction(this.attackValue - 15)];
                 }
             }
         ];

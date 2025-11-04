@@ -5,7 +5,7 @@ const STRAIGHT_PREFIX = 'Straight';
 
 export class StraightArrowEnemy extends BaseEnemy {
     constructor() {
-        super({ name: 'Straight Arrow', maxHealth: 110 });
+        super({ name: 'Straight Arrow', maxHealth: 120 });
 
         this.moves = [
             {

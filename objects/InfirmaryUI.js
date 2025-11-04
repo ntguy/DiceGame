@@ -124,7 +124,7 @@ export class InfirmaryUI {
         }).setOrigin(0.5);
 
         const descText = this.scene.add.text(0, titleText.y + 24, description, {
-            fontSize: '16px',
+            fontSize: '18px',
             color: '#c8f7c5',
             align: 'center',
             wordWrap: { width: CARD_WIDTH - 40 }
