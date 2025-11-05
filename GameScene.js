@@ -343,6 +343,7 @@ export class GameScene extends Phaser.Scene {
         this.pendingCrowdControlPlan = null;
         this.temporarilyDestroyedDice = [];
         this.timeBombStates = new Map();
+        this.medicineDieStates = new Map();
         this.activeTimeBombResolveBonus = 0;
         this.gameOverManager = null;
         this.victoryScreen = null;
@@ -481,6 +482,7 @@ export class GameScene extends Phaser.Scene {
         this.hasChainReactorRelic = false;
         this.hasBatteryIncludedRelic = false;
         this.batteryDieState = null;
+        this.medicineDieStates = new Map();
         this.currentHandSlotCount = CONSTANTS.DICE_PER_SET;
         this.refreshHandSlotCount();
         this.updateComboListDisplay();
@@ -2414,6 +2416,7 @@ export class GameScene extends Phaser.Scene {
         const attackResult = this.computeZoneScore(this.attackDice || [], { zone: 'attack' });
 
         this.updateBatteryDieUsage({ defendDice: this.defendDice, attackDice: this.attackDice });
+        this.updateMedicineDieUsage({ defendDice: this.defendDice, attackDice: this.attackDice });
 
         if (timeBombBonus > 0) {
             attackResult.baseSum = (attackResult.baseSum || 0) + timeBombBonus;
@@ -2699,6 +2702,196 @@ export class GameScene extends Phaser.Scene {
         return this.timeBombStates.get(uid) || null;
     }
 
+    initializeMedicineDieStatesForEncounter() {
+        if (!this.medicineDieStates || typeof this.medicineDieStates.clear !== 'function') {
+            this.medicineDieStates = new Map();
+        } else {
+            this.medicineDieStates.clear();
+        }
+
+        let loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        if (loadout.length > 0) {
+            let mutated = false;
+            loadout = loadout.map(entry => {
+                if (!entry) {
+                    return entry;
+                }
+                if (entry.uid) {
+                    return entry;
+                }
+                const { uid } = createDieBlueprint(entry.id, { isUpgraded: entry.isUpgraded });
+                mutated = true;
+                return { ...entry, uid };
+            });
+            if (mutated) {
+                this.customDiceLoadout = loadout;
+            }
+        }
+
+        const activeEntries = loadout.slice(0, CONSTANTS.DICE_PER_SET);
+        activeEntries.forEach(entry => {
+            if (!entry || entry.id !== 'medicine' || !entry.uid) {
+                return;
+            }
+            this.medicineDieStates.set(entry.uid, {
+                usesRemaining: 3,
+                isNullified: false
+            });
+        });
+
+        this.syncAllMedicineDice();
+    }
+
+    getMedicineDieStateByUid(uid) {
+        if (!uid || !this.medicineDieStates) {
+            return null;
+        }
+        return this.medicineDieStates.get(uid) || null;
+    }
+
+    ensureMedicineStateForBlueprint(blueprint) {
+        if (!blueprint || blueprint.id !== 'medicine') {
+            return null;
+        }
+
+        if (!this.medicineDieStates || typeof this.medicineDieStates.set !== 'function') {
+            this.medicineDieStates = new Map();
+        }
+
+        const uid = blueprint.uid;
+        if (!uid) {
+            return null;
+        }
+
+        if (!this.medicineDieStates.has(uid)) {
+            this.medicineDieStates.set(uid, {
+                usesRemaining: 3,
+                isNullified: false
+            });
+        }
+
+        const state = this.medicineDieStates.get(uid);
+        if (!Number.isFinite(state.usesRemaining)) {
+            state.usesRemaining = 3;
+        }
+
+        if (state.usesRemaining > 0) {
+            state.isNullified = false;
+        }
+
+        return state;
+    }
+
+    nullifyMedicineDieByUid(uid) {
+        if (!uid) {
+            return;
+        }
+
+        const state = this.getMedicineDieStateByUid(uid);
+        if (state) {
+            state.usesRemaining = 0;
+            state.isNullified = true;
+        }
+
+        const diceInPlay = this.getDiceInPlay();
+        diceInPlay.forEach(die => {
+            if (!die || !die.dieBlueprint || die.dieBlueprint.uid !== uid) {
+                return;
+            }
+
+            if (typeof die.setNullified === 'function') {
+                die.setNullified(true);
+            } else {
+                die.isNullified = true;
+                if (typeof die.updateVisualState === 'function') {
+                    die.updateVisualState();
+                }
+                if (typeof die.updateFaceValueHighlight === 'function') {
+                    die.updateFaceValueHighlight();
+                }
+            }
+
+            if (typeof die.updateEmoji === 'function') {
+                die.updateEmoji();
+            }
+        });
+    }
+
+    updateMedicineDieUsage({ defendDice = [], attackDice = [] } = {}) {
+        const defendList = Array.isArray(defendDice) ? defendDice : [];
+        const attackList = Array.isArray(attackDice) ? attackDice : [];
+        const combined = [...defendList, ...attackList];
+        const processed = new Set();
+
+        combined.forEach(die => {
+            if (!die || !die.dieBlueprint || die.dieBlueprint.id !== 'medicine') {
+                return;
+            }
+
+            const uid = die.dieBlueprint.uid;
+            if (!uid || processed.has(uid)) {
+                return;
+            }
+            processed.add(uid);
+
+            const state = this.ensureMedicineStateForBlueprint(die.dieBlueprint);
+            if (!state) {
+                return;
+            }
+
+            const currentUses = Number.isFinite(state.usesRemaining)
+                ? state.usesRemaining
+                : 0;
+
+            if (currentUses <= 0) {
+                this.nullifyMedicineDieByUid(uid);
+                return;
+            }
+
+            const nextUses = Math.max(0, currentUses - 1);
+            state.usesRemaining = nextUses;
+            state.isNullified = nextUses <= 0;
+
+            if (nextUses <= 0) {
+                this.nullifyMedicineDieByUid(uid);
+            }
+        });
+
+        this.syncAllMedicineDice();
+    }
+
+    syncDieWithMedicineState(die) {
+        if (!die || !die.dieBlueprint || die.dieBlueprint.id !== 'medicine') {
+            return;
+        }
+
+        const state = this.ensureMedicineStateForBlueprint(die.dieBlueprint);
+        if (!state) {
+            return;
+        }
+
+        const uid = die.dieBlueprint.uid;
+        const usesRemaining = Number.isFinite(state.usesRemaining) ? state.usesRemaining : 0;
+        if (usesRemaining <= 0 && uid) {
+            this.nullifyMedicineDieByUid(uid);
+        }
+    }
+
+    syncAllMedicineDice() {
+        const diceInPlay = this.getDiceInPlay();
+        diceInPlay.forEach(die => {
+            if (!die || !die.dieBlueprint || die.dieBlueprint.id !== 'medicine') {
+                return;
+            }
+
+            this.syncDieWithMedicineState(die);
+
+            if (typeof die.updateEmoji === 'function') {
+                die.updateEmoji();
+            }
+        });
+    }
+
     getDieLeftStatusText(die) {
         if (!die || !die.dieBlueprint) {
             return '';
@@ -2724,6 +2917,33 @@ export class GameScene extends Phaser.Scene {
             if (Number.isFinite(label)) {
                 return `${label}`;
             }
+        }
+
+        if (blueprint.id === 'medicine') {
+            const state = this.ensureMedicineStateForBlueprint(blueprint);
+            if (!state) {
+                return '';
+            }
+
+            const usesRemaining = Number.isFinite(state.usesRemaining)
+                ? Math.max(0, state.usesRemaining)
+                : 0;
+
+            if (usesRemaining <= 0) {
+                return '';
+            }
+
+            let color = '#ff7675';
+            if (usesRemaining >= 3) {
+                color = '#2ecc71';
+            } else if (usesRemaining === 2) {
+                color = '#f1c40f';
+            }
+
+            return {
+                text: `${usesRemaining}`,
+                color
+            };
         }
 
         if (blueprint.id !== 'bomb') {
@@ -4371,6 +4591,7 @@ export class GameScene extends Phaser.Scene {
         this.resetZoneConstraints();
         this.resetGameState({ destroyDice: true });
         this.initializeTimeBombStatesForEncounter();
+        this.initializeMedicineDieStatesForEncounter();
         this.resetEnemyBurn();
         this.setMapMode(false);
         let enemyIndex = node ? node.enemyIndex : -1;

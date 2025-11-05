@@ -288,6 +288,7 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     const initialPipColor = initialValue === 1 && scene.hasWildOneRelic ? 0xcc1111 : 0x000000;
     container.renderFace(initialValue, { pipColor: initialPipColor, updateValue: true });
     container.updateVisualState();
+    callSceneMethod(scene, 'syncDieWithMedicineState', container);
     container.updateEmoji();
 
     container.setSize(CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE);
