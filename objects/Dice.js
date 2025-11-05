@@ -290,6 +290,14 @@ export function createDie(scene, slotIndex, blueprint, totalSlots = null) {
     container.updateVisualState();
     container.updateEmoji();
 
+    if (dieBlueprint && dieBlueprint.id === 'medicine') {
+        const state = callSceneMethod(scene, 'ensureMedicineDieState', dieBlueprint) || {};
+        const usesRemaining = Number.isFinite(state.usesRemaining) ? state.usesRemaining : 0;
+        if (usesRemaining <= 0 && typeof container.setNullified === 'function') {
+            container.setNullified(true);
+        }
+    }
+
     container.setSize(CONSTANTS.DIE_SIZE, CONSTANTS.DIE_SIZE);
     container.setInteractive();
     scene.input.setDraggable(container);

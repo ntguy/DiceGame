@@ -61,8 +61,8 @@ const DEFINITIONS = [
         id: 'medicine',
         name: 'MeDICEne',
         emoji: '💊',
-        description: 'FV=1-3: Heal 5.',
-        upgradeDescription: 'FV=1-3: Heal 8.',
+        description: 'FV=1-3: Heal 5. 3 effect uses per battle.',
+        upgradeDescription: 'FV=1-3: Heal 8. 3 effect uses per battle.',
         allowedZones: ['attack', 'defend']
     },
     {
