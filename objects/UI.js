@@ -91,7 +91,7 @@ export function setupButtons(scene) {
                 enabledAlpha: 1,
                 disabledAlpha: 0.45,
                 background: {
-                    paddingX: 32,
+                    paddingX: 30,
                     paddingY: 28,
                     strokeColor: '#1a0324',
                     strokeAlpha: 1,
