@@ -214,11 +214,8 @@ function getComboBonusModifier({ die, zone, comboType }) {
     switch (definition.id) {
         case 'pear': {
             // Pear die: boosts pair-based combos.
-            if (comboType === 'Pair') {
-                return isUpgraded ? 6 : 5;
-            }
-            if (isUpgraded && comboType === 'Two Pair') {
-                return 6;
+            if (comboType === 'Pair' || comboType === 'Two Pair') {
+                return isUpgraded ? 6 : 4;
             }
             return 0;
         }

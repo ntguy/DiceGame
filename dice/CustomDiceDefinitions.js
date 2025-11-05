@@ -37,7 +37,7 @@ const DEFINITIONS = [
         id: 'pear',
         name: 'PearPair',
         emoji: '🍐',
-        description: '+5 combo bonus in a Pair.',
+        description: '+4 combo bonus in a Pair or Two Pair.',
         upgradeDescription: '+6 combo bonus in a Pair or Two Pair.',
         allowedZones: ['attack', 'defend']
     },
