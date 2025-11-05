@@ -294,7 +294,7 @@ function getPostResolutionEffects({ die, zone }) {
         // MeDICEne die: heals the player when rolled low.
         const shouldHeal = faceValue >= 1 && faceValue <= 3;
         if (shouldHeal) {
-            const healAmount = isUpgraded ? 9 : 6;
+            const healAmount = isUpgraded ? 8 : 5;
             effects.push(context => {
                 const { scene } = context || {};
                 callSceneMethod(scene, 'healPlayer', healAmount);

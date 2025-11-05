@@ -2835,7 +2835,9 @@ export class GameScene extends Phaser.Scene {
                 return;
             }
 
-            const nextUses = Math.max(0, currentUses - 1);
+            const willUseEffect = !this.nullifiedDice.has(die) && die.value < 4;
+            const newCurrentUses = willUseEffect ? currentUses - 1 : currentUses;
+            const nextUses = Math.max(0, newCurrentUses);
             if (nextUses === currentUses) {
                 return;
             }
