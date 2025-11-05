@@ -64,10 +64,12 @@ export class CompactorEnemy extends BaseEnemy {
         return {
             key,
             label: () => `Zonal Crush: Max ${targetMax} Dice Per Zone`,
-            createActions: () => {
-                // Remove this move after it executes
-                this.moves = this.moves.filter(move => move.key !== key);
-                this.moveIndex = Math.max(0, this.moveIndex - 1);
+            createActions: ({ isPreview } = {}) => {
+                if (!isPreview) {
+                    // Remove this move after it executes
+                    this.moves = this.moves.filter(move => move.key !== key);
+                    this.moveIndex = Math.max(0, this.moveIndex - 1);
+                }
                 return [setMaxDicePerZoneAction(targetMax)];
             }
         };
@@ -102,10 +104,12 @@ export class CompactorEnemy extends BaseEnemy {
         return {
             key: 'compactor_final_smash',
             label: 'Cataclysmic Press: Attack 20',
-            createActions: () => {
-                this.defendValue += DEFEND_INCREMENT;
-                this.healValue += HEAL_INCREMENT;
-                this.loopCount += 1;
+            createActions: ({ isPreview } = {}) => {
+                if (!isPreview) {
+                    this.defendValue += DEFEND_INCREMENT;
+                    this.healValue += HEAL_INCREMENT;
+                    this.loopCount += 1;
+                }
                 return [attackAction(FINAL_ATTACK_VALUE)];
             }
         };

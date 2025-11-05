@@ -288,6 +288,10 @@ export class StatusTicianEnemy extends BaseEnemy {
             return;
         }
 
+        if (this.isPreviewingMoveActions && this.isPreviewingMoveActions()) {
+            return;
+        }
+
         if (!Array.isArray(this.pendingStatusChanges)) {
             this.pendingStatusChanges = [];
         }
