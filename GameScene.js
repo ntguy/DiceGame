@@ -41,8 +41,8 @@ const SHOP_RELIC_COUNT = 3;
 const BOSS_RELIC_CHOICE_COUNT = 2;
 const BOSS_BONUS_REWARD_ID = 'boss-capacity-bonus';
 
-const HAND_AREA_PADDING_X = 50;
-const HAND_AREA_PADDING_Y = 36;
+const HAND_AREA_PADDING_X = 31;
+const HAND_AREA_PADDING_Y = 38;
 const HAND_AREA_BACKGROUND_ALPHA = 0.6;
 
 const TUTORIAL_CONFIG = {
@@ -1020,7 +1020,7 @@ export class GameScene extends Phaser.Scene {
         const startX = Number.isFinite(layout.startX) ? layout.startX : CONSTANTS.SLOT_START_X;
         const totalWidth = CONSTANTS.DIE_SIZE + (slotCount - 1) * spacing;
         const centerX = startX + ((slotCount - 1) * spacing) / 2;
-        const centerY = CONSTANTS.GRID_Y;
+        const centerY = CONSTANTS.GRID_Y + HAND_AREA_PADDING_Y / 2 + 5;
         const width = totalWidth + HAND_AREA_PADDING_X * 2;
         const height = CONSTANTS.DIE_SIZE + HAND_AREA_PADDING_Y * 2;
 

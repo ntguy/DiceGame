@@ -6,7 +6,7 @@ const CONTENT_HEIGHT = 700;
 export const CONSTANTS = {
     HEADER_HEIGHT,
     DIE_SIZE: 60,
-    GRID_Y: 500,
+    GRID_Y: 480,
     SLOT_SPACING: 80, // dieSize + 20
     SLOT_START_X: 200,
     BUTTONS_Y: 630,
