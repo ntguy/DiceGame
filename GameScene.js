@@ -5082,13 +5082,26 @@ export class GameScene extends Phaser.Scene {
                 if (Array.isArray(move.actions)) {
                     actions = move.actions;
                 } else if (typeof move.createActions === 'function') {
+                    let previousPreviewState;
+                    const hasPreviewSetter = enemy && typeof enemy.setPreviewingMoveActions === 'function';
+                    const hasPreviewGetter = enemy && typeof enemy.isPreviewingMoveActions === 'function';
+
+                    if (hasPreviewSetter) {
+                        previousPreviewState = hasPreviewGetter ? enemy.isPreviewingMoveActions() : false;
+                        enemy.setPreviewingMoveActions(true);
+                    }
+
                     try {
-                        const created = move.createActions();
+                        const created = move.createActions({ isPreview: true });
                         if (Array.isArray(created)) {
                             actions = created;
                         }
                     } catch (e) {
                         // ignore errors from factory
+                    } finally {
+                        if (hasPreviewSetter) {
+                            enemy.setPreviewingMoveActions(previousPreviewState);
+                        }
                     }
                 }
                 actions.forEach(action => inspectAction(action));

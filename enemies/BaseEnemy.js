@@ -6,6 +6,7 @@ export class BaseEnemy {
         this.health = maxHealth;
         this.moveIndex = 0;
         this.moves = moves;
+        this._isPreviewingMoveActions = false;
     }
 
     isDefeated() {
@@ -38,7 +39,9 @@ export class BaseEnemy {
             ? move.label.bind(this)
             : null;
         const label = labelFn ? labelFn() : (typeof move.label === 'string' ? move.label : '');
-        const actions = typeof move.createActions === 'function' ? move.createActions() : (move.actions || []);
+        const actions = typeof move.createActions === 'function'
+            ? this.invokeMoveCreateActions(move, { isPreview: false })
+            : (move.actions || []);
 
         const hydratedActions = Array.isArray(actions)
             ? actions.map(action => ({ ...action }))
@@ -60,5 +63,29 @@ export class BaseEnemy {
             intentTitle: move.intentTitle || move.title || '',
             getLabel: labelGetter
         };
+    }
+
+    setPreviewingMoveActions(isPreviewing) {
+        this._isPreviewingMoveActions = Boolean(isPreviewing);
+    }
+
+    isPreviewingMoveActions() {
+        return Boolean(this._isPreviewingMoveActions);
+    }
+
+    invokeMoveCreateActions(move, { isPreview = false } = {}) {
+        if (!move || typeof move.createActions !== 'function') {
+            return [];
+        }
+
+        const previous = this.isPreviewingMoveActions();
+        this.setPreviewingMoveActions(isPreview);
+
+        try {
+            const created = move.createActions({ isPreview });
+            return created;
+        } finally {
+            this.setPreviewingMoveActions(previous);
+        }
     }
 }
