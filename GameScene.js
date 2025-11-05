@@ -41,6 +41,10 @@ const SHOP_RELIC_COUNT = 3;
 const BOSS_RELIC_CHOICE_COUNT = 2;
 const BOSS_BONUS_REWARD_ID = 'boss-capacity-bonus';
 
+const HAND_AREA_PADDING_X = 50;
+const HAND_AREA_PADDING_Y = 36;
+const HAND_AREA_BACKGROUND_ALPHA = 0.6;
+
 const TUTORIAL_CONFIG = {
     'game-start': { title: 'Welcome to Drop + Roll!',
         modal: { width: 700, height: 360 },
@@ -366,6 +370,7 @@ export class GameScene extends Phaser.Scene {
         this.nodeMessage = null;
         this.nodeMessageTween = null;
         this.zoneVisuals = [];
+        this.handAreaBackground = null;
         this.activeFacilityUI = null;
         this.defendPreviewText = null;
         this.attackPreviewText = null;
@@ -657,6 +662,8 @@ export class GameScene extends Phaser.Scene {
         if (!this.zoneVisuals) {
             this.zoneVisuals = [];
         }
+
+        this.createHandAreaBackground();
 
         this.createZonePreviewTexts();
 
@@ -975,8 +982,51 @@ export class GameScene extends Phaser.Scene {
             this.zoneAreaBackground.setSize(zoneAreaWidth - 32, zoneAreaHeight + 30);
         }
 
+        this.updateHandAreaBackground();
+
         this.layoutZoneDice('defend');
         this.layoutZoneDice('attack');
+    }
+
+    createHandAreaBackground() {
+        if (!Array.isArray(this.zoneVisuals)) {
+            this.zoneVisuals = [];
+        }
+
+        if (this.handAreaBackground && this.handAreaBackground.destroy) {
+            this.zoneVisuals = this.zoneVisuals.filter(visual => visual !== this.handAreaBackground);
+            this.handAreaBackground.destroy();
+            this.handAreaBackground = null;
+        }
+
+        const background = this.add.rectangle(0, 0, 10, 10, 0x000000, HAND_AREA_BACKGROUND_ALPHA)
+            .setOrigin(0.5);
+        background.setStrokeStyle(4, 0x000000, 1);
+        background.setDepth(-2);
+
+        this.handAreaBackground = background;
+        this.zoneVisuals.push(background);
+        this.updateHandAreaBackground();
+    }
+
+    updateHandAreaBackground() {
+        if (!this.handAreaBackground || !this.handAreaBackground.scene) {
+            return;
+        }
+
+        const layout = this.getHandSlotLayout({ totalSlots: this.getHandSlotCount() }) || {};
+        const slotCount = Math.max(1, Number.isFinite(layout.totalSlots) ? Math.floor(layout.totalSlots) : this.getHandSlotCount());
+        const spacing = Number.isFinite(layout.spacing) ? layout.spacing : CONSTANTS.SLOT_SPACING;
+        const startX = Number.isFinite(layout.startX) ? layout.startX : CONSTANTS.SLOT_START_X;
+        const totalWidth = CONSTANTS.DIE_SIZE + (slotCount - 1) * spacing;
+        const centerX = startX + ((slotCount - 1) * spacing) / 2;
+        const centerY = CONSTANTS.GRID_Y;
+        const width = totalWidth + HAND_AREA_PADDING_X * 2;
+        const height = CONSTANTS.DIE_SIZE + HAND_AREA_PADDING_Y * 2;
+
+        this.handAreaBackground.setPosition(centerX, centerY);
+        this.handAreaBackground.setSize(width, height);
+        this.handAreaBackground.setDisplaySize(width, height);
     }
 
     getBaseHandSlotCount() {
@@ -998,6 +1048,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.currentHandSlotCount = sanitized;
+
+        this.updateHandAreaBackground();
 
         if (relayout) {
             this.layoutHandDice({ animate: true });
@@ -1055,6 +1107,8 @@ export class GameScene extends Phaser.Scene {
 
             die.slotIndex = index;
         });
+
+        this.updateHandAreaBackground();
     }
 
     isBatteryDieAvailable() {
@@ -2575,6 +2629,7 @@ export class GameScene extends Phaser.Scene {
         const finalBlueprints = this.applyTemporaryDestructionToBlueprints(blueprints);
         const decoratedBlueprints = finalBlueprints.map(blueprint => this.decorateBlueprint(blueprint));
         this.currentHandSlotCount = Math.max(1, decoratedBlueprints.length);
+        this.updateHandAreaBackground();
         return decoratedBlueprints;
     }
 
