@@ -324,9 +324,7 @@ export function computeDieContribution(scene, die, { zone, comboType }) {
     const faceValueContribution = isWeakened
         ? 0
         : Math.max(0, getBaseFaceContribution({ die, zone, comboType }));
-    const comboBonusModifier = isWeakened
-        ? 0
-        : getComboBonusModifier({ die, zone, comboType });
+    const comboBonusModifier = getComboBonusModifier({ die, zone, comboType });
     const preResolutionEffects = getPreResolutionEffects({ die, zone });
     const postResolutionEffects = getPostResolutionEffects({ die, zone });
 
