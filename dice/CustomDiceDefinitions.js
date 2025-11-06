@@ -45,31 +45,31 @@ const DEFINITIONS = [
         id: 'flameout',
         name: 'Flame-Out',
         emoji: '🧯',
-        description: 'FV=1-3: cleanse burn by FV.',
-        upgradeDescription: 'FV=1-5: cleanse burn by FV.',
+        description: 'FV = 1-3: cleanse burn by FV.',
+        upgradeDescription: 'FV = 1-5: cleanse burn by FV.',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'cherrybomb',
         name: 'Cherry Bomb',
         emoji: '🧨',
-        description: 'FV=1-2: Burn enemy 2.',
-        upgradeDescription: 'FV=1-2: Burn enemy 3.',
+        description: 'FV = 1-2: Burn enemy 2.',
+        upgradeDescription: 'FV = 1-2: Burn enemy 3.',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'medicine',
         name: 'MeDICEne',
         emoji: '💊',
-        description: 'FV=1-3: Heal 5. 3 effect uses per battle.',
-        upgradeDescription: 'FV=1-3: Heal 8. 3 effect uses per battle.',
+        description: 'FV = 1-3: Heal 5. 3 triggers per battle.',
+        upgradeDescription: 'FV = 1-3: Heal 8. 3 triggers per battle.',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'wild',
         name: 'Wild',
         emoji: '🤪',
-        description: 'FV=1-4: Acts as wild for combo.',
+        description: 'FV = 1-4: Acts as wild for combo.',
         upgradeDescription: 'Acts as wild for combo.',
         allowedZones: ['attack', 'defend']
     },
@@ -77,8 +77,8 @@ const DEFINITIONS = [
         id: 'demolition',
         name: 'Demolition',
         emoji: '⚒️',
-        description: 'FV=1-2: before attack, reduce enemy block by 10.',
-        upgradeDescription: 'FV=1-3: before attack, reduce enemy block by 10.',
+        description: 'FV = 1-2: before attack, reduce enemy block by 10.',
+        upgradeDescription: 'FV = 1-3: before attack, reduce enemy block by 10.',
         allowedZones: ['attack', 'defend']
     },
     {
@@ -93,16 +93,16 @@ const DEFINITIONS = [
         id: 'bomb',
         name: 'Time Bomb',
         emoji: '💣',
-        description: 'Unused turn: countdown -1. At 0: +20 attack once.',
-        upgradeDescription: 'Unused turn: countdown -1. At 0: +30 attack once.',
+        description: 'After 3 unused turns, +20 attack once.',
+        upgradeDescription: 'After 3 unused turns, +30 attack once.',
         allowedZones: ['attack', 'defend']
     },
     {
         id: 'comet',
         name: 'Comet',
         emoji: '☄️',
-        description: 'FV=6: Burn 6. Take 3 Burn. One trigger per battle.',
-        upgradeDescription: 'FV=6: Burn 8. Take 4 Burn. One trigger per battle.',
+        description: 'FV = 6: Burn 6. Take 3 Burn. One trigger per battle.',
+        upgradeDescription: 'FV = 6: Burn 8. Take 4 Burn. One trigger per battle.',
         allowedZones: ['attack', 'defend']
     },
     {

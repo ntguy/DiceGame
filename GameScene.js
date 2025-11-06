@@ -2906,12 +2906,16 @@ export class GameScene extends Phaser.Scene {
                 if (!state) {
                     return '';
                 }
-
+        
                 const remaining = Number.isFinite(state.triggersRemaining)
                     ? Math.max(0, state.triggersRemaining)
                     : 0;
-
-                const color = remaining > 0 ? '#74b9ff' : '#95a5a6';
+        
+                if (remaining <= 0) {
+                    return '';
+                }
+        
+                const color = '#ff7675';
                 return {
                     text: `${remaining}`,
                     color
@@ -2963,6 +2967,10 @@ export class GameScene extends Phaser.Scene {
 
         if (selfBurn > 0) {
             this.applyPlayerBurn(selfBurn);
+        }
+
+        if (state.triggersRemaining <= 0) {
+            die.setNullified(true);
         }
 
         if (typeof die.updateEmoji === 'function') {
@@ -3100,6 +3108,10 @@ export class GameScene extends Phaser.Scene {
                     color = '#ff7675';
                 }
 
+                if (remaining <= 0) {
+                    return '';
+                }
+
                 return {
                     text: `${remaining}`,
                     color
@@ -3136,6 +3148,9 @@ export class GameScene extends Phaser.Scene {
         this.chargerZoneBonuses.defend = currentDefend + 1;
 
         if (die) {
+            if (state.triggersRemaining <= 0) {
+                die.setNullified(true);
+            }
             if (typeof die.updateEmoji === 'function') {
                 die.updateEmoji();
             }
@@ -3289,6 +3304,10 @@ export class GameScene extends Phaser.Scene {
                     color = '#f1c40f';
                 } else if (usesRemaining <= 0) {
                     color = '#95a5a6';
+                }
+
+                if (usesRemaining <= 0) {
+                    return '';
                 }
 
                 return {
