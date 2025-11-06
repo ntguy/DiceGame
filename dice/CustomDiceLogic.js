@@ -95,6 +95,13 @@ export function doesDieFaceValueTriggerRule(die = {}) {
             return faceValue >= 1 && faceValue <= 2;
         case 'medicine':
             return faceValue >= 1 && faceValue <= 3;
+        case 'comet': {
+            if (faceValue !== 6) {
+                return false;
+            }
+            const scene = die ? die.scene : null;
+            return !!callSceneMethod(scene, 'hasCometTriggerAvailable', blueprint);
+        }
         case 'flameout':
             if (faceValue <= 0) {
                 return false;
@@ -274,6 +281,25 @@ function getPostResolutionEffects({ die, zone }) {
     const faceValue = typeof die.value === 'number' ? die.value : 0;
 
     const effects = [];
+
+    if (definition.id === 'comet') {
+        const scene = die ? die.scene : null;
+        const threshold = 6;
+        const canTrigger = faceValue === threshold
+            && !!callSceneMethod(scene, 'hasCometTriggerAvailable', blueprint);
+        if (canTrigger) {
+            const burnAmount = isUpgraded ? 8 : 6;
+            const selfBurn = isUpgraded ? 4 : 3;
+            effects.push(context => {
+                const contextScene = context && context.scene ? context.scene : scene;
+                callSceneMethod(contextScene, 'resolveCometEffect', {
+                    die,
+                    burnAmount,
+                    selfBurn
+                });
+            });
+        }
+    }
 
     if (definition.id === 'flameout') {
         // Flameout die: cleanses burn when rolled low or upgraded.

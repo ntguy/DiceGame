@@ -96,6 +96,22 @@ const DEFINITIONS = [
         description: 'Unused turn: countdown -1. At 0: +20 attack once.',
         upgradeDescription: 'Unused turn: countdown -1. At 0: +30 attack once.',
         allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'comet',
+        name: 'Comet',
+        emoji: '☄️',
+        description: 'FV=6: Burn 6. Take 3 Burn. One trigger per battle.',
+        upgradeDescription: 'FV=6: Burn 8. Take 4 Burn. One trigger per battle.',
+        allowedZones: ['attack', 'defend']
+    },
+    {
+        id: 'charger',
+        name: 'Charger',
+        emoji: '🔌',
+        description: 'If unused, +1 zone totals this battle. 3 triggers per battle.',
+        upgradeDescription: 'If unused, +1 zone totals this battle. 5 triggers per battle.',
+        allowedZones: ['attack', 'defend']
     }
 ];
 
