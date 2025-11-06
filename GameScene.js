@@ -348,6 +348,10 @@ export class GameScene extends Phaser.Scene {
         this.temporarilyDestroyedDice = [];
         this.timeBombStates = new Map();
         this.medicineDieStates = new Map();
+        this.cometDieStates = new Map();
+        this.chargerDieStates = new Map();
+        this.chargerAttackBonus = 0;
+        this.chargerDefendBonus = 0;
         this.activeTimeBombResolveBonus = 0;
         this.gameOverManager = null;
         this.victoryScreen = null;
@@ -1447,7 +1451,8 @@ export class GameScene extends Phaser.Scene {
         const comboBonusExtra = contributions.reduce((sum, entry) => sum + (entry && entry.comboBonusModifier ? entry.comboBonusModifier : 0), 0);
 
         const perfectBalanceBonus = this.getPerfectBalanceBonus({ zone, diceList });
-        const baseSum = baseContribution + rerollBonus +perfectBalanceBonus;
+        const chargerBonus = this.getChargerBonusForZone(zone);
+        const baseSum = baseContribution + rerollBonus + perfectBalanceBonus + chargerBonus;
         const comboBonus = scoreCombo(comboType, comboPointsTable) + comboBonusExtra;
         const preResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.preResolutionEffects)) ? entry.preResolutionEffects : []);
         const postResolutionEffects = contributions.flatMap(entry => (entry && Array.isArray(entry.postResolutionEffects)) ? entry.postResolutionEffects : []);
@@ -2121,7 +2126,15 @@ export class GameScene extends Phaser.Scene {
     }
 
     isDieNullifyEligible(die) {
-        if (!die || this.nullifiedDice.has(die)) {
+        if (!die) {
+            return false;
+        }
+
+        if (die.isNullified) {
+            return false;
+        }
+
+        if (this.nullifiedDice.has(die)) {
             return false;
         }
 
@@ -2137,6 +2150,37 @@ export class GameScene extends Phaser.Scene {
         const blueprintId = typeof blueprint.id === 'string' ? blueprint.id : '';
         if (!blueprintId || blueprintId === 'standard') {
             return false;
+        }
+
+        if (blueprintId === 'medicine') {
+            const state = this.ensureMedicineDieState(blueprint);
+            const usesRemaining = state && Number.isFinite(state.usesRemaining) ? state.usesRemaining : 0;
+            if (usesRemaining <= 0) {
+                return false;
+            }
+        }
+
+        if (blueprintId === 'bomb') {
+            const state = this.getTimeBombStateByUid(blueprint.uid);
+            if (state && state.detonated) {
+                return false;
+            }
+        }
+
+        if (blueprintId === 'comet') {
+            const state = this.ensureCometDieState(blueprint);
+            if (state && state.hasTriggered) {
+                return false;
+            }
+        }
+
+        if (blueprintId === 'charger') {
+            const state = this.ensureChargerDieState(blueprint);
+            const maxTriggers = state && Number.isFinite(state.maxTriggers) ? state.maxTriggers : 0;
+            const triggersUsed = state && Number.isFinite(state.triggersUsed) ? state.triggersUsed : 0;
+            if (maxTriggers > 0 && triggersUsed >= maxTriggers) {
+                return false;
+            }
         }
 
         return true;
@@ -2471,6 +2515,7 @@ export class GameScene extends Phaser.Scene {
 
         this.updateBatteryDieUsage({ defendDice: this.defendDice, attackDice: this.attackDice });
         this.updateMedicineDieUsage({ defendDice: this.defendDice, attackDice: this.attackDice });
+        this.updateChargerDieUsage({ defendDice: this.defendDice, attackDice: this.attackDice });
 
         if (timeBombBonus > 0) {
             attackResult.baseSum = (attackResult.baseSum || 0) + timeBombBonus;
@@ -2619,6 +2664,10 @@ export class GameScene extends Phaser.Scene {
         blueprints.forEach(blueprint => {
             if (blueprint && blueprint.id === 'medicine') {
                 this.ensureMedicineDieState(blueprint);
+            } else if (blueprint && blueprint.id === 'comet') {
+                this.ensureCometDieState(blueprint);
+            } else if (blueprint && blueprint.id === 'charger') {
+                this.ensureChargerDieState(blueprint);
             }
         });
 
@@ -2756,6 +2805,88 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
+    initializeCometDieStatesForEncounter() {
+        if (!this.cometDieStates || typeof this.cometDieStates.clear !== 'function') {
+            this.cometDieStates = new Map();
+        } else {
+            this.cometDieStates.clear();
+        }
+
+        let loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        if (loadout.length > 0) {
+            let mutated = false;
+            loadout = loadout.map(entry => {
+                if (!entry) {
+                    return entry;
+                }
+                if (entry.uid) {
+                    return entry;
+                }
+                const { uid } = createDieBlueprint(entry.id, { isUpgraded: entry.isUpgraded });
+                mutated = true;
+                return { ...entry, uid };
+            });
+            if (mutated) {
+                this.customDiceLoadout = loadout;
+            }
+        }
+
+        const activeEntries = loadout.slice(0, CONSTANTS.DICE_PER_SET);
+        activeEntries.forEach(entry => {
+            if (!entry || entry.id !== 'comet' || !entry.uid) {
+                return;
+            }
+            this.cometDieStates.set(entry.uid, {
+                hasTriggered: false,
+                isUpgraded: !!entry.isUpgraded
+            });
+        });
+    }
+
+    initializeChargerDieStatesForEncounter() {
+        if (!this.chargerDieStates || typeof this.chargerDieStates.clear !== 'function') {
+            this.chargerDieStates = new Map();
+        } else {
+            this.chargerDieStates.clear();
+        }
+
+        this.chargerAttackBonus = 0;
+        this.chargerDefendBonus = 0;
+
+        let loadout = Array.isArray(this.customDiceLoadout) ? this.customDiceLoadout : [];
+        if (loadout.length > 0) {
+            let mutated = false;
+            loadout = loadout.map(entry => {
+                if (!entry) {
+                    return entry;
+                }
+                if (entry.uid) {
+                    return entry;
+                }
+                const { uid } = createDieBlueprint(entry.id, { isUpgraded: entry.isUpgraded });
+                mutated = true;
+                return { ...entry, uid };
+            });
+            if (mutated) {
+                this.customDiceLoadout = loadout;
+            }
+        }
+
+        const activeEntries = loadout.slice(0, CONSTANTS.DICE_PER_SET);
+        activeEntries.forEach(entry => {
+            if (!entry || entry.id !== 'charger' || !entry.uid) {
+                return;
+            }
+
+            const maxTriggers = entry.isUpgraded ? 5 : 3;
+            this.chargerDieStates.set(entry.uid, {
+                triggersUsed: 0,
+                maxTriggers,
+                isUpgraded: !!entry.isUpgraded
+            });
+        });
+    }
+
     ensureMedicineDieState(blueprint) {
         if (!blueprint || blueprint.id !== 'medicine') {
             return null;
@@ -2791,6 +2922,85 @@ export class GameScene extends Phaser.Scene {
         }
 
         return this.medicineDieStates.get(uid) || null;
+    }
+
+    ensureCometDieState(blueprint) {
+        if (!blueprint || blueprint.id !== 'comet') {
+            return null;
+        }
+
+        if (!(this.cometDieStates instanceof Map)) {
+            this.cometDieStates = new Map();
+        }
+
+        const uid = blueprint.uid;
+        if (!uid) {
+            return null;
+        }
+
+        if (!this.cometDieStates.has(uid)) {
+            this.cometDieStates.set(uid, {
+                hasTriggered: false,
+                isUpgraded: !!blueprint.isUpgraded
+            });
+        } else {
+            const state = this.cometDieStates.get(uid);
+            if (state) {
+                state.isUpgraded = !!blueprint.isUpgraded;
+            }
+        }
+
+        return this.cometDieStates.get(uid) || null;
+    }
+
+    getCometDieStateByUid(uid) {
+        if (!uid || !(this.cometDieStates instanceof Map)) {
+            return null;
+        }
+
+        return this.cometDieStates.get(uid) || null;
+    }
+
+    ensureChargerDieState(blueprint) {
+        if (!blueprint || blueprint.id !== 'charger') {
+            return null;
+        }
+
+        if (!(this.chargerDieStates instanceof Map)) {
+            this.chargerDieStates = new Map();
+        }
+
+        const uid = blueprint.uid;
+        if (!uid) {
+            return null;
+        }
+
+        const maxTriggers = blueprint.isUpgraded ? 5 : 3;
+
+        if (!this.chargerDieStates.has(uid)) {
+            this.chargerDieStates.set(uid, {
+                triggersUsed: 0,
+                maxTriggers,
+                isUpgraded: !!blueprint.isUpgraded
+            });
+        } else {
+            const state = this.chargerDieStates.get(uid);
+            if (state) {
+                state.maxTriggers = maxTriggers;
+                state.isUpgraded = !!blueprint.isUpgraded;
+                state.triggersUsed = Math.min(state.triggersUsed || 0, state.maxTriggers);
+            }
+        }
+
+        return this.chargerDieStates.get(uid) || null;
+    }
+
+    getChargerDieStateByUid(uid) {
+        if (!uid || !(this.chargerDieStates instanceof Map)) {
+            return null;
+        }
+
+        return this.chargerDieStates.get(uid) || null;
     }
 
     decorateMedicineBlueprint(blueprint) {
@@ -2836,6 +3046,250 @@ export class GameScene extends Phaser.Scene {
         };
     }
 
+    decorateCometBlueprint(blueprint) {
+        if (!blueprint || blueprint.id !== 'comet') {
+            return blueprint;
+        }
+
+        const uid = blueprint.uid;
+        const sceneRef = this;
+
+        if (!uid) {
+            return { ...blueprint };
+        }
+
+        this.ensureCometDieState(blueprint);
+
+        return {
+            ...blueprint,
+            getLeftStatusLabel() {
+                const state = sceneRef.getCometDieStateByUid(uid);
+                if (!state) {
+                    return '';
+                }
+
+                const remaining = state.hasTriggered ? 0 : 1;
+                if (remaining <= 0) {
+                    return { text: '0', color: '#95a5a6' };
+                }
+
+                return {
+                    text: `${remaining}`,
+                    color: '#2ecc71'
+                };
+            }
+        };
+    }
+
+    decorateChargerBlueprint(blueprint) {
+        if (!blueprint || blueprint.id !== 'charger') {
+            return blueprint;
+        }
+
+        const uid = blueprint.uid;
+        const sceneRef = this;
+
+        if (!uid) {
+            return { ...blueprint };
+        }
+
+        this.ensureChargerDieState(blueprint);
+
+        return {
+            ...blueprint,
+            getLeftStatusLabel() {
+                const state = sceneRef.getChargerDieStateByUid(uid);
+                if (!state) {
+                    return '';
+                }
+
+                const maxTriggers = Number.isFinite(state.maxTriggers) ? state.maxTriggers : 0;
+                const used = Number.isFinite(state.triggersUsed) ? Math.max(0, state.triggersUsed) : 0;
+                const remaining = Math.max(0, maxTriggers - used);
+
+                if (remaining <= 0) {
+                    return { text: '0', color: '#95a5a6' };
+                }
+
+                let color = '#2ecc71';
+                if (remaining === 1) {
+                    color = '#f1c40f';
+                }
+
+                return {
+                    text: `${remaining}`,
+                    color
+                };
+            }
+        };
+    }
+
+    handleCometDieTrigger({ blueprint, die } = {}) {
+        const sourceBlueprint = blueprint || (die && die.dieBlueprint) || null;
+        if (!sourceBlueprint || sourceBlueprint.id !== 'comet') {
+            return;
+        }
+
+        const state = this.ensureCometDieState(sourceBlueprint);
+        if (!state || state.hasTriggered) {
+            return;
+        }
+
+        state.hasTriggered = true;
+        state.isUpgraded = !!sourceBlueprint.isUpgraded;
+
+        const enemyBurnAmount = state.isUpgraded ? 8 : 6;
+        const playerBurnAmount = state.isUpgraded ? 4 : 3;
+
+        if (enemyBurnAmount > 0) {
+            this.applyEnemyBurn(enemyBurnAmount);
+        }
+
+        if (playerBurnAmount > 0) {
+            this.applyPlayerBurn(playerBurnAmount);
+        }
+
+        const uid = sourceBlueprint.uid;
+        if (uid) {
+            const diceInPlay = this.getDiceInPlay();
+            diceInPlay.forEach(activeDie => {
+                if (!activeDie || !activeDie.dieBlueprint || activeDie.dieBlueprint.uid !== uid) {
+                    return;
+                }
+
+                if (typeof activeDie.setNullified === 'function') {
+                    activeDie.setNullified(true);
+                } else {
+                    activeDie.isNullified = true;
+                    if (typeof activeDie.updateVisualState === 'function') {
+                        activeDie.updateVisualState();
+                    }
+                    if (typeof activeDie.updateFaceValueHighlight === 'function') {
+                        activeDie.updateFaceValueHighlight();
+                    }
+                }
+
+                if (typeof activeDie.updateEmoji === 'function') {
+                    activeDie.updateEmoji();
+                }
+            });
+        }
+
+        this.updateZonePreviewText();
+    }
+
+    updateChargerDieUsage({ defendDice = [], attackDice = [] } = {}) {
+        if (!(this.chargerDieStates instanceof Map) || this.chargerDieStates.size === 0) {
+            return;
+        }
+
+        const defendList = Array.isArray(defendDice) ? defendDice : [];
+        const attackList = Array.isArray(attackDice) ? attackDice : [];
+        const usedSet = new Set([...defendList, ...attackList]);
+
+        const diceInPlay = this.getDiceInPlay();
+        const affectedUidSet = new Set();
+        let bonusApplied = false;
+
+        diceInPlay.forEach(die => {
+            if (!die || !die.dieBlueprint || die.dieBlueprint.id !== 'charger') {
+                return;
+            }
+
+            if (usedSet.has(die)) {
+                return;
+            }
+
+            if (die.isNullified) {
+                return;
+            }
+
+            const blueprint = die.dieBlueprint;
+            const state = this.ensureChargerDieState(blueprint);
+            if (!state) {
+                return;
+            }
+
+            const maxTriggers = Number.isFinite(state.maxTriggers) ? state.maxTriggers : 0;
+            const triggersUsed = Number.isFinite(state.triggersUsed) ? state.triggersUsed : 0;
+
+            if (maxTriggers <= 0 || triggersUsed >= maxTriggers) {
+                if (!die.isNullified) {
+                    if (typeof die.setNullified === 'function') {
+                        die.setNullified(true);
+                    } else {
+                        die.isNullified = true;
+                        if (typeof die.updateVisualState === 'function') {
+                            die.updateVisualState();
+                        }
+                        if (typeof die.updateFaceValueHighlight === 'function') {
+                            die.updateFaceValueHighlight();
+                        }
+                    }
+                }
+
+                if (typeof die.updateEmoji === 'function') {
+                    die.updateEmoji();
+                }
+
+                return;
+            }
+
+            state.triggersUsed = Math.min(maxTriggers, triggersUsed + 1);
+            affectedUidSet.add(blueprint.uid);
+            this.chargerAttackBonus = Math.max(0, (this.chargerAttackBonus || 0) + 1);
+            this.chargerDefendBonus = Math.max(0, (this.chargerDefendBonus || 0) + 1);
+            bonusApplied = true;
+        });
+
+        if (affectedUidSet.size > 0) {
+            diceInPlay.forEach(die => {
+                if (!die || !die.dieBlueprint || !affectedUidSet.has(die.dieBlueprint.uid)) {
+                    return;
+                }
+
+                const state = this.ensureChargerDieState(die.dieBlueprint);
+                const maxTriggers = Number.isFinite(state?.maxTriggers) ? state.maxTriggers : 0;
+                const triggersUsed = Number.isFinite(state?.triggersUsed) ? state.triggersUsed : 0;
+                const depleted = maxTriggers > 0 && triggersUsed >= maxTriggers;
+
+                if (depleted) {
+                    if (typeof die.setNullified === 'function') {
+                        die.setNullified(true);
+                    } else {
+                        die.isNullified = true;
+                        if (typeof die.updateVisualState === 'function') {
+                            die.updateVisualState();
+                        }
+                        if (typeof die.updateFaceValueHighlight === 'function') {
+                            die.updateFaceValueHighlight();
+                        }
+                    }
+                }
+
+                if (typeof die.updateEmoji === 'function') {
+                    die.updateEmoji();
+                }
+            });
+        }
+
+        if (bonusApplied) {
+            this.updateZonePreviewText();
+        }
+    }
+
+    getChargerBonusForZone(zone) {
+        if (zone === 'defend') {
+            return Math.max(0, this.chargerDefendBonus || 0);
+        }
+
+        if (zone === 'attack') {
+            return Math.max(0, this.chargerAttackBonus || 0);
+        }
+
+        return 0;
+    }
+
     decorateBlueprint(blueprint) {
         if (!blueprint) {
             return blueprint;
@@ -2843,6 +3297,14 @@ export class GameScene extends Phaser.Scene {
 
         if (blueprint.id === 'medicine') {
             return this.decorateMedicineBlueprint(blueprint);
+        }
+
+        if (blueprint.id === 'comet') {
+            return this.decorateCometBlueprint(blueprint);
+        }
+
+        if (blueprint.id === 'charger') {
+            return this.decorateChargerBlueprint(blueprint);
         }
 
         return blueprint;
@@ -3439,6 +3901,54 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
+        if (die.dieBlueprint && die.dieBlueprint.id === 'comet') {
+            const state = this.ensureCometDieState(die.dieBlueprint);
+            const shouldNullify = !!(state && state.hasTriggered);
+
+            if (shouldNullify) {
+                if (typeof die.setNullified === 'function') {
+                    die.setNullified(true);
+                } else {
+                    die.isNullified = true;
+                    if (typeof die.updateVisualState === 'function') {
+                        die.updateVisualState();
+                    }
+                    if (typeof die.updateFaceValueHighlight === 'function') {
+                        die.updateFaceValueHighlight();
+                    }
+                }
+            }
+
+            if (typeof die.updateEmoji === 'function') {
+                die.updateEmoji();
+            }
+        }
+
+        if (die.dieBlueprint && die.dieBlueprint.id === 'charger') {
+            const state = this.ensureChargerDieState(die.dieBlueprint);
+            const maxTriggers = state && Number.isFinite(state.maxTriggers) ? state.maxTriggers : 0;
+            const triggersUsed = state && Number.isFinite(state.triggersUsed) ? state.triggersUsed : 0;
+            const shouldNullify = triggersUsed >= maxTriggers && maxTriggers > 0;
+
+            if (shouldNullify) {
+                if (typeof die.setNullified === 'function') {
+                    die.setNullified(true);
+                } else {
+                    die.isNullified = true;
+                    if (typeof die.updateVisualState === 'function') {
+                        die.updateVisualState();
+                    }
+                    if (typeof die.updateFaceValueHighlight === 'function') {
+                        die.updateFaceValueHighlight();
+                    }
+                }
+            }
+
+            if (typeof die.updateEmoji === 'function') {
+                die.updateEmoji();
+            }
+        }
+
         return true;
     }
 
@@ -3479,6 +3989,18 @@ export class GameScene extends Phaser.Scene {
                 && this.medicineDieStates instanceof Map) {
                 this.medicineDieStates.delete(previousBlueprint.uid);
             }
+            if (previousBlueprint
+                && previousBlueprint.id === 'comet'
+                && previousBlueprint.uid
+                && this.cometDieStates instanceof Map) {
+                this.cometDieStates.delete(previousBlueprint.uid);
+            }
+            if (previousBlueprint
+                && previousBlueprint.id === 'charger'
+                && previousBlueprint.uid
+                && this.chargerDieStates instanceof Map) {
+                this.chargerDieStates.delete(previousBlueprint.uid);
+            }
             replaced = true;
             break;
         }
@@ -3506,6 +4028,12 @@ export class GameScene extends Phaser.Scene {
         }
         if (removedBlueprint.uid && this.medicineDieStates instanceof Map) {
             this.medicineDieStates.delete(removedBlueprint.uid);
+        }
+        if (removedBlueprint.uid && this.cometDieStates instanceof Map) {
+            this.cometDieStates.delete(removedBlueprint.uid);
+        }
+        if (removedBlueprint.uid && this.chargerDieStates instanceof Map) {
+            this.chargerDieStates.delete(removedBlueprint.uid);
         }
 
         this.customDiceLoadout = loadout;
@@ -4672,6 +5200,8 @@ export class GameScene extends Phaser.Scene {
         this.resetGameState({ destroyDice: true });
         this.initializeTimeBombStatesForEncounter();
         this.initializeMedicineDieStatesForEncounter();
+        this.initializeCometDieStatesForEncounter();
+        this.initializeChargerDieStatesForEncounter();
         this.resetEnemyBurn();
         this.setMapMode(false);
         let enemyIndex = node ? node.enemyIndex : -1;

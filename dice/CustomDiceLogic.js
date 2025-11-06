@@ -95,6 +95,8 @@ export function doesDieFaceValueTriggerRule(die = {}) {
             return faceValue >= 1 && faceValue <= 2;
         case 'medicine':
             return faceValue >= 1 && faceValue <= 3;
+        case 'comet':
+            return faceValue === 6;
         case 'flameout':
             if (faceValue <= 0) {
                 return false;
@@ -295,6 +297,21 @@ function getPostResolutionEffects({ die, zone }) {
             effects.push(context => {
                 const { scene } = context || {};
                 callSceneMethod(scene, 'healPlayer', healAmount);
+            });
+        }
+    }
+
+    if (definition.id === 'comet') {
+        const shouldTrigger = faceValue === 6;
+        if (shouldTrigger) {
+            effects.push(context => {
+                const { scene } = context || {};
+                callSceneMethod(scene, 'handleCometDieTrigger', {
+                    blueprint,
+                    die,
+                    faceValue,
+                    zone
+                });
             });
         }
     }
