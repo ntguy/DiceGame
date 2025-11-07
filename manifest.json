@@ -1,0 +1,17 @@
+{
+  "name": "Drop + Roll",
+  "short_name": "Drop+Roll",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1d1d1d",
+  "theme_color": "#1d1d1d",
+  "description": "A fast-paced dice-and-dodge adventure built with Phaser.",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "icons/icon-120.png",
+      "sizes": "120x120",
+      "type": "image/png"
+    }
+  ]
+}
