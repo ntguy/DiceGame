@@ -53,9 +53,13 @@ export class StartScene extends Phaser.Scene {
         this.lineSpacing = this.dieSize * 0.8;
         this.titleDice = [];
         this.isTutorialEnabled = false;
+        this.isHardModeEnabled = false;
         this.tutorialToggleContainer = null;
         this.tutorialToggleBox = null;
         this.tutorialToggleCheckmark = null;
+        this.hardModeToggleContainer = null;
+        this.hardModeToggleBox = null;
+        this.hardModeToggleCheckmark = null;
     }
 
     preload() {
@@ -132,6 +136,7 @@ export class StartScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5);
 
+        this.createHardModeToggle(button);
         this.createTutorialToggle(button);
 
         button.setInteractive({ useHandCursor: true })
@@ -147,7 +152,8 @@ export class StartScene extends Phaser.Scene {
 
                 this.cameras.main.once('camerafadeoutcomplete', () => {
                     this.scene.start('GameScene', {
-                        tutorialEnabled: this.isTutorialEnabled
+                        tutorialEnabled: this.isTutorialEnabled,
+                        hardModeEnabled: this.isHardModeEnabled
                     });
                 }, this);
         
@@ -155,13 +161,13 @@ export class StartScene extends Phaser.Scene {
             });
     }
 
-    createTutorialToggle(button) {
+    createCheckboxToggle(button, labelText, { align = 'right', margin = 80, onToggle } = {}) {
         if (!button) {
-            return;
+            return null;
         }
 
         const checkboxSize = 32;
-        const label = this.add.text(0, 0, 'Tutorial', {
+        const label = this.add.text(0, 0, labelText, {
             fontFamily: 'monospace',
             fontSize: '28px',
             color: '#f1c40f',
@@ -198,8 +204,10 @@ export class StartScene extends Phaser.Scene {
         container.add(checkmark);
         container.add(label);
 
-        const margin = 80;
-        const containerX = button.x + button.displayWidth / 2 + margin + totalWidth / 2;
+        const offset = button.displayWidth / 2 + margin + totalWidth / 2;
+        const containerX = align === 'left'
+            ? button.x - offset
+            : button.x + offset;
         container.setPosition(containerX, button.y);
 
         hitArea.on('pointerover', () => {
@@ -209,18 +217,54 @@ export class StartScene extends Phaser.Scene {
             box.setFillStyle(0x000000, 0);
         });
         hitArea.on('pointerdown', () => {
-            this.toggleTutorialCheckbox();
+            if (typeof onToggle === 'function') {
+                onToggle();
+            }
         });
 
-        this.tutorialToggleContainer = container;
-        this.tutorialToggleBox = box;
-        this.tutorialToggleCheckmark = checkmark;
+        return { container, box, checkmark };
+    }
+
+    createTutorialToggle(button) {
+        const toggle = this.createCheckboxToggle(button, 'Tutorial', {
+            align: 'right',
+            onToggle: () => this.toggleTutorialCheckbox()
+        });
+
+        if (!toggle) {
+            return;
+        }
+
+        this.tutorialToggleContainer = toggle.container;
+        this.tutorialToggleBox = toggle.box;
+        this.tutorialToggleCheckmark = toggle.checkmark;
         this.updateTutorialCheckbox();
+    }
+
+    createHardModeToggle(button) {
+        const toggle = this.createCheckboxToggle(button, 'Hard Mode', {
+            align: 'left',
+            onToggle: () => this.toggleHardModeCheckbox()
+        });
+
+        if (!toggle) {
+            return;
+        }
+
+        this.hardModeToggleContainer = toggle.container;
+        this.hardModeToggleBox = toggle.box;
+        this.hardModeToggleCheckmark = toggle.checkmark;
+        this.updateHardModeCheckbox();
     }
 
     toggleTutorialCheckbox() {
         this.isTutorialEnabled = !this.isTutorialEnabled;
         this.updateTutorialCheckbox();
+    }
+
+    toggleHardModeCheckbox() {
+        this.isHardModeEnabled = !this.isHardModeEnabled;
+        this.updateHardModeCheckbox();
     }
 
     updateTutorialCheckbox() {
@@ -231,6 +275,17 @@ export class StartScene extends Phaser.Scene {
         if (this.tutorialToggleBox) {
             const fillAlpha = this.isTutorialEnabled ? 0.2 : 0;
             this.tutorialToggleBox.setFillStyle(0xf1c40f, fillAlpha);
+        }
+    }
+
+    updateHardModeCheckbox() {
+        if (this.hardModeToggleCheckmark) {
+            this.hardModeToggleCheckmark.setVisible(this.isHardModeEnabled);
+        }
+
+        if (this.hardModeToggleBox) {
+            const fillAlpha = this.isHardModeEnabled ? 0.2 : 0;
+            this.hardModeToggleBox.setFillStyle(0xf1c40f, fillAlpha);
         }
     }
 

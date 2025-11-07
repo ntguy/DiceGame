@@ -1,4 +1,5 @@
 import { CONSTANTS, COLORS } from './constants.js';
+import { DIFFICULTY_PRESETS, DEFAULT_DIFFICULTY } from './DifficultyConfig.js';
 import { createDie, snapToGrid } from './objects/Dice.js';
 import {
     setupZones,
@@ -111,7 +112,7 @@ const TUTORIAL_CONFIG = {
         ]
     },
     'first-enemy-defeated': { title: 'Collecting Dice',
-        modal: { width: 800, height: 400 },
+        modal: { width: 640, height: 600 },
         points: [
             {
                 text: 'Choose a special die after each battle to improve your hand.',
@@ -323,7 +324,14 @@ export class GameScene extends Phaser.Scene {
         this.maxDicePerZone = this.defaultMaxDicePerZone;
         this.rollsRemaining = CONSTANTS.DEFAULT_MAX_ROLLS;
         this.rollsRemainingAtTurnStart = CONSTANTS.DEFAULT_MAX_ROLLS;
-        this.playerMaxHealth = 100;
+        this.hardModeEnabled = false;
+        this.difficultyKey = DEFAULT_DIFFICULTY;
+        const initialDifficulty = DIFFICULTY_PRESETS[this.difficultyKey]
+            || DIFFICULTY_PRESETS[DEFAULT_DIFFICULTY]
+            || { playerMaxHealth: 100 };
+        this.playerMaxHealth = typeof initialDifficulty.playerMaxHealth === 'number'
+            ? initialDifficulty.playerMaxHealth
+            : 100;
         this.playerHealth = this.playerMaxHealth;
         this.healthBar = null;
         this.enemyManager = null;
@@ -422,6 +430,57 @@ export class GameScene extends Phaser.Scene {
         this.shownTutorialKeys = new Set();
         this.tutorialQueue = [];
         this.activeTutorialModal = null;
+    }
+
+    getDifficultyConfig() {
+        const presets = DIFFICULTY_PRESETS || {};
+        const fallbackKey = DEFAULT_DIFFICULTY;
+        const fallback = presets[fallbackKey] || { playerMaxHealth: 100, mapRewards: {} };
+        return presets[this.difficultyKey] || fallback;
+    }
+
+    applyDifficultySettings() {
+        const presets = DIFFICULTY_PRESETS || {};
+        const requestedKey = this.hardModeEnabled ? 'hard' : DEFAULT_DIFFICULTY;
+        if (Object.prototype.hasOwnProperty.call(presets, requestedKey)) {
+            this.difficultyKey = requestedKey;
+        } else {
+            this.difficultyKey = DEFAULT_DIFFICULTY;
+        }
+
+        const difficulty = this.getDifficultyConfig();
+        const maxHealth = typeof difficulty.playerMaxHealth === 'number'
+            ? difficulty.playerMaxHealth
+            : 100;
+        this.playerMaxHealth = maxHealth;
+        this.playerHealth = this.playerMaxHealth;
+    }
+
+    buildEnemySequence(sequence, config) {
+        if (!Array.isArray(sequence)) {
+            return [];
+        }
+
+        const builtSequence = sequence.map(entry => ({ ...entry }));
+        const difficulty = this.getDifficultyConfig();
+        const rewardsByMap = difficulty && difficulty.mapRewards;
+        if (!this.hardModeEnabled || !rewardsByMap) {
+            return builtSequence;
+        }
+
+        const mapId = config && typeof config.id === 'string' ? config.id : null;
+        const rewards = mapId ? rewardsByMap[mapId] : null;
+        if (!Array.isArray(rewards)) {
+            return builtSequence;
+        }
+
+        builtSequence.forEach((entry, index) => {
+            if (typeof rewards[index] === 'number') {
+                entry.rewardGold = rewards[index];
+            }
+        });
+
+        return builtSequence;
     }
 
     acquireModalInputLock() {
@@ -568,6 +627,8 @@ export class GameScene extends Phaser.Scene {
             this.musicVolume = defaultMusic;
         }
         this.tutorialEnabled = !!(data && data.tutorialEnabled);
+        this.hardModeEnabled = !!(data && data.hardModeEnabled);
+        this.applyDifficultySettings();
         this.shownTutorialKeys = new Set();
         this.tutorialQueue = [];
         this.activeTutorialModal = null;
@@ -4586,17 +4647,18 @@ export class GameScene extends Phaser.Scene {
             this.pathUI = null;
         }
 
-        let enemySequence;
+        let baseEnemySequence;
         if (config) {
             if (Array.isArray(config.enemySequence)) {
-                enemySequence = config.enemySequence.map(entry => ({ ...entry }));
+                baseEnemySequence = config.enemySequence;
             } else if (typeof config.createEnemySequence === 'function') {
                 const generatedSequence = config.createEnemySequence();
                 if (Array.isArray(generatedSequence)) {
-                    enemySequence = generatedSequence.map(entry => ({ ...entry }));
+                    baseEnemySequence = generatedSequence;
                 }
             }
         }
+        const enemySequence = this.buildEnemySequence(baseEnemySequence, config);
 
         const connectionTextureKey = this.getPathTextureKeyForConfig(config);
         const wallTextureKey = this.getWallTextureKeyForConfig(config);
