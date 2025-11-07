@@ -758,9 +758,9 @@ export class GameScene extends Phaser.Scene {
 
     createZonePreviewTexts() {
         const zoneWidth = this.getZoneWidth({ includePadding: true });
-        const defendLeftX = (this.defendZoneCenter ? this.defendZoneCenter.x : 200) - zoneWidth / 2;
-        const attackLeftX = (this.attackZoneCenter ? this.attackZoneCenter.x : 600) - zoneWidth / 2;
-        const comboLineOffset = 145;
+        const defendLeftX = (this.defendZoneCenter ? this.defendZoneCenter.x : 200) - zoneWidth / 2 + 16;
+        const attackLeftX = (this.attackZoneCenter ? this.attackZoneCenter.x : 600) - zoneWidth / 2 + 16;
+        const comboLineOffset = 350;
 
         if (!this.defendPreviewText) {
             this.defendPreviewText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
@@ -774,8 +774,8 @@ export class GameScene extends Phaser.Scene {
             this.defendComboText = this.add.text(defendLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y, '', {
                 fontSize: '20px',
                 color: '#3498db',
-                align: 'left'
-            }).setOrigin(0, 0.5);
+                align: 'right'
+            }).setOrigin(1, 0.5);
         }
 
         if (!this.attackPreviewText) {
@@ -790,8 +790,8 @@ export class GameScene extends Phaser.Scene {
             this.attackComboText = this.add.text(attackLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y, '', {
                 fontSize: '20px',
                 color: '#e74c3c',
-                align: 'left'
-            }).setOrigin(0, 0.5);
+                align: 'right'
+            }).setOrigin(1, 0.5);
         }
 
         if (this.defendPreviewText) {
