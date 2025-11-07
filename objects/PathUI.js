@@ -1608,6 +1608,8 @@ export class PathUI {
         const nodes = this.pathManager.getNodes();
         let minY = Number.POSITIVE_INFINITY;
         let maxY = Number.NEGATIVE_INFINITY;
+        const torchAnimationReady = this.ensureWallTorchAnimation();
+
         nodes.forEach(node => {
             const { x, y } = this.getNodePosition(node);
             const container = this.scene.add.container(x, y);
@@ -1616,10 +1618,28 @@ export class PathUI {
             const color = COLORS[typeKey] || COLORS.whiteStroke;
             const icon = isBoss ? ICONS.boss : ICONS[node.type];
 
+            const torchSprite = torchAnimationReady
+                ? this.scene.add.sprite(0, 32, WALL_TORCH_TEXTURE_KEY, 0)
+                    .setScale(GENERAL_TEXTURE_SCALE, GENERAL_TEXTURE_SCALE)
+                    .setOrigin(0.5, 0.5)
+                    .setDepth(-1)
+                : null;
+
+            if (torchSprite && typeof torchSprite.play === 'function') {
+                torchSprite.play(WALL_TORCH_ANIMATION_KEY);
+                const randomProgress = typeof Phaser !== 'undefined'
+                    && Phaser.Math
+                    && typeof Phaser.Math.FloatBetween === 'function'
+                        ? Phaser.Math.FloatBetween(0, 1)
+                        : Math.random();
+                if (torchSprite.anims && typeof torchSprite.anims.setProgress === 'function') {
+                    torchSprite.anims.setProgress(randomProgress);
+                }
+            }
+
             const cube = this.scene.add.rectangle(0, 0, 56, 56, color, 1)
                 .setStrokeStyle(3, COLORS.whiteStroke, 0.9)
-                .setInteractive({ useHandCursor: true })
-                .setAngle(45);
+                .setInteractive({ useHandCursor: true });
 
             // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
             cube.on('pointerover', () => {
@@ -1643,6 +1663,9 @@ export class PathUI {
                 color: '#ffffff'
             }).setOrigin(0.5);
 
+            if (torchSprite) {
+                container.add(torchSprite);
+            }
             container.add([cube, iconText, labelText]);
             this.container.add(container);
 
@@ -1669,6 +1692,7 @@ export class PathUI {
                 node,
                 container,
                 cube,
+                torchSprite,
                 iconText,
                 labelText,
                 isBoss
@@ -1843,7 +1867,7 @@ export class PathUI {
         const availableIds = new Set(this.pathManager.getAvailableNodeIds());
         const testingMode = this.isTestingModeActive();
 
-        this.nodeRefs.forEach(({ node, cube, iconText, labelText, isBoss }) => {
+        this.nodeRefs.forEach(({ node, cube, iconText, labelText, torchSprite, isBoss }) => {
             const typeKey = isBoss ? 'boss' : node.type;
             const baseColor = COLORS[typeKey] || COLORS.whiteStroke;
             const isCompleted = this.pathManager.isNodeCompleted(node.id);
@@ -1884,6 +1908,9 @@ export class PathUI {
             cube.setAlpha(1);
             iconText.setAlpha(iconAlpha);
             labelText.setAlpha(labelAlpha);
+            if (torchSprite && typeof torchSprite.setAlpha === 'function') {
+                torchSprite.setAlpha(iconAlpha);
+            }
             cube.setStrokeStyle(strokeWidth, strokeColor, strokeAlpha);
 
             if (interactive) {
