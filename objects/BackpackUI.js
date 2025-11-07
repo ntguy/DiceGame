@@ -35,7 +35,7 @@ const SECTION_LABEL_FONT_SIZE = '32px';
 const INFO_TITLE_COLOR = '#f7dc6f';
 const INFO_TITLE_FONT_SIZE = '32px';
 const INFO_DESCRIPTION_COLOR = '#ecf0f1';
-const INFO_DESCRIPTION_FONT_SIZE = '20px';
+const INFO_DESCRIPTION_FONT_SIZE = '32px';
 const INFO_SUBTEXT_COLOR = '#85929e';
 const INFO_UPGRADED_COLOR = '#f4d03f';
 const CLOSE_BUTTON_FILL_COLOR = 0x1b2631;
@@ -219,7 +219,7 @@ export class BackpackUI {
             .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.8);
         this.container.add(background);
 
-        this.diceInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 20, 'Backpack', {
+        this.diceInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 10, 'Backpack', {
             fontSize: INFO_TITLE_FONT_SIZE,
             color: INFO_TITLE_COLOR,
             fontStyle: 'bold',
@@ -228,7 +228,7 @@ export class BackpackUI {
         }).setOrigin(0.5, 0);
         this.container.add(this.diceInfoTitleText);
 
-        this.diceInfoDescriptionText = this.scene.add.text(centerX, this.diceInfoTitleText.y + 48, 'Select a die to learn more about it.', {
+        this.diceInfoDescriptionText = this.scene.add.text(centerX, this.diceInfoTitleText.y + 32, 'Select a die to learn more about it.', {
             fontSize: INFO_DESCRIPTION_FONT_SIZE,
             color: INFO_DESCRIPTION_COLOR,
             align: 'left',
@@ -246,7 +246,7 @@ export class BackpackUI {
             .setInteractive({ useHandCursor: true });
 
         const buttonLabel = this.scene.add.text(centerX, buttonY, 'Discard Die', {
-            fontSize: '20px',
+            fontSize: '32px',
             color: DISCARD_BUTTON_TEXT_COLOR,
             fontStyle: 'bold'
         }).setOrigin(0.5);
@@ -407,7 +407,7 @@ export class BackpackUI {
             .setStrokeStyle(2, INFO_SECTION_STROKE_COLOR, 0.8);
         this.container.add(background);
 
-        this.relicInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 20, 'Backpack', {
+        this.relicInfoTitleText = this.scene.add.text(centerX, centerY - height / 2 + 10, 'Backpack', {
             fontSize: INFO_TITLE_FONT_SIZE,
             color: INFO_TITLE_COLOR,
             fontStyle: 'bold',
@@ -416,7 +416,7 @@ export class BackpackUI {
         }).setOrigin(0.5, 0);
         this.container.add(this.relicInfoTitleText);
 
-        this.relicInfoDescriptionText = this.scene.add.text(centerX, this.relicInfoTitleText.y + 48, 'Select a relic to learn more about it.', {
+        this.relicInfoDescriptionText = this.scene.add.text(centerX, this.relicInfoTitleText.y + 32, 'Select a relic to learn more about it.', {
             fontSize: INFO_DESCRIPTION_FONT_SIZE,
             color: INFO_DESCRIPTION_COLOR,
             align: 'left',
@@ -434,7 +434,7 @@ export class BackpackUI {
             .setInteractive({ useHandCursor: true });
 
         const buttonLabel = this.scene.add.text(centerX, buttonY, 'Sell (50g)', {
-            fontSize: '20px',
+            fontSize: '32px',
             color: DISCARD_BUTTON_TEXT_COLOR,
             fontStyle: 'bold'
         }).setOrigin(0.5);
