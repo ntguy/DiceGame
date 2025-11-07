@@ -12,7 +12,8 @@ const APP_SHELL = [
   'GameScene.js',
   'utils/bitmapTextFactory.js',
   'sprites/Background.png',
-  'audio/Map1Music.mp3'
+  'audio/Map1Music.mp3',
+  'icons/icon-120.png'
 ];
 const APP_SHELL_URLS = APP_SHELL.map((path) => new URL(path, self.location).toString());
 const OFFLINE_FALLBACK = new URL('index.html', self.location).toString();
