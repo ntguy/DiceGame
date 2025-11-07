@@ -53,6 +53,8 @@ export class PathManager {
         if (this.frontier.length === 0 && this.nodes.length > 0) {
             this.frontier = [this.nodes[0].id];
         }
+
+        this.latestCompletedNodeId = null;
     }
 
     getFacilityTypesForEnemyIndex(enemyIndex) {
@@ -856,6 +858,7 @@ export class PathManager {
         }
 
         this.completedNodeIds.add(nodeId);
+        this.latestCompletedNodeId = nodeId;
         if (this.currentNodeId === nodeId) {
             this.currentNodeId = null;
         }
@@ -878,6 +881,10 @@ export class PathManager {
 
     getCurrentNodeId() {
         return this.currentNodeId;
+    }
+
+    getLatestCompletedNodeId() {
+        return this.latestCompletedNodeId || null;
     }
 
     hasPendingNodes() {
