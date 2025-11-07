@@ -3,7 +3,8 @@ const NODE_TYPES = {
     SHOP: 'shop',
     INFIRMARY: 'infirmary',
     TOWER: 'tower',
-    UPGRADE: 'upgrade'
+    UPGRADE: 'upgrade',
+    START: 'start',
 };
 
 const DEFAULT_ENEMY_SEQUENCE = [
@@ -49,10 +50,30 @@ export class PathManager {
 
         this.generatePath();
 
-        this.frontier = this.nodes.filter(node => node.start).map(node => node.id);
+        // Mark START node as completed FIRST
+        const startNode = this.nodes.find(node => node.type === NODE_TYPES.START);
+        if (startNode && startNode.id) {
+            this.completedNodeIds.add(startNode.id);
+        }
+
+        // THEN set frontier to first battle nodes (children of START node)
+        if (startNode && Array.isArray(startNode.connections) && startNode.connections.length > 0) {
+            this.frontier = [...startNode.connections];
+        } else {
+            // Fallback: find row 0 nodes
+            this.frontier = this.nodes
+                .filter(node => node.row === 0 && node.type !== NODE_TYPES.START)
+                .map(node => node.id);
+        }
+        
         if (this.frontier.length === 0 && this.nodes.length > 0) {
             this.frontier = [this.nodes[0].id];
         }
+
+                // Debug log to verify
+        console.log('START node:', startNode);
+        console.log('Frontier:', this.frontier);
+        console.log('Row 0 nodes:', this.nodes.filter(n => n.row === 0));
     }
 
     getFacilityTypesForEnemyIndex(enemyIndex) {
@@ -71,6 +92,7 @@ export class PathManager {
 
         const LEVEL_COUNT = 7;
         const columnLayouts = {
+            1: [1],
             2: [0.5, 1.5],
             3: [0, 1, 2]
         };
@@ -205,6 +227,18 @@ export class PathManager {
 
         const levels = [];
         let bossNode = null;
+
+        // NEW: Add START node at row -1 (above everything)
+        const startNode = {
+            id: 'node-start-0',
+            type: NODE_TYPES.START,
+            label: 'Start',
+            row: -1,
+            column: 1,
+            connections: [],
+            start: true,
+            isBoss: false
+        };
 
         const findNodeById = targetId => {
             if (!targetId) {
@@ -445,7 +479,7 @@ export class PathManager {
             row: 0,
             column,
             connections: [],
-            start: true,
+            start: false,
             isBoss: false
         }));
 
@@ -810,6 +844,13 @@ export class PathManager {
 
         resolveAdjacentLocationConflicts();
         pruneNodeConnections();
+
+        // Connect START node to all nodes in level 0
+        firstLevelNodes.forEach(node => {
+            ensureConnection(startNode, node.id);
+        });
+
+        this.addNode(startNode);
 
         levels.forEach(level => {
             level.nodes.forEach(node => {

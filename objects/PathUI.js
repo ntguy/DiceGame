@@ -7,6 +7,7 @@ const COLORS = {
     [PATH_NODE_TYPES.INFIRMARY]: 0x27ae60,
     [PATH_NODE_TYPES.TOWER]: 0x5dade2,
     [PATH_NODE_TYPES.UPGRADE]: 0xf39c12,
+    [PATH_NODE_TYPES.START]: 0xccccff,
     boss: 0x9b59b6,
     completed: 0x7f8c8d,
     whiteStroke: 0xffeeee,
@@ -19,16 +20,17 @@ const ICONS = {
     [PATH_NODE_TYPES.INFIRMARY]: '⊕',
     [PATH_NODE_TYPES.TOWER]: '🎲',
     [PATH_NODE_TYPES.UPGRADE]: '✨',
+    [PATH_NODE_TYPES.START]: '🏁',
     boss: '🔥'
 };
 
 const LAYOUT = {
-    baseY: 140,
-    columnSpacing: 220,
-    rowSpacing: 156
+    baseY: 160,
+    columnSpacing: 210,
+    rowSpacing: 140
 };
 
-const PATH_TEXTURE_SCALE = 1.5;
+const PATH_TEXTURE_SCALE = 1.4;
 const GENERAL_TEXTURE_SCALE = 2;
 const WALL_HIGHLIGHT_TEXTURE_KEY = 'wall_highlight_center';
 const WALL_HIGHLIGHT_MIN_ALPHA = 0.8;
@@ -46,10 +48,10 @@ const PATH_DEPTHS = {
 };
 
 const PLAYER_DEPTH = 999;
-const PLAYER_MOVE_DURATION = 1000;
-const PLAYER_FACE_FRAME_DELAY = 125; // 8 FPS
-const PLAYER_WIGGLE_ANGLE = 6;
-const PLAYER_WIGGLE_DURATION = 900;
+// const PLAYER_MOVE_DURATION = 800;
+const PLAYER_MOVE_SPEED = 0.4; // pixels per millisecond (~400 px/sec)
+const PLAYER_WIGGLE_ANGLE = 14;
+const PLAYER_WIGGLE_DURATION = 800;
 
 const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
@@ -1617,7 +1619,11 @@ export class PathUI {
         const offsetFromCenter = (columnIndex - 1) * LAYOUT.columnSpacing;
         const centerX = this.scene.scale.width / 2;
         const x = centerX + offsetFromCenter;
-        const y = LAYOUT.baseY + (node.row || 0) * LAYOUT.rowSpacing;
+        
+        // Handle negative rows (START node at row -1)
+        const rowOffset = (node.row || 0) + 1; // Shift everything down by 1 to accommodate START
+        const y = LAYOUT.baseY + rowOffset * LAYOUT.rowSpacing;
+        
         return { x, y };
     }
 
@@ -1728,21 +1734,27 @@ export class PathUI {
         const container = this.scene.add.container(startX, startY);
         container.setDepth(PLAYER_DEPTH);
 
-        const dieBody = this.scene.add.rectangle(0, 0, 46, 46, 0xffffff, 1);
-        dieBody.setStrokeStyle(3, 0xf5f5f5, 1);
+        const dieBody = this.scene.add.rectangle(0, 0, 36, 36, 0xccccb5, 1);
+        dieBody.setStrokeStyle(3, 0x000000, 2);
 
-        const faceText = this.scene.add.text(0, 2, '1', {
-            fontSize: '26px',
+        const faceText = this.scene.add.text(0, 2, ':)', {
+            fontSize: '32px',
             color: '#111111',
             fontStyle: 'bold'
         }).setOrigin(0.5);
+        faceText.setAngle(90);
 
-        const limbColor = 0xffffff;
+        const limbColor = 0xccccb5;
         const limbAlpha = 1;
-        const leftArm = this.scene.add.rectangle(-30, -6, 24, 6, limbColor, limbAlpha);
-        const rightArm = this.scene.add.rectangle(30, -6, 24, 6, limbColor, limbAlpha);
-        const leftLeg = this.scene.add.rectangle(-14, 32, 8, 26, limbColor, limbAlpha);
-        const rightLeg = this.scene.add.rectangle(14, 32, 8, 26, limbColor, limbAlpha);
+        const leftArm = this.scene.add.rectangle(-18, -6, 16, 6, limbColor, limbAlpha);
+        const rightArm = this.scene.add.rectangle(18, -6, 16, 6, limbColor, limbAlpha);
+        const leftLeg = this.scene.add.rectangle(-12, 18, 7, 16, limbColor, limbAlpha);
+        const rightLeg = this.scene.add.rectangle(12, 18, 7, 16, limbColor, limbAlpha);
+        leftArm.setStrokeStyle(3, 0x000000, 2);
+        rightArm.setStrokeStyle(3, 0x000000, 2);
+        leftLeg.setStrokeStyle(3, 0x000000, 2);
+        rightLeg.setStrokeStyle(3, 0x000000, 2);
+
 
         leftArm.setOrigin(0.85, 0.5);
         rightArm.setOrigin(0.15, 0.5);
@@ -1902,10 +1914,10 @@ export class PathUI {
         });
 
         const averageX = sumX / firstRowNodes.length;
-        const offsetY = LAYOUT.rowSpacing * 0.8;
+        // const offsetY = LAYOUT.rowSpacing * 0.5;
         return {
             x: averageX,
-            y: sampleY + offsetY
+            y: sampleY,
         };
     }
 
@@ -1952,40 +1964,7 @@ export class PathUI {
         return !!(this.playerMovementTween || (Array.isArray(this.playerPendingSegments) && this.playerPendingSegments.length > 0));
     }
 
-    startFaceShuffle() {
-        if (!this.scene || !this.scene.time || !this.playerDieText) {
-            return;
-        }
-        if (this.playerFaceTimer) {
-            return;
-        }
-
-        const between = typeof Phaser !== 'undefined' && Phaser.Math && typeof Phaser.Math.Between === 'function'
-            ? Phaser.Math.Between
-            : (min, max) => Math.floor(min + Math.random() * (max - min + 1));
-
-        this.playerFaceTimer = this.scene.time.addEvent({
-            delay: PLAYER_FACE_FRAME_DELAY,
-            loop: true,
-            callback: () => {
-                const value = between(1, 6);
-                this.playerDieText.setText(String(value));
-            }
-        });
-    }
-
-    stopFaceShuffle() {
-        if (this.playerFaceTimer) {
-            this.playerFaceTimer.remove();
-            this.playerFaceTimer = null;
-        }
-
-        if (this.playerDieText) {
-            this.playerDieText.setText('1');
-        }
-    }
-
-    stopPlayerMovement(stopFace = true) {
+    stopPlayerMovement() {
         if (this.playerMovementTween) {
             this.playerMovementTween.stop();
             if (this.scene && this.scene.tweens) {
@@ -1998,10 +1977,6 @@ export class PathUI {
             this.playerPendingSegments.length = 0;
         } else {
             this.playerPendingSegments = [];
-        }
-
-        if (stopFace) {
-            this.stopFaceShuffle();
         }
     }
 
@@ -2019,13 +1994,11 @@ export class PathUI {
 
         this.stopPlayerMovement(false);
         this.playerPendingSegments = filtered.slice();
-        this.startFaceShuffle();
 
         const advance = () => {
             if (!Array.isArray(this.playerPendingSegments) || this.playerPendingSegments.length === 0) {
                 this.playerMovementTween = null;
                 this.playerPendingSegments = [];
-                this.stopFaceShuffle();
                 return;
             }
 
@@ -2125,12 +2098,14 @@ export class PathUI {
             if (!Number.isFinite(baseDistance) || baseDistance <= 0) {
                 baseDistance = distanceToAnchor;
             }
-            const durationToAnchor = Math.max(1, Math.round(PLAYER_MOVE_DURATION * (distanceToAnchor / baseDistance)));
+            const durationToAnchor = Math.max(1, Math.round(distanceToAnchor / PLAYER_MOVE_SPEED));
             segments.push({ to: { x: anchorPosition.x, y: anchorPosition.y }, duration: durationToAnchor });
         }
 
-        segments.push({ to: { x: targetPosition.x, y: targetPosition.y }, duration: PLAYER_MOVE_DURATION });
-
+        const distance = Phaser.Math.Distance.Between(anchorPosition.x, anchorPosition.y, targetPosition.x, targetPosition.y);
+        const duration = Math.max(1, Math.round(distance / PLAYER_MOVE_SPEED));
+        segments.push({ to: { x: targetPosition.x, y: targetPosition.y }, duration });
+        
         this.playerAnchorNodeId = anchorNodeId;
         this.playerAnchorPosition = { ...anchorPosition };
         this.playerHoveredNodeId = nodeId;
@@ -2173,7 +2148,7 @@ export class PathUI {
         if (this.playerActiveRoute && this.playerActiveRoute.anchorNodeId === anchorNodeId && Number.isFinite(this.playerActiveRoute.totalDistance) && this.playerActiveRoute.totalDistance > 0) {
             baseDistance = this.playerActiveRoute.totalDistance;
         }
-        const duration = Math.max(1, Math.round(PLAYER_MOVE_DURATION * (distanceToAnchor / baseDistance)));
+        const duration = Math.max(1, Math.round(distanceToAnchor / PLAYER_MOVE_SPEED));
 
         this.playerAnchorNodeId = anchorNodeId || null;
         this.playerAnchorPosition = { ...anchorPosition };
@@ -2697,7 +2672,6 @@ export class PathUI {
         }
 
         this.stopPlayerMovement();
-        this.stopFaceShuffle();
         this.destroyPlayerToken();
 
         this.nodeRefs.clear();
