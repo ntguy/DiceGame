@@ -83,6 +83,15 @@ const WORLD3_STRETCH_POWER = 2.4;
 const WORLD3_STRETCH_SEGMENTS = 5;
 const WORLD3_TRIMMED_LAYER_INDICES = new Set([3, 6, 8]);
 
+const PLAYER_DEPTH = PATH_DEPTHS.nodes + 200;
+const PLAYER_BODY_SIZE = 40;
+const PLAYER_LIMB_LENGTH = 22;
+const PLAYER_LIMB_THICKNESS = 4;
+const PLAYER_WIGGLE_ANGLE = 8;
+const PLAYER_WIGGLE_DURATION = 520;
+const PLAYER_ROLL_FPS = 8;
+const PLAYER_ROLL_DELAY = 1000 / PLAYER_ROLL_FPS;
+
 function isNumber(value) {
     return typeof value === 'number' && Number.isFinite(value);
 }
@@ -557,6 +566,9 @@ export class PathUI {
         this.connectionSprites = [];
 
         this.nodeRefs = new Map();
+        this.nodePositions = new Map();
+        this.startNodeIds = [];
+        this.nodeAdjacency = new Map();
         this.isActive = false;
         this.isDragging = false;
         this.dragPointerId = null;
@@ -569,10 +581,24 @@ export class PathUI {
         this.maxContentY = 0;
         this.isDestroyed = false;
 
+        this.playerContainer = null;
+        this.playerPosition = { x: 0, y: 0 };
+        this.playerCurrentNodeId = null;
+        this.playerAnchorNodeId = null;
+        this.playerHoverTargetId = null;
+        this.playerMovementTimeline = null;
+        this.playerRollTimer = null;
+        this.playerCurrentFaceValue = 1;
+        this.playerLimbTweens = [];
+        this.playerFaceText = null;
+
         this.createNodes();
+        this.buildAdjacencyGraph();
         this.createWalls();
         this.drawConnections();
+        this.createPlayerMarker();
         this.updateScrollBounds();
+        this.updatePlayerAnchorPosition(true);
         this.applyScroll();
         this.setupInputHandlers();
         if (this.scene && this.scene.events) {
@@ -1610,6 +1636,10 @@ export class PathUI {
         let maxY = Number.NEGATIVE_INFINITY;
         nodes.forEach(node => {
             const { x, y } = this.getNodePosition(node);
+            this.nodePositions.set(node.id, { x, y });
+            if (node.start) {
+                this.startNodeIds.push(node.id);
+            }
             const container = this.scene.add.container(x, y);
             const isBoss = node.isBoss;
             const typeKey = isBoss ? 'boss' : node.type;
@@ -1623,12 +1653,16 @@ export class PathUI {
 
             // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
             cube.on('pointerover', () => {
-            if (!this.isNodeSelectable(node.id)) return;
+                if (!this.isNodeSelectable(node.id)) return;
                 cube.setStrokeStyle(4, COLORS.whiteStroke, 1); // change stroke color & width on hover
+                this.handleNodeHover(node.id);
             });
-        
+
             cube.on('pointerout', () => {
                 this.updateState();
+                if (this.playerHoverTargetId === node.id) {
+                    this.handleNodeHoverExit();
+                }
             });
 
             const iconText = this.scene.add.text(0, 0, icon || '?', {
@@ -1687,6 +1721,493 @@ export class PathUI {
             this.minContentY = 0;
             this.maxContentY = 0;
         }
+    }
+
+    buildAdjacencyGraph() {
+        if (!this.nodeAdjacency) {
+            this.nodeAdjacency = new Map();
+        } else {
+            this.nodeAdjacency.clear();
+        }
+
+        const nodes = this.pathManager && typeof this.pathManager.getNodes === 'function'
+            ? this.pathManager.getNodes()
+            : [];
+
+        nodes.forEach(node => {
+            if (!node || !node.id) {
+                return;
+            }
+
+            if (!this.nodeAdjacency.has(node.id)) {
+                this.nodeAdjacency.set(node.id, new Set());
+            }
+
+            const connections = Array.isArray(node.connections) ? node.connections : [];
+            connections.forEach(targetId => {
+                if (!targetId) {
+                    return;
+                }
+
+                if (!this.nodeAdjacency.has(targetId)) {
+                    this.nodeAdjacency.set(targetId, new Set());
+                }
+
+                this.nodeAdjacency.get(node.id).add(targetId);
+                this.nodeAdjacency.get(targetId).add(node.id);
+            });
+        });
+    }
+
+    getNodePositionById(nodeId) {
+        if (!nodeId) {
+            return null;
+        }
+
+        if (this.nodePositions && this.nodePositions.has(nodeId)) {
+            const stored = this.nodePositions.get(nodeId);
+            if (stored) {
+                return { x: stored.x, y: stored.y };
+            }
+        }
+
+        const node = this.pathManager && typeof this.pathManager.getNode === 'function'
+            ? this.pathManager.getNode(nodeId)
+            : null;
+        if (!node) {
+            return null;
+        }
+
+        const position = this.getNodePosition(node);
+        this.nodePositions.set(nodeId, { x: position.x, y: position.y });
+        return { x: position.x, y: position.y };
+    }
+
+    getPlayerAnchorNodeId() {
+        if (!this.pathManager) {
+            return this.playerAnchorNodeId;
+        }
+
+        const currentId = typeof this.pathManager.getCurrentNodeId === 'function'
+            ? this.pathManager.getCurrentNodeId()
+            : null;
+        if (currentId) {
+            return currentId;
+        }
+
+        const latestCompleted = typeof this.pathManager.getLatestCompletedNodeId === 'function'
+            ? this.pathManager.getLatestCompletedNodeId()
+            : null;
+        if (latestCompleted) {
+            return latestCompleted;
+        }
+
+        if (Array.isArray(this.startNodeIds) && this.startNodeIds.length > 0) {
+            return this.startNodeIds[0];
+        }
+
+        return null;
+    }
+
+    updatePlayerAnchorPosition(force = false) {
+        if (!this.playerContainer) {
+            return;
+        }
+
+        const anchorId = this.getPlayerAnchorNodeId();
+        if (!anchorId) {
+            return;
+        }
+
+        if (!force && this.playerAnchorNodeId === anchorId) {
+            return;
+        }
+
+        if (this.playerMovementTimeline && !force) {
+            return;
+        }
+
+        const position = this.getNodePositionById(anchorId);
+        if (!position) {
+            return;
+        }
+
+        this.stopPlayerMovement();
+
+        this.playerAnchorNodeId = anchorId;
+        this.playerCurrentNodeId = anchorId;
+        this.playerPosition.x = position.x;
+        this.playerPosition.y = position.y;
+        this.updatePlayerDisplayPosition();
+    }
+
+    updatePlayerDisplayPosition() {
+        if (!this.playerContainer) {
+            return;
+        }
+
+        const x = Number.isFinite(this.playerPosition?.x) ? this.playerPosition.x : 0;
+        const y = Number.isFinite(this.playerPosition?.y) ? this.playerPosition.y : 0;
+        this.playerContainer.setPosition(Math.round(x), Math.round(y + this.scrollY));
+    }
+
+    createPlayerMarker() {
+        if (!this.scene || typeof this.scene.add?.container !== 'function') {
+            return;
+        }
+
+        if (this.playerContainer && typeof this.playerContainer.destroy === 'function') {
+            this.playerContainer.destroy();
+        }
+
+        const container = this.scene.add.container(0, 0);
+        container.setDepth(PLAYER_DEPTH);
+        container.setVisible(false);
+
+        const limbColor = 0xffffff;
+        const strokeColor = 0x111111;
+
+        const leftArm = this.scene.add.rectangle(
+            -PLAYER_BODY_SIZE / 2 - PLAYER_LIMB_LENGTH / 2 + 2,
+            -PLAYER_BODY_SIZE * 0.2,
+            PLAYER_LIMB_LENGTH,
+            PLAYER_LIMB_THICKNESS,
+            limbColor,
+            1
+        ).setOrigin(0.5);
+        leftArm.setStrokeStyle(1, strokeColor, 0.5);
+
+        const rightArm = this.scene.add.rectangle(
+            PLAYER_BODY_SIZE / 2 + PLAYER_LIMB_LENGTH / 2 - 2,
+            -PLAYER_BODY_SIZE * 0.2,
+            PLAYER_LIMB_LENGTH,
+            PLAYER_LIMB_THICKNESS,
+            limbColor,
+            1
+        ).setOrigin(0.5);
+        rightArm.setStrokeStyle(1, strokeColor, 0.5);
+
+        const leftLeg = this.scene.add.rectangle(
+            -PLAYER_BODY_SIZE * 0.2,
+            PLAYER_BODY_SIZE / 2,
+            PLAYER_LIMB_THICKNESS,
+            PLAYER_LIMB_LENGTH,
+            limbColor,
+            1
+        ).setOrigin(0.5, 0);
+        leftLeg.setStrokeStyle(1, strokeColor, 0.5);
+
+        const rightLeg = this.scene.add.rectangle(
+            PLAYER_BODY_SIZE * 0.2,
+            PLAYER_BODY_SIZE / 2,
+            PLAYER_LIMB_THICKNESS,
+            PLAYER_LIMB_LENGTH,
+            limbColor,
+            1
+        ).setOrigin(0.5, 0);
+        rightLeg.setStrokeStyle(1, strokeColor, 0.5);
+
+        const body = this.scene.add.rectangle(0, 0, PLAYER_BODY_SIZE, PLAYER_BODY_SIZE, 0xffffff, 1)
+            .setStrokeStyle(2, strokeColor, 0.85)
+            .setOrigin(0.5);
+
+        this.playerFaceText = this.scene.add.text(0, 0, String(this.playerCurrentFaceValue), {
+            fontSize: '20px',
+            color: '#000000',
+            fontStyle: 'bold',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        container.add([leftArm, rightArm, leftLeg, rightLeg, body, this.playerFaceText]);
+
+        this.playerLimbTweens.forEach(tween => {
+            if (tween && typeof tween.stop === 'function') {
+                tween.stop();
+            }
+            if (tween && typeof tween.remove === 'function') {
+                tween.remove();
+            }
+        });
+        this.playerLimbTweens = [];
+
+        const wiggleConfigs = [
+            { target: leftArm, offset: 0, reverse: false },
+            { target: rightArm, offset: PLAYER_WIGGLE_DURATION / 2, reverse: true },
+            { target: leftLeg, offset: PLAYER_WIGGLE_DURATION / 3, reverse: true },
+            { target: rightLeg, offset: (PLAYER_WIGGLE_DURATION * 2) / 3, reverse: false }
+        ];
+
+        wiggleConfigs.forEach(({ target, offset, reverse }) => {
+            if (!target) {
+                return;
+            }
+            const tween = this.scene.tweens.add({
+                targets: target,
+                angle: reverse ? { from: PLAYER_WIGGLE_ANGLE, to: -PLAYER_WIGGLE_ANGLE } : { from: -PLAYER_WIGGLE_ANGLE, to: PLAYER_WIGGLE_ANGLE },
+                duration: PLAYER_WIGGLE_DURATION,
+                ease: 'Sine.easeInOut',
+                yoyo: true,
+                repeat: -1,
+                repeatDelay: 0,
+                delay: offset || 0
+            });
+            this.playerLimbTweens.push(tween);
+        });
+
+        this.playerContainer = container;
+        this.updatePlayerDisplayPosition();
+    }
+
+    startPlayerRollAnimation() {
+        if (!this.scene || this.playerRollTimer) {
+            return;
+        }
+
+        this.playerRollTimer = this.scene.time.addEvent({
+            delay: PLAYER_ROLL_DELAY,
+            loop: true,
+            callback: () => {
+                const value = Phaser.Math.Between(1, 6);
+                this.playerCurrentFaceValue = value;
+                if (this.playerFaceText) {
+                    this.playerFaceText.setText(String(value));
+                }
+            }
+        });
+    }
+
+    stopPlayerRollAnimation() {
+        if (this.playerRollTimer && typeof this.playerRollTimer.remove === 'function') {
+            this.playerRollTimer.remove(false);
+        }
+        this.playerRollTimer = null;
+        if (this.playerFaceText) {
+            this.playerFaceText.setText(String(this.playerCurrentFaceValue || 1));
+        }
+    }
+
+    stopPlayerMovement() {
+        if (this.playerMovementTimeline) {
+            this.playerMovementTimeline.stop();
+            this.playerMovementTimeline.remove();
+            this.playerMovementTimeline = null;
+        }
+        this.stopPlayerRollAnimation();
+    }
+
+    findPathBetweenNodes(startId, endId) {
+        if (!startId || !endId) {
+            return null;
+        }
+
+        if (startId === endId) {
+            return [startId];
+        }
+
+        if (!this.nodeAdjacency || !this.nodeAdjacency.has(startId) || !this.nodeAdjacency.has(endId)) {
+            return null;
+        }
+
+        const visited = new Set([startId]);
+        const queue = [[startId]];
+
+        while (queue.length > 0) {
+            const path = queue.shift();
+            const last = path[path.length - 1];
+            const neighbors = this.nodeAdjacency.get(last) || new Set();
+
+            for (const neighbor of neighbors) {
+                if (visited.has(neighbor)) {
+                    continue;
+                }
+
+                const nextPath = path.concat(neighbor);
+                if (neighbor === endId) {
+                    return nextPath;
+                }
+
+                visited.add(neighbor);
+                queue.push(nextPath);
+            }
+        }
+
+        return null;
+    }
+
+    startPlayerMovement(nodePath, { onComplete } = {}) {
+        if (!Array.isArray(nodePath) || nodePath.length === 0) {
+            if (typeof onComplete === 'function') {
+                onComplete();
+            }
+            return;
+        }
+
+        const filteredPath = nodePath.filter(Boolean);
+        if (filteredPath.length <= 1) {
+            const targetId = filteredPath[0];
+            const targetPosition = this.getNodePositionById(targetId);
+            if (targetPosition) {
+                this.playerPosition.x = targetPosition.x;
+                this.playerPosition.y = targetPosition.y;
+                this.playerCurrentNodeId = targetId;
+                this.updatePlayerDisplayPosition();
+            }
+            this.stopPlayerMovement();
+            if (typeof onComplete === 'function') {
+                onComplete();
+            }
+            return;
+        }
+
+        const startId = filteredPath[0];
+        const startPosition = this.getNodePositionById(startId);
+        if (startPosition) {
+            this.playerPosition.x = startPosition.x;
+            this.playerPosition.y = startPosition.y;
+            this.playerCurrentNodeId = startId;
+            this.updatePlayerDisplayPosition();
+        }
+
+        this.stopPlayerMovement();
+        this.startPlayerRollAnimation();
+
+        const tweens = [];
+        for (let index = 1; index < filteredPath.length; index += 1) {
+            const nodeId = filteredPath[index];
+            const position = this.getNodePositionById(nodeId);
+            if (!position) {
+                continue;
+            }
+
+            tweens.push({
+                targets: this.playerPosition,
+                x: position.x,
+                y: position.y,
+                duration: 1000,
+                ease: 'Sine.easeInOut',
+                onUpdate: () => this.updatePlayerDisplayPosition(),
+                onComplete: () => {
+                    this.playerCurrentNodeId = nodeId;
+                    if (index === filteredPath.length - 1) {
+                        this.stopPlayerRollAnimation();
+                        if (typeof onComplete === 'function') {
+                            onComplete();
+                        }
+                    }
+                }
+            });
+        }
+
+        if (tweens.length === 0) {
+            this.stopPlayerRollAnimation();
+            if (typeof onComplete === 'function') {
+                onComplete();
+            }
+            return;
+        }
+
+        this.playerMovementTimeline = this.scene.tweens.timeline({
+            tweens,
+            onComplete: () => {
+                this.playerMovementTimeline = null;
+            }
+        });
+    }
+
+    handleNodeHover(nodeId) {
+        if (!nodeId || !this.isActive || !this.playerContainer) {
+            return;
+        }
+
+        const anchorId = this.getPlayerAnchorNodeId();
+        if (!anchorId) {
+            return;
+        }
+
+        if (this.playerHoverTargetId === nodeId && this.playerMovementTimeline) {
+            return;
+        }
+
+        if (this.playerHoverTargetId === nodeId
+            && !this.playerMovementTimeline
+            && this.playerCurrentNodeId === nodeId) {
+            return;
+        }
+
+        const pathToTarget = this.findPathBetweenNodes(anchorId, nodeId);
+        if (!pathToTarget || pathToTarget.length === 0) {
+            return;
+        }
+
+        const currentStart = this.playerCurrentNodeId || anchorId;
+        let combinedPath = pathToTarget;
+
+        if (currentStart !== anchorId) {
+            const toAnchorPath = this.findPathBetweenNodes(currentStart, anchorId);
+            if (toAnchorPath && toAnchorPath.length > 0) {
+                combinedPath = toAnchorPath.concat(pathToTarget.slice(1));
+            }
+        }
+
+        this.playerHoverTargetId = nodeId;
+        this.startPlayerMovement(combinedPath, {
+            onComplete: () => {
+                this.playerHoverTargetId = nodeId;
+            }
+        });
+    }
+
+    handleNodeHoverExit() {
+        this.playerHoverTargetId = null;
+        if (this.playerContainer) {
+            this.requestPlayerReturnToAnchor();
+        }
+    }
+
+    requestPlayerReturnToAnchor({ immediate = false } = {}) {
+        const anchorId = this.getPlayerAnchorNodeId();
+        if (!anchorId) {
+            return;
+        }
+
+        const startId = this.playerCurrentNodeId || anchorId;
+
+        if (!this.isActive) {
+            this.stopPlayerMovement();
+            const anchorPosition = this.getNodePositionById(anchorId);
+            if (anchorPosition) {
+                this.playerPosition.x = anchorPosition.x;
+                this.playerPosition.y = anchorPosition.y;
+                this.playerCurrentNodeId = anchorId;
+                this.updatePlayerDisplayPosition();
+            }
+            return;
+        }
+
+        if (immediate || startId === anchorId) {
+            if (immediate) {
+                this.stopPlayerMovement();
+            }
+            const anchorPosition = this.getNodePositionById(anchorId);
+            if (anchorPosition) {
+                this.playerPosition.x = anchorPosition.x;
+                this.playerPosition.y = anchorPosition.y;
+                this.playerCurrentNodeId = anchorId;
+                this.updatePlayerDisplayPosition();
+            }
+            return;
+        }
+
+        const path = this.findPathBetweenNodes(startId, anchorId);
+        if (!path || path.length === 0) {
+            return;
+        }
+
+        this.startPlayerMovement(path, {
+            onComplete: () => {
+                this.playerHoverTargetId = null;
+            }
+        });
     }
 
     drawConnections() {
@@ -1894,6 +2415,10 @@ export class PathUI {
         });
 
         this.updateConnectionSpriteAlphas(availableIds, testingMode);
+        this.updatePlayerAnchorPosition();
+        if (!this.playerHoverTargetId) {
+            this.requestPlayerReturnToAnchor({ immediate: false });
+        }
     }
 
     updateConnectionSpriteAlphas(availableIds, testingMode) {
@@ -1955,6 +2480,11 @@ export class PathUI {
         if (this.connectionSpriteContainer) {
             this.connectionSpriteContainer.setVisible(true);
         }
+        if (this.playerContainer) {
+            this.playerContainer.setVisible(true);
+            this.updatePlayerAnchorPosition(true);
+            this.updatePlayerDisplayPosition();
+        }
     }
 
     hide() {
@@ -1971,6 +2501,11 @@ export class PathUI {
         this.connectionGraphics.setVisible(false);
         if (this.connectionSpriteContainer) {
             this.connectionSpriteContainer.setVisible(false);
+        }
+        if (this.playerContainer) {
+            this.stopPlayerMovement();
+            this.playerHoverTargetId = null;
+            this.playerContainer.setVisible(false);
         }
     }
 
@@ -2070,6 +2605,7 @@ export class PathUI {
                 layer.sprite.y = Math.round(newY);
             });
         }
+        this.updatePlayerDisplayPosition();
     }
 
     updateScrollBounds() {
@@ -2121,6 +2657,34 @@ export class PathUI {
         this.clearWallSprites();
         this.clearBackgroundSprite();
         this.clearOutsideBackgroundSprites();
+
+        this.stopPlayerMovement();
+        this.playerHoverTargetId = null;
+        if (Array.isArray(this.playerLimbTweens)) {
+            this.playerLimbTweens.forEach(tween => {
+                if (!tween) {
+                    return;
+                }
+                if (typeof tween.stop === 'function') {
+                    tween.stop();
+                }
+                if (typeof tween.remove === 'function') {
+                    tween.remove();
+                }
+            });
+        }
+        this.playerLimbTweens = [];
+        if (this.playerContainer) {
+            this.playerContainer.destroy(true);
+            this.playerContainer = null;
+        }
+        this.playerFaceText = null;
+        if (this.nodeAdjacency) {
+            this.nodeAdjacency.clear();
+        }
+        if (this.nodePositions) {
+            this.nodePositions.clear();
+        }
 
         if (this.outsideBackgroundContainer) {
             this.outsideBackgroundContainer.destroy(true);
