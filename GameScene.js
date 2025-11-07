@@ -112,7 +112,7 @@ const TUTORIAL_CONFIG = {
         ]
     },
     'first-enemy-defeated': { title: 'Collecting Dice',
-        modal: { width: 800, height: 400 },
+        modal: { width: 640, height: 600 },
         points: [
             {
                 text: 'Choose a special die after each battle to improve your hand.',
