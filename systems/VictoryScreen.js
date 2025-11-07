@@ -73,7 +73,7 @@ export class VictoryScreen {
         this.creditsContent.setVisible(false);
         this.creditsContent.setActive(false);
 
-        const creditsTitle = this.scene.add.text(width / 2, height / 2 - 200, 'CREDITS', {
+        const creditsTitle = this.scene.add.text(width / 2, height / 2 - 345, 'CREDITS', {
             fontSize: '48px',
             color: '#f1c40f'
         }).setOrigin(0.5);
@@ -94,17 +94,17 @@ export class VictoryScreen {
             'Map 3: Dark Secrets Decision'
         ].join('\n');
 
-        const creditsText = this.scene.add.text(width / 2, height / 2 - 120, creditsDetails, {
-            fontSize: '28px',
+        const creditsText = this.scene.add.text(width / 2, height / 2 - 305, creditsDetails, {
+            fontSize: '32px',
             color: '#ffffff',
             align: 'center',
             lineSpacing: 8,
             wordWrap: { width: Math.floor(width * 0.75) }
         }).setOrigin(0.5, 0);
 
-        const creditsPlayAgainButton = this.createPlayAgainButton(width / 2, height / 2 + 220);
+        const creditsPlayAgainButton = this.createPlayAgainButton(width / 2, height / 2 + 240);
 
-        this.backButton = this.scene.add.text(width / 2, height / 2 + 150, 'BACK', {
+        this.backButton = this.scene.add.text(width / 2, height / 2 + 180, 'BACK', {
             fontSize: '32px',
             color: '#f1c40f',
             padding: { x: 24, y: 16 }
