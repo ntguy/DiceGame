@@ -40,7 +40,7 @@ export class CounterlockEnemy extends BaseEnemy {
     }
 
     getStatusDescription() {
-        return 'Status: Counterlock takes 20+ damage in a turn - lock 2 dice.';
+        return 'Status: Locks 2 dice if attacked for 20+.';
     }
 
     onPlayerDamageDealt({ totalDamage, previousTotal, scene }) {

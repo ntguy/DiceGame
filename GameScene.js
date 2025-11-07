@@ -4893,7 +4893,7 @@ export class GameScene extends Phaser.Scene {
         if (this.upcomingEnemyMove) {
             this.upcomingEnemyMove.label = description;
         }
-        this.enemyIntentText.setText(`Next: ${description}`);
+        this.enemyIntentText.setText(`${description}`);
     }
 
     updateEnemyStatusText() {
