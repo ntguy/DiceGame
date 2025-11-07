@@ -7,6 +7,12 @@ export class VictoryScreen {
         this.background = null;
         this.messageText = null;
         this.playAgainButton = null;
+        this.creditsButton = null;
+        this.mainContent = null;
+        this.creditsContent = null;
+        this.creditsHeader = null;
+        this.creditsText = null;
+        this.creditsPlayAgainButton = null;
         this.hasPlayedSound = false;
     }
 
@@ -20,6 +26,9 @@ export class VictoryScreen {
         this.background.setOrigin(0.5);
         this.background.setInteractive({ useHandCursor: false });
 
+        this.mainContent = this.scene.add.container(0, 0);
+        this.creditsContent = this.scene.add.container(0, 0);
+
         const style = {
             fontSize: '32px',
             color: '#ffffff',
@@ -32,13 +41,22 @@ export class VictoryScreen {
         this.messageText = this.scene.add.text(width / 2, height / 2 - 40, message, style);
         this.messageText.setOrigin(0.5);
 
-        this.playAgainButton = this.scene.add.text(width / 2, height / 2 + 120, 'PLAY AGAIN', {
+        const buttonStyle = {
+            fontSize: '36px',
+            color: '#f1c40f',
+            padding: { x: 32, y: 18 }
+        };
+
+        this.playAgainButton = this.scene.add.text(width / 2, height / 2 + 120, 'PLAY AGAIN', buttonStyle).setOrigin(0.5);
+        this.configurePlayAgainButton(this.playAgainButton);
+
+        this.creditsButton = this.scene.add.text(width / 2, height / 2 + 190, 'CREDITS', {
             fontSize: '36px',
             color: '#f1c40f',
             padding: { x: 32, y: 18 }
         }).setOrigin(0.5);
 
-        applyTextButtonStyle(this.playAgainButton, {
+        applyTextButtonStyle(this.creditsButton, {
             baseColor: '#f1c40f',
             textColor: '#f1c40f',
             hoverBlend: 0.14,
@@ -47,27 +65,60 @@ export class VictoryScreen {
             enabledAlpha: 1,
             disabledAlpha: 0.45
         });
-        setTextButtonEnabled(this.playAgainButton, true);
+        setTextButtonEnabled(this.creditsButton, true);
 
-        this.playAgainButton.on('pointerdown', () => {
-            if (!this.playAgainButton.input || !this.playAgainButton.input.enabled) {
+        this.creditsButton.on('pointerdown', () => {
+            if (!this.creditsButton.input || !this.creditsButton.input.enabled) {
                 return;
             }
 
-            setTextButtonEnabled(this.playAgainButton, false, { disabledAlpha: 0.6 });
-
-            if (typeof window !== 'undefined' && window.location && typeof window.location.reload === 'function') {
-                window.location.reload();
-            } else if (this.scene && this.scene.scene && typeof this.scene.scene.restart === 'function') {
-                this.scene.scene.restart({
-                    sfxVolume: this.scene.sfxVolume,
-                    musicVolume: this.scene.musicVolume,
-                    testingModeEnabled: this.scene.testingModeEnabled
-                });
-            }
+            this.showCreditsPanel();
         });
 
-        this.container.add([this.background, this.messageText, this.playAgainButton]);
+        this.mainContent.add([this.messageText, this.playAgainButton, this.creditsButton]);
+
+        const creditsHeaderStyle = {
+            fontSize: '48px',
+            color: '#f1c40f',
+            align: 'center'
+        };
+
+        this.creditsHeader = this.scene.add.text(width / 2, height / 2 - 220, 'CREDITS', creditsHeaderStyle);
+        this.creditsHeader.setOrigin(0.5);
+
+        const creditsMessage = [
+            'Design:',
+            'Nicalai Chananna',
+            '',
+            'Art:',
+            'Castle Sprites: https://raou.itch.io/dark-dun',
+            'Map 1: Free Sky Backgrounds (Craftpix)',
+            'Map 2: Free Nature Backgrounds Pixel Art (Craftpix)',
+            'Map 3: SlashDashGames Parallax Cave',
+            '',
+            'Music by Sascha Ende',
+            'Map 1: Silence of the Sea',
+            'Map 2: Fantasy Soundscape',
+            'Map 3: Dark Secrets Decision'
+        ].join('\n');
+
+        this.creditsText = this.scene.add.bitmapText(width / 2, height / 2 - 40, 'boldPixels', creditsMessage, 24);
+        this.creditsText.setOrigin(0.5);
+        if (typeof this.creditsText.setCenterAlign === 'function') {
+            this.creditsText.setCenterAlign();
+        }
+        if (typeof this.creditsText.setMaxWidth === 'function') {
+            this.creditsText.setMaxWidth(Math.floor(width * 0.8));
+        }
+
+        this.creditsPlayAgainButton = this.scene.add.text(width / 2, height / 2 + 220, 'PLAY AGAIN', buttonStyle).setOrigin(0.5);
+        this.configurePlayAgainButton(this.creditsPlayAgainButton);
+
+        this.creditsContent.add([this.creditsHeader, this.creditsText, this.creditsPlayAgainButton]);
+        this.creditsContent.setVisible(false);
+        this.creditsContent.setActive(false);
+
+        this.container.add([this.background, this.mainContent, this.creditsContent]);
 
         this.hide();
     }
@@ -85,9 +136,7 @@ export class VictoryScreen {
         this.container.setActive(true);
         this.container.setAlpha(0);
 
-        if (this.playAgainButton) {
-            setTextButtonEnabled(this.playAgainButton, true);
-        }
+        this.showMainPanel();
 
         this.scene.tweens.add({
             targets: this.container,
@@ -117,6 +166,107 @@ export class VictoryScreen {
 
         if (this.playAgainButton) {
             setTextButtonEnabled(this.playAgainButton, false);
+        }
+
+        if (this.creditsButton) {
+            setTextButtonEnabled(this.creditsButton, false);
+        }
+
+        if (this.creditsPlayAgainButton) {
+            setTextButtonEnabled(this.creditsPlayAgainButton, false);
+        }
+
+        if (this.mainContent) {
+            this.mainContent.setVisible(false);
+            this.mainContent.setActive(false);
+        }
+
+        if (this.creditsContent) {
+            this.creditsContent.setVisible(false);
+            this.creditsContent.setActive(false);
+        }
+    }
+
+    configurePlayAgainButton(button) {
+        if (!button) {
+            return;
+        }
+
+        applyTextButtonStyle(button, {
+            baseColor: '#f1c40f',
+            textColor: '#f1c40f',
+            hoverBlend: 0.14,
+            pressBlend: 0.25,
+            disabledBlend: 0.45,
+            enabledAlpha: 1,
+            disabledAlpha: 0.45
+        });
+        setTextButtonEnabled(button, true);
+
+        button.on('pointerdown', () => {
+            if (!button.input || !button.input.enabled) {
+                return;
+            }
+
+            setTextButtonEnabled(button, false, { disabledAlpha: 0.6 });
+
+            if (typeof window !== 'undefined' && window.location && typeof window.location.reload === 'function') {
+                window.location.reload();
+            } else if (this.scene && this.scene.scene && typeof this.scene.scene.restart === 'function') {
+                this.scene.scene.restart({
+                    sfxVolume: this.scene.sfxVolume,
+                    musicVolume: this.scene.musicVolume,
+                    testingModeEnabled: this.scene.testingModeEnabled
+                });
+            }
+        });
+    }
+
+    showMainPanel() {
+        if (this.mainContent) {
+            this.mainContent.setVisible(true);
+            this.mainContent.setActive(true);
+        }
+
+        if (this.playAgainButton) {
+            setTextButtonEnabled(this.playAgainButton, true);
+        }
+
+        if (this.creditsButton) {
+            setTextButtonEnabled(this.creditsButton, true);
+        }
+
+        if (this.creditsContent) {
+            this.creditsContent.setVisible(false);
+            this.creditsContent.setActive(false);
+        }
+
+        if (this.creditsPlayAgainButton) {
+            setTextButtonEnabled(this.creditsPlayAgainButton, false);
+        }
+    }
+
+    showCreditsPanel() {
+        if (this.mainContent) {
+            this.mainContent.setVisible(false);
+            this.mainContent.setActive(false);
+        }
+
+        if (this.playAgainButton) {
+            setTextButtonEnabled(this.playAgainButton, false);
+        }
+
+        if (this.creditsButton) {
+            setTextButtonEnabled(this.creditsButton, false);
+        }
+
+        if (this.creditsContent) {
+            this.creditsContent.setVisible(true);
+            this.creditsContent.setActive(true);
+        }
+
+        if (this.creditsPlayAgainButton) {
+            setTextButtonEnabled(this.creditsPlayAgainButton, true);
         }
     }
 }
