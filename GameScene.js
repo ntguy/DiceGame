@@ -758,9 +758,9 @@ export class GameScene extends Phaser.Scene {
 
     createZonePreviewTexts() {
         const zoneWidth = this.getZoneWidth({ includePadding: true });
-        const defendLeftX = (this.defendZoneCenter ? this.defendZoneCenter.x : 200) - zoneWidth / 2;
-        const attackLeftX = (this.attackZoneCenter ? this.attackZoneCenter.x : 600) - zoneWidth / 2;
-        const comboLineOffset = 145;
+        const defendLeftX = (this.defendZoneCenter ? this.defendZoneCenter.x : 200) - zoneWidth / 2 + 16;
+        const attackLeftX = (this.attackZoneCenter ? this.attackZoneCenter.x : 600) - zoneWidth / 2 + 16;
+        const comboLineOffset = 350;
 
         if (!this.defendPreviewText) {
             this.defendPreviewText = this.add.text(defendLeftX, CONSTANTS.RESOLVE_TEXT_Y, '', {
@@ -774,8 +774,8 @@ export class GameScene extends Phaser.Scene {
             this.defendComboText = this.add.text(defendLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y, '', {
                 fontSize: '20px',
                 color: '#3498db',
-                align: 'left'
-            }).setOrigin(0, 0.5);
+                align: 'right'
+            }).setOrigin(1, 0.5);
         }
 
         if (!this.attackPreviewText) {
@@ -790,8 +790,8 @@ export class GameScene extends Phaser.Scene {
             this.attackComboText = this.add.text(attackLeftX + comboLineOffset, CONSTANTS.RESOLVE_TEXT_Y, '', {
                 fontSize: '20px',
                 color: '#e74c3c',
-                align: 'left'
-            }).setOrigin(0, 0.5);
+                align: 'right'
+            }).setOrigin(1, 0.5);
         }
 
         if (this.defendPreviewText) {
@@ -2901,20 +2901,34 @@ export class GameScene extends Phaser.Scene {
 
         return {
             ...blueprint,
-            getLeftStatusLabel() {
+            getLeftStatusLabel({ die: providedDie } = {}) {
                 const state = sceneRef.getCometDieStateByUid(uid);
                 if (!state) {
                     return '';
                 }
-        
+
                 const remaining = Number.isFinite(state.triggersRemaining)
                     ? Math.max(0, state.triggersRemaining)
                     : 0;
-        
+
                 if (remaining <= 0) {
+                    const die = providedDie;
+                    if (die) {
+                        if (typeof die.setNullified === 'function') {
+                            die.setNullified(true);
+                        } else {
+                            die.isNullified = true;
+                            if (typeof die.updateVisualState === 'function') {
+                                die.updateVisualState();
+                            }
+                            if (typeof die.updateFaceValueHighlight === 'function') {
+                                die.updateFaceValueHighlight();
+                            }
+                        }
+                    }
                     return '';
                 }
-        
+
                 const color = '#ff7675';
                 return {
                     text: `${remaining}`,
@@ -2970,7 +2984,17 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (state.triggersRemaining <= 0) {
-            die.setNullified(true);
+            if (die && typeof die.setNullified === 'function') {
+                die.setNullified(true);
+            } else if (die) {
+                die.isNullified = true;
+                if (typeof die.updateVisualState === 'function') {
+                    die.updateVisualState();
+                }
+                if (typeof die.updateFaceValueHighlight === 'function') {
+                    die.updateFaceValueHighlight();
+                }
+            }
         }
 
         if (typeof die.updateEmoji === 'function') {
@@ -3089,7 +3113,7 @@ export class GameScene extends Phaser.Scene {
 
         return {
             ...blueprint,
-            getLeftStatusLabel() {
+            getLeftStatusLabel({ die: providedDie } = {}) {
                 const state = sceneRef.getChargerDieStateByUid(uid);
                 if (!state) {
                     return '';
@@ -3109,6 +3133,20 @@ export class GameScene extends Phaser.Scene {
                 }
 
                 if (remaining <= 0) {
+                    const die = providedDie;
+                    if (die) {
+                        if (typeof die.setNullified === 'function') {
+                            die.setNullified(true);
+                        } else {
+                            die.isNullified = true;
+                            if (typeof die.updateVisualState === 'function') {
+                                die.updateVisualState();
+                            }
+                            if (typeof die.updateFaceValueHighlight === 'function') {
+                                die.updateFaceValueHighlight();
+                            }
+                        }
+                    }
                     return '';
                 }
 
@@ -3149,7 +3187,17 @@ export class GameScene extends Phaser.Scene {
 
         if (die) {
             if (state.triggersRemaining <= 0) {
-                die.setNullified(true);
+                if (typeof die.setNullified === 'function') {
+                    die.setNullified(true);
+                } else {
+                    die.isNullified = true;
+                    if (typeof die.updateVisualState === 'function') {
+                        die.updateVisualState();
+                    }
+                    if (typeof die.updateFaceValueHighlight === 'function') {
+                        die.updateFaceValueHighlight();
+                    }
+                }
             }
             if (typeof die.updateEmoji === 'function') {
                 die.updateEmoji();
