@@ -7,6 +7,7 @@ const COLORS = {
     [PATH_NODE_TYPES.INFIRMARY]: 0x27ae60,
     [PATH_NODE_TYPES.TOWER]: 0x5dade2,
     [PATH_NODE_TYPES.UPGRADE]: 0xf39c12,
+    [PATH_NODE_TYPES.START]: 0xccccff,
     boss: 0x9b59b6,
     completed: 0x7f8c8d,
     whiteStroke: 0xffeeee,
@@ -19,16 +20,17 @@ const ICONS = {
     [PATH_NODE_TYPES.INFIRMARY]: '⊕',
     [PATH_NODE_TYPES.TOWER]: '🎲',
     [PATH_NODE_TYPES.UPGRADE]: '✨',
+    [PATH_NODE_TYPES.START]: '🏁',
     boss: '🔥'
 };
 
 const LAYOUT = {
-    baseY: 140,
-    columnSpacing: 220,
-    rowSpacing: 156
+    baseY: 160,
+    columnSpacing: 210,
+    rowSpacing: 140
 };
 
-const PATH_TEXTURE_SCALE = 1.5;
+const PATH_TEXTURE_SCALE = 1.4;
 const GENERAL_TEXTURE_SCALE = 2;
 const WALL_HIGHLIGHT_TEXTURE_KEY = 'wall_highlight_center';
 const WALL_HIGHLIGHT_MIN_ALPHA = 0.8;
@@ -44,6 +46,12 @@ const PATH_DEPTHS = {
     connections: 7,
     nodes: 8
 };
+
+const PLAYER_DEPTH = 999;
+// const PLAYER_MOVE_DURATION = 800;
+const PLAYER_MOVE_SPEED = 0.4; // pixels per millisecond (~400 px/sec)
+const PLAYER_WIGGLE_ANGLE = 14;
+const PLAYER_WIGGLE_DURATION = 800;
 
 const DRAG_THRESHOLD = 6;
 const TOP_MARGIN = 80;
@@ -568,8 +576,19 @@ export class PathUI {
         this.minContentY = 0;
         this.maxContentY = 0;
         this.isDestroyed = false;
+        this.playerContainer = null;
+        this.playerDieText = null;
+        this.playerFaceTimer = null;
+        this.playerLimbTweens = [];
+        this.playerHoveredNodeId = null;
+        this.playerAnchorNodeId = null;
+        this.playerAnchorPosition = null;
+        this.playerActiveRoute = null;
+        this.playerMovementTween = null;
+        this.playerPendingSegments = [];
 
         this.createNodes();
+        this.createPlayerToken();
         this.createWalls();
         this.drawConnections();
         this.updateScrollBounds();
@@ -1600,7 +1619,11 @@ export class PathUI {
         const offsetFromCenter = (columnIndex - 1) * LAYOUT.columnSpacing;
         const centerX = this.scene.scale.width / 2;
         const x = centerX + offsetFromCenter;
-        const y = LAYOUT.baseY + (node.row || 0) * LAYOUT.rowSpacing;
+        
+        // Handle negative rows (START node at row -1)
+        const rowOffset = (node.row || 0) + 1; // Shift everything down by 1 to accommodate START
+        const y = LAYOUT.baseY + rowOffset * LAYOUT.rowSpacing;
+        
         return { x, y };
     }
 
@@ -1623,12 +1646,16 @@ export class PathUI {
 
             // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
             cube.on('pointerover', () => {
-            if (!this.isNodeSelectable(node.id)) return;
+                if (!this.isNodeSelectable(node.id)) {
+                    return;
+                }
                 cube.setStrokeStyle(4, COLORS.whiteStroke, 1); // change stroke color & width on hover
+                this.handleNodeHover(node.id);
             });
-        
+
             cube.on('pointerout', () => {
                 this.updateState();
+                this.handleNodeHoverEnd(node.id);
             });
 
             const iconText = this.scene.add.text(0, 0, icon || '?', {
@@ -1686,6 +1713,486 @@ export class PathUI {
         } else {
             this.minContentY = 0;
             this.maxContentY = 0;
+        }
+    }
+
+    createPlayerToken() {
+        if (!this.scene || !this.container) {
+            return;
+        }
+
+        this.destroyPlayerToken();
+
+        const anchorInfo = this.calculateAnchorInfoFromState();
+        const anchorPosition = anchorInfo.anchorPosition || this.getFallbackAnchorPosition();
+        const startX = Math.round(anchorPosition.x);
+        const startY = Math.round(anchorPosition.y);
+
+        this.playerAnchorNodeId = anchorInfo.anchorNode ? anchorInfo.anchorNode.id : null;
+        this.playerAnchorPosition = { ...anchorPosition };
+
+        const container = this.scene.add.container(startX, startY);
+        container.setDepth(PLAYER_DEPTH);
+
+        const dieBody = this.scene.add.rectangle(0, 0, 36, 36, 0xccccb5, 1);
+        dieBody.setStrokeStyle(3, 0x000000, 2);
+
+        const faceText = this.scene.add.text(0, 2, ':)', {
+            fontSize: '32px',
+            color: '#111111',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        faceText.setAngle(90);
+
+        const limbColor = 0xccccb5;
+        const limbAlpha = 1;
+        const leftArm = this.scene.add.rectangle(-18, -6, 16, 6, limbColor, limbAlpha);
+        const rightArm = this.scene.add.rectangle(18, -6, 16, 6, limbColor, limbAlpha);
+        const leftLeg = this.scene.add.rectangle(-12, 18, 7, 16, limbColor, limbAlpha);
+        const rightLeg = this.scene.add.rectangle(12, 18, 7, 16, limbColor, limbAlpha);
+        leftArm.setStrokeStyle(3, 0x000000, 2);
+        rightArm.setStrokeStyle(3, 0x000000, 2);
+        leftLeg.setStrokeStyle(3, 0x000000, 2);
+        rightLeg.setStrokeStyle(3, 0x000000, 2);
+
+
+        leftArm.setOrigin(0.85, 0.5);
+        rightArm.setOrigin(0.15, 0.5);
+        leftLeg.setOrigin(0.5, 0);
+        rightLeg.setOrigin(0.5, 0);
+
+        leftArm.setAngle(-10);
+        rightArm.setAngle(10);
+        leftLeg.setAngle(2);
+        rightLeg.setAngle(-2);
+
+        container.add([leftLeg, rightLeg, leftArm, rightArm, dieBody, faceText]);
+        this.container.add(container);
+        if (typeof this.container.bringToTop === 'function') {
+            this.container.bringToTop(container);
+        }
+
+        this.playerContainer = container;
+        this.playerDieText = faceText;
+
+        this.playerLimbTweens = [];
+        const limbs = [leftArm, rightArm, leftLeg, rightLeg];
+        limbs.forEach((limb, index) => {
+            if (!limb || !this.scene || !this.scene.tweens) {
+                return;
+            }
+            const direction = index % 2 === 0 ? 1 : -1;
+            const tween = this.scene.tweens.add({
+                targets: limb,
+                angle: limb.angle + direction * PLAYER_WIGGLE_ANGLE,
+                duration: PLAYER_WIGGLE_DURATION,
+                ease: 'Sine.easeInOut',
+                yoyo: true,
+                repeat: -1,
+                delay: index * 90
+            });
+            this.playerLimbTweens.push(tween);
+        });
+
+        this.playerHoveredNodeId = null;
+        this.playerActiveRoute = {
+            anchorNodeId: this.playerAnchorNodeId,
+            targetNodeId: null,
+            totalDistance: 0
+        };
+
+        container.setVisible(false);
+    }
+
+    calculateAnchorInfoFromState() {
+        const currentNode = this.getCurrentPlayerNode();
+        if (currentNode) {
+            return {
+                anchorNode: currentNode,
+                anchorPosition: this.getNodePosition(currentNode)
+            };
+        }
+
+        if (this.playerAnchorNodeId && this.pathManager) {
+            const anchorNode = this.pathManager.getNode(this.playerAnchorNodeId);
+            if (anchorNode) {
+                return {
+                    anchorNode,
+                    anchorPosition: this.getNodePosition(anchorNode)
+                };
+            }
+        }
+
+        return {
+            anchorNode: null,
+            anchorPosition: this.playerAnchorPosition || this.getFallbackAnchorPosition()
+        };
+    }
+
+    getCurrentPlayerNode() {
+        if (!this.pathManager) {
+            return null;
+        }
+
+        const getCurrentId = typeof this.pathManager.getCurrentNodeId === 'function'
+            ? this.pathManager.getCurrentNodeId.bind(this.pathManager)
+            : null;
+        const currentId = getCurrentId ? getCurrentId() : null;
+        if (currentId) {
+            const node = this.pathManager.getNode(currentId);
+            if (node) {
+                return node;
+            }
+        }
+
+        const nodes = this.pathManager.getNodes();
+        const completedNodes = Array.isArray(nodes)
+            ? nodes.filter(node => node && typeof node.id === 'string'
+                && typeof this.pathManager.isNodeCompleted === 'function'
+                && this.pathManager.isNodeCompleted(node.id))
+            : [];
+        return this.getDeepestNode(completedNodes);
+    }
+
+    getDeepestNode(nodes) {
+        if (!Array.isArray(nodes) || nodes.length === 0) {
+            return null;
+        }
+
+        return nodes.reduce((best, node) => {
+            if (!node) {
+                return best;
+            }
+
+            if (!best) {
+                return node;
+            }
+
+            const bestRow = Number.isFinite(best.row) ? best.row : -Infinity;
+            const nodeRow = Number.isFinite(node.row) ? node.row : -Infinity;
+            if (nodeRow > bestRow) {
+                return node;
+            }
+            if (nodeRow === bestRow) {
+                const bestCol = Number.isFinite(best.column) ? best.column : 0;
+                const nodeCol = Number.isFinite(node.column) ? node.column : 0;
+                return nodeCol < bestCol ? node : best;
+            }
+            return best;
+        }, null);
+    }
+
+    getFallbackAnchorPosition() {
+        const centerX = this.scene && this.scene.scale ? this.scene.scale.width / 2 : 0;
+        const nodes = this.pathManager ? this.pathManager.getNodes() : [];
+        if (!Array.isArray(nodes) || nodes.length === 0) {
+            return { x: centerX, y: LAYOUT.baseY };
+        }
+
+        let minRow = Number.POSITIVE_INFINITY;
+        nodes.forEach(node => {
+            if (!node) {
+                return;
+            }
+            const row = Number.isFinite(node.row) ? node.row : 0;
+            if (row < minRow) {
+                minRow = row;
+            }
+        });
+
+        const firstRowNodes = nodes.filter(node => Number.isFinite(node?.row) && node.row === minRow);
+        if (firstRowNodes.length === 0) {
+            return { x: centerX, y: LAYOUT.baseY };
+        }
+
+        let sumX = 0;
+        let sampleY = 0;
+        firstRowNodes.forEach(node => {
+            const pos = this.getNodePosition(node);
+            sumX += pos.x;
+            sampleY = pos.y;
+        });
+
+        const averageX = sumX / firstRowNodes.length;
+        // const offsetY = LAYOUT.rowSpacing * 0.5;
+        return {
+            x: averageX,
+            y: sampleY,
+        };
+    }
+
+    destroyPlayerToken() {
+        if (Array.isArray(this.playerLimbTweens) && this.scene && this.scene.tweens) {
+            this.playerLimbTweens.forEach(tween => {
+                if (!tween) {
+                    return;
+                }
+                if (typeof tween.stop === 'function') {
+                    tween.stop();
+                }
+                this.scene.tweens.remove(tween);
+            });
+        }
+        this.playerLimbTweens = [];
+
+        if (this.playerContainer) {
+            this.playerContainer.destroy(true);
+            this.playerContainer = null;
+        }
+
+        this.playerDieText = null;
+        this.playerAnchorNodeId = null;
+        this.playerAnchorPosition = null;
+        this.playerActiveRoute = null;
+    }
+
+    getPlayerPosition() {
+        if (!this.playerContainer) {
+            return { x: 0, y: 0 };
+        }
+        return { x: this.playerContainer.x, y: this.playerContainer.y };
+    }
+
+    setPlayerPosition(position) {
+        if (!this.playerContainer || !position) {
+            return;
+        }
+        this.playerContainer.setPosition(Math.round(position.x), Math.round(position.y));
+    }
+
+    isPlayerMoving() {
+        return !!(this.playerMovementTween || (Array.isArray(this.playerPendingSegments) && this.playerPendingSegments.length > 0));
+    }
+
+    stopPlayerMovement() {
+        if (this.playerMovementTween) {
+            this.playerMovementTween.stop();
+            if (this.scene && this.scene.tweens) {
+                this.scene.tweens.remove(this.playerMovementTween);
+            }
+            this.playerMovementTween = null;
+        }
+
+        if (Array.isArray(this.playerPendingSegments)) {
+            this.playerPendingSegments.length = 0;
+        } else {
+            this.playerPendingSegments = [];
+        }
+    }
+
+    playPlayerSegments(segments = []) {
+        if (!Array.isArray(segments) || segments.length === 0 || !this.scene || !this.playerContainer) {
+            this.stopPlayerMovement();
+            return;
+        }
+
+        const filtered = segments.filter(segment => segment && segment.to && Number.isFinite(segment.duration) && segment.duration > 0);
+        if (filtered.length === 0) {
+            this.stopPlayerMovement();
+            return;
+        }
+
+        this.stopPlayerMovement(false);
+        this.playerPendingSegments = filtered.slice();
+
+        const advance = () => {
+            if (!Array.isArray(this.playerPendingSegments) || this.playerPendingSegments.length === 0) {
+                this.playerMovementTween = null;
+                this.playerPendingSegments = [];
+                return;
+            }
+
+            const segment = this.playerPendingSegments.shift();
+            if (!segment || !segment.to) {
+                advance();
+                return;
+            }
+
+            this.playerMovementTween = this.scene.tweens.add({
+                targets: this.playerContainer,
+                x: segment.to.x,
+                y: segment.to.y,
+                duration: Math.max(0, Math.round(segment.duration)),
+                ease: 'Linear',
+                onComplete: () => {
+                    this.playerMovementTween = null;
+                    advance();
+                }
+            });
+        };
+
+        advance();
+    }
+
+    getAnchorNodeForNode(nodeId) {
+        if (!this.pathManager || !nodeId) {
+            return this.getCurrentPlayerNode();
+        }
+
+        const nodes = this.pathManager.getNodes();
+        if (!Array.isArray(nodes)) {
+            return this.getCurrentPlayerNode();
+        }
+
+        const parents = nodes.filter(candidate => candidate
+            && candidate.id !== nodeId
+            && Array.isArray(candidate.connections)
+            && candidate.connections.includes(nodeId));
+        if (parents.length === 0) {
+            return this.getCurrentPlayerNode();
+        }
+
+        const completedParents = parents.filter(parent => typeof parent.id === 'string'
+            && typeof this.pathManager.isNodeCompleted === 'function'
+            && this.pathManager.isNodeCompleted(parent.id));
+        if (completedParents.length > 0) {
+            return this.getDeepestNode(completedParents);
+        }
+
+        const currentId = typeof this.pathManager.getCurrentNodeId === 'function'
+            ? this.pathManager.getCurrentNodeId()
+            : null;
+        if (currentId) {
+            const currentParent = parents.find(parent => parent.id === currentId);
+            if (currentParent) {
+                return currentParent;
+            }
+        }
+
+        return this.getDeepestNode(parents);
+    }
+
+    getAnchorInfoForNode(nodeId) {
+        const anchorNode = this.getAnchorNodeForNode(nodeId);
+        const anchorPosition = anchorNode
+            ? this.getNodePosition(anchorNode)
+            : this.getFallbackAnchorPosition();
+        return { anchorNode, anchorPosition };
+    }
+
+    queuePlayerMovementTo(nodeId) {
+        if (!this.playerContainer || !this.pathManager || !nodeId) {
+            return;
+        }
+
+        const node = this.pathManager.getNode(nodeId);
+        if (!node) {
+            return;
+        }
+
+        const targetPosition = this.getNodePosition(node);
+        const anchorInfo = this.getAnchorInfoForNode(nodeId);
+        const anchorPosition = anchorInfo.anchorPosition || this.getFallbackAnchorPosition();
+        const anchorNodeId = anchorInfo.anchorNode ? anchorInfo.anchorNode.id : null;
+        const currentPosition = this.getPlayerPosition();
+        const previousRoute = this.playerActiveRoute;
+        const distanceToAnchor = Phaser.Math.Distance.Between(currentPosition.x, currentPosition.y, anchorPosition.x, anchorPosition.y);
+        const anchorToTargetDistance = Phaser.Math.Distance.Between(anchorPosition.x, anchorPosition.y, targetPosition.x, targetPosition.y);
+
+        const segments = [];
+        if (distanceToAnchor > 0.5) {
+            let baseDistance = anchorToTargetDistance;
+            if (previousRoute && previousRoute.anchorNodeId === anchorNodeId && Number.isFinite(previousRoute.totalDistance) && previousRoute.totalDistance > 0) {
+                baseDistance = previousRoute.totalDistance;
+            }
+            if (!Number.isFinite(baseDistance) || baseDistance <= 0) {
+                baseDistance = distanceToAnchor;
+            }
+            const durationToAnchor = Math.max(1, Math.round(distanceToAnchor / PLAYER_MOVE_SPEED));
+            segments.push({ to: { x: anchorPosition.x, y: anchorPosition.y }, duration: durationToAnchor });
+        }
+
+        const distance = Phaser.Math.Distance.Between(anchorPosition.x, anchorPosition.y, targetPosition.x, targetPosition.y);
+        const duration = Math.max(1, Math.round(distance / PLAYER_MOVE_SPEED));
+        segments.push({ to: { x: targetPosition.x, y: targetPosition.y }, duration });
+        
+        this.playerAnchorNodeId = anchorNodeId;
+        this.playerAnchorPosition = { ...anchorPosition };
+        this.playerHoveredNodeId = nodeId;
+        this.playerActiveRoute = {
+            anchorNodeId,
+            targetNodeId: nodeId,
+            totalDistance: anchorToTargetDistance
+        };
+
+        this.playPlayerSegments(segments);
+        if (this.playerContainer) {
+            this.playerContainer.setVisible(true);
+            if (this.container && typeof this.container.bringToTop === 'function') {
+                this.container.bringToTop(this.playerContainer);
+            }
+        }
+    }
+
+    movePlayerToAnchor() {
+        const info = this.calculateAnchorInfoFromState();
+        const anchorPosition = info.anchorPosition || this.getFallbackAnchorPosition();
+        const anchorNodeId = info.anchorNode ? info.anchorNode.id : this.playerAnchorNodeId;
+        const currentPosition = this.getPlayerPosition();
+        const distanceToAnchor = Phaser.Math.Distance.Between(currentPosition.x, currentPosition.y, anchorPosition.x, anchorPosition.y);
+
+        if (distanceToAnchor <= 0.5) {
+            this.stopPlayerMovement();
+            this.setPlayerPosition(anchorPosition);
+            this.playerAnchorNodeId = anchorNodeId || null;
+            this.playerAnchorPosition = { ...anchorPosition };
+            this.playerActiveRoute = {
+                anchorNodeId: anchorNodeId || null,
+                targetNodeId: null,
+                totalDistance: 0
+            };
+            return;
+        }
+
+        let baseDistance = distanceToAnchor;
+        if (this.playerActiveRoute && this.playerActiveRoute.anchorNodeId === anchorNodeId && Number.isFinite(this.playerActiveRoute.totalDistance) && this.playerActiveRoute.totalDistance > 0) {
+            baseDistance = this.playerActiveRoute.totalDistance;
+        }
+        const duration = Math.max(1, Math.round(distanceToAnchor / PLAYER_MOVE_SPEED));
+
+        this.playerAnchorNodeId = anchorNodeId || null;
+        this.playerAnchorPosition = { ...anchorPosition };
+        this.playerActiveRoute = {
+            anchorNodeId: anchorNodeId || null,
+            targetNodeId: null,
+            totalDistance: baseDistance
+        };
+
+        this.playPlayerSegments([{ to: { x: anchorPosition.x, y: anchorPosition.y }, duration }]);
+    }
+
+    handleNodeHover(nodeId) {
+        if (!this.isActive || !nodeId || !this.playerContainer) {
+            return;
+        }
+
+        if (this.playerHoveredNodeId === nodeId) {
+            return;
+        }
+
+        this.queuePlayerMovementTo(nodeId);
+    }
+
+    handleNodeHoverEnd(nodeId) {
+        if (!nodeId || this.playerHoveredNodeId !== nodeId) {
+            return;
+        }
+
+        this.playerHoveredNodeId = null;
+        this.movePlayerToAnchor();
+    }
+
+    updatePlayerAnchorFromState() {
+        if (!this.playerContainer) {
+            return;
+        }
+
+        const info = this.calculateAnchorInfoFromState();
+        this.playerAnchorNodeId = info.anchorNode ? info.anchorNode.id : null;
+        this.playerAnchorPosition = info.anchorPosition ? { ...info.anchorPosition } : null;
+
+        if (!this.isPlayerMoving() && !this.playerHoveredNodeId && info.anchorPosition) {
+            this.setPlayerPosition(info.anchorPosition);
         }
     }
 
@@ -1894,6 +2401,7 @@ export class PathUI {
         });
 
         this.updateConnectionSpriteAlphas(availableIds, testingMode);
+        this.updatePlayerAnchorFromState();
     }
 
     updateConnectionSpriteAlphas(availableIds, testingMode) {
@@ -1955,6 +2463,14 @@ export class PathUI {
         if (this.connectionSpriteContainer) {
             this.connectionSpriteContainer.setVisible(true);
         }
+        if (this.playerContainer) {
+            this.playerContainer.setVisible(true);
+            this.playerContainer.setDepth(PLAYER_DEPTH);
+            if (this.container && typeof this.container.bringToTop === 'function') {
+                this.container.bringToTop(this.playerContainer);
+            }
+        }
+        this.updatePlayerAnchorFromState();
     }
 
     hide() {
@@ -1972,6 +2488,11 @@ export class PathUI {
         if (this.connectionSpriteContainer) {
             this.connectionSpriteContainer.setVisible(false);
         }
+        if (this.playerContainer) {
+            this.playerContainer.setVisible(false);
+        }
+        this.stopPlayerMovement();
+        this.playerHoveredNodeId = null;
     }
 
     setupInputHandlers() {
@@ -2149,6 +2670,9 @@ export class PathUI {
             this.container.destroy(true);
             this.container = null;
         }
+
+        this.stopPlayerMovement();
+        this.destroyPlayerToken();
 
         this.nodeRefs.clear();
     }
