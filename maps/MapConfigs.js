@@ -11,6 +11,19 @@ import { LeechEnemy } from '../enemies/Leech.js';
 import { AuditorEnemy } from '../enemies/Auditor.js';
 import { CompactorEnemy } from '../enemies/Compactor.js';
 import { StatusTicianEnemy } from '../enemies/StatusTician.js';
+import { DIFFICULTY_PRESETS } from '../DifficultyConfig.js';
+
+const normalDifficulty = DIFFICULTY_PRESETS?.normal ?? {};
+const normalRewards = normalDifficulty.mapRewards ?? {};
+const mapOneNormalRewards = Array.isArray(normalRewards['map-1'])
+    ? normalRewards['map-1']
+    : [50, 70, 90, 100, 150];
+const mapTwoNormalRewards = Array.isArray(normalRewards['map-2'])
+    ? normalRewards['map-2']
+    : [70, 100, 120, 150, 200];
+const mapThreeNormalRewards = Array.isArray(normalRewards['map-3'])
+    ? normalRewards['map-3']
+    : [80, 110, 150, 180, 300];
 
 const mapOneEnemyFactories = () => [
     new SlapperEnemy(),
@@ -20,7 +33,7 @@ const mapOneEnemyFactories = () => [
     new InfernoEnemy()
 ];
 
-const createMapOneEnemySequence = (randomSource = Math.random) => {
+const createMapOneEnemySequence = (randomSource = Math.random, options = {}) => {
     const randomFn = typeof randomSource === 'function' ? randomSource : Math.random;
     const lockjawIndex = 2;
     const counterlockIndex = 3;
@@ -30,31 +43,31 @@ const createMapOneEnemySequence = (randomSource = Math.random) => {
     const sequence = [
         {
             enemyIndex: 0,
-            rewardGold: 50,
+            rewardGold: mapOneNormalRewards[0] ?? 50,
             label: 'Battle',
             start: true
         },
         {
             enemyIndex: 1,
-            rewardGold: 70,
+            rewardGold: mapOneNormalRewards[1] ?? 70,
             label: 'Battle'
         },
         {
             enemyIndex: thirdEnemyIndex,
-            rewardGold: 90,
+            rewardGold: mapOneNormalRewards[2] ?? 90,
             label: 'Battle'
         }
     ];
 
     sequence.push({
         enemyIndex: fourthEnemyIndex,
-        rewardGold: 100,
+        rewardGold: mapOneNormalRewards[3] ?? 100,
         label: 'Battle'
     });
 
     sequence.push({
         enemyIndex: 4,
-        rewardGold: 150,
+        rewardGold: mapOneNormalRewards[4] ?? 150,
         label: 'Boss',
         isBoss: true
     });
@@ -70,31 +83,31 @@ const mapTwoEnemyFactories = () => [
     new LockdownEnemy()
 ];
 
-const mapTwoEnemySequence = [
+const createMapTwoEnemySequence = (options = {}) => [
     {
         enemyIndex: 0,
-        rewardGold: 70,
+        rewardGold: mapTwoNormalRewards[0] ?? 70,
         label: 'Battle',
         start: true
     },
     {
         enemyIndex: 1,
-        rewardGold: 100,
+        rewardGold: mapTwoNormalRewards[1] ?? 100,
         label: 'Battle'
     },
     {
         enemyIndex: 2,
-        rewardGold: 120,
+        rewardGold: mapTwoNormalRewards[2] ?? 120,
         label: 'Battle'
     },
     {
         enemyIndex: 3,
-        rewardGold: 150,
+        rewardGold: mapTwoNormalRewards[3] ?? 150,
         label: 'Battle'
     },
     {
         enemyIndex: 4,
-        rewardGold: 200,
+        rewardGold: mapTwoNormalRewards[4] ?? 200,
         label: 'Boss',
         isBoss: true
     }
@@ -108,31 +121,31 @@ const mapThreeEnemyFactories = () => [
     new StatusTicianEnemy()
 ];
 
-const mapThreeEnemySequence = [
+const createMapThreeEnemySequence = (options = {}) => [
     {
         enemyIndex: 0,
-        rewardGold: 80,
+        rewardGold: mapThreeNormalRewards[0] ?? 80,
         label: 'Battle',
         start: true
     },
     {
         enemyIndex: 1,
-        rewardGold: 110,
+        rewardGold: mapThreeNormalRewards[1] ?? 110,
         label: 'Battle'
     },
     {
         enemyIndex: 2,
-        rewardGold: 150,
+        rewardGold: mapThreeNormalRewards[2] ?? 150,
         label: 'Battle'
     },
     {
         enemyIndex: 3,
-        rewardGold: 180,
+        rewardGold: mapThreeNormalRewards[3] ?? 180,
         label: 'Battle'
     },
     {
         enemyIndex: 4,
-        rewardGold: 300,
+        rewardGold: mapThreeNormalRewards[4] ?? 300,
         label: 'Boss',
         isBoss: true
     }
@@ -143,7 +156,7 @@ export const MAP_CONFIGS = [
         id: 'map-1',
         displayName: 'Map 1: Twilight Tumble',
         createEnemies: mapOneEnemyFactories,
-        createEnemySequence: () => createMapOneEnemySequence(),
+        createEnemySequence: options => createMapOneEnemySequence(undefined, options),
         pathTextureKey: 'path_ladder_clean',
         wallTextureKey: 'wall2',
         backgroundTextureKey: 'path_background',
@@ -159,7 +172,7 @@ export const MAP_CONFIGS = [
         id: 'map-2',
         displayName: 'Map 2: Cloudfall Court',
         createEnemies: mapTwoEnemyFactories,
-        enemySequence: mapTwoEnemySequence,
+        createEnemySequence: options => createMapTwoEnemySequence(options),
         pathTextureKey: 'path_ladder_metal',
         wallTextureKey: 'wall',
         backgroundTextureKey: 'path_background_brightest',
@@ -176,7 +189,7 @@ export const MAP_CONFIGS = [
         id: 'map-3',
         displayName: 'Map 3: Azure Abyss',
         createEnemies: mapThreeEnemyFactories,
-        enemySequence: mapThreeEnemySequence,
+        createEnemySequence: options => createMapThreeEnemySequence(options),
         pathTextureKey: 'path_ladder',
         wallTextureKey: 'wall2',
         backgroundTextureKey: 'path_background_bright',
