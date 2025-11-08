@@ -1648,16 +1648,20 @@ export class PathUI {
                 .setInteractive({ useHandCursor: true })
                 .setAngle(45);
 
-            // hover handlers: only effective when cube is interactive (setInteractive only for selectable nodes)
+            // hover handlers: preview player movement when hovering selectable nodes
             cube.on('pointerover', () => {
                 if (!this.isNodeSelectable(node.id)) {
                     return;
                 }
-                cube.setStrokeStyle(4, COLORS.whiteStroke, 1); // change stroke color & width on hover
+                cube.setStrokeStyle(4, COLORS.whiteStroke, 1);
+                this.playerHoveredNodeId = node.id;
                 this.handleNodeHover(node.id);
             });
 
             cube.on('pointerout', () => {
+                if (this.playerHoveredNodeId === node.id) {
+                    this.playerHoveredNodeId = null;
+                }
                 this.updateState();
                 this.handleNodeHoverEnd(node.id);
             });
@@ -1693,15 +1697,12 @@ export class PathUI {
                     return;
                 }
 
-                // If the player is not currently moving, queue movement as before.
-                // If they are moving, do NOT change their movement — only register the desired node
-                // so its action will run if/when the player token later reaches it.
-                const wasMoving = this.isPlayerMoving();
-                if (!wasMoving) {
+                // Queue movement if not already moving
+                if (!this.isPlayerMoving()) {
                     this.queuePlayerMovementTo(node.id);
                 }
 
-                // Play click sound if available
+                // Play click sound
                 try {
                     if (this.scene && this.scene.sound && typeof this.scene.sound.play === 'function') {
                         this.scene.sound.play('tick', { volume: 0.4 });
@@ -1710,19 +1711,19 @@ export class PathUI {
                     // ignore sound errors
                 }
 
-                // Remember the pending arrival target. If a previous pending arrival checker exists,
-                // remove it first so only the latest target is honored.
+                // Lock in: disable all node interactivity so pointer events can't change the destination
+                this._lockNodeInteractivity();
+
+                // Register the pending arrival target
                 this._pendingArrivalNodeId = node.id;
 
+                // Clear any previous arrival checker
                 if (this.scene && this.scene.events && this._arrivalTickFn) {
-                    try {
-                        this.scene.events.off('update', this._arrivalTickFn, this);
-                    } catch (e) {
-                        // ignore
-                    }
+                    this.scene.events.off('update', this._arrivalTickFn, this);
                     this._arrivalTickFn = null;
                 }
 
+                // Arrival checker: polls until player reaches the target node
                 const arrivalChecker = () => {
                     if (!this.scene) {
                         return;
@@ -1733,12 +1734,11 @@ export class PathUI {
                         return;
                     }
 
-                    // check if the player is at the pending node's position
                     const currentPos = this.getPlayerPosition();
                     const targetNode = this.pathManager ? this.pathManager.getNode(pendingId) : null;
                     if (!targetNode) {
-                        // nothing to do
                         this._pendingArrivalNodeId = null;
+                        this._unlockNodeInteractivity();
                         if (this._arrivalTickFn) {
                             this.scene.events.off('update', this._arrivalTickFn, this);
                             this._arrivalTickFn = null;
@@ -1753,14 +1753,14 @@ export class PathUI {
                         return;
                     }
 
-                    // arrived: clear pending and remove the listener
+                    // Arrived: unlock and fire the node action
                     this._pendingArrivalNodeId = null;
+                    this._unlockNodeInteractivity();
                     if (this._arrivalTickFn) {
                         this.scene.events.off('update', this._arrivalTickFn, this);
                         this._arrivalTickFn = null;
                     }
 
-                    // call provided onPlayerArrive handler if present, otherwise call original onSelect
                     if (typeof this.onPlayerArrive === 'function') {
                         try {
                             this.onPlayerArrive(targetNode);
@@ -1776,7 +1776,6 @@ export class PathUI {
                     }
                 };
 
-                // attach to scene update as a simple polling hook
                 if (this.scene && this.scene.events) {
                     this._arrivalTickFn = arrivalChecker;
                     this.scene.events.on('update', arrivalChecker, this);
@@ -2494,6 +2493,13 @@ export class PathUI {
                 labelAlpha = 0.8;
             }
 
+            // If this node is currently hovered, ensure hover visuals override the computed style
+            if (this.playerHoveredNodeId === node.id) {
+                strokeColor = COLORS.whiteStroke;
+                strokeWidth = Math.max(3, strokeWidth);
+                strokeAlpha = 1;
+            }
+
             cube.setFillStyle(fillColor, 1);
             cube.setAlpha(1);
             iconText.setAlpha(iconAlpha);
@@ -2612,6 +2618,53 @@ export class PathUI {
         this.scene.input.on('pointermove', this.handlePointerMove, this);
         this.scene.input.on('pointerup', this.handlePointerUp, this);
         this.scene.input.on('pointerupoutside', this.handlePointerUp, this);
+    }
+
+    // Disable interactivity on all node cubes to lock in the queued movement.
+    // This prevents pointerover/pointerout events from changing the player's destination.
+    _lockNodeInteractivity() {
+        try {
+            if (this.nodeRefs && typeof this.nodeRefs.forEach === 'function') {
+                this.nodeRefs.forEach(ref => {
+                    try {
+                        const cube = ref && ref.cube;
+                        if (cube && typeof cube.disableInteractive === 'function') {
+                            cube.disableInteractive();
+                        }
+                    } catch (err) {
+                        // ignore per-node errors
+                    }
+                });
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // Re-enable interactivity on selectable node cubes after arrival.
+    // This allows hover preview movement to work again.
+    _unlockNodeInteractivity() {
+        try {
+            if (this.nodeRefs && typeof this.nodeRefs.forEach === 'function') {
+                this.nodeRefs.forEach(ref => {
+                    try {
+                        const cube = ref && ref.cube;
+                        const node = ref && ref.node;
+                        if (!cube || !node) {
+                            return;
+                        }
+                        const id = node.id;
+                        if (this.isNodeSelectable(id) && typeof cube.setInteractive === 'function') {
+                            cube.setInteractive({ useHandCursor: true });
+                        }
+                    } catch (err) {
+                        // ignore per-node errors
+                    }
+                });
+            }
+        } catch (e) {
+            // ignore
+        }
     }
 
     handleWheel(pointer, gameObjects, deltaX, deltaY) {
