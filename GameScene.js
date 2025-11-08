@@ -782,12 +782,13 @@ export class GameScene extends Phaser.Scene {
             this.pathUI = new PathUI(
                 this,
                 this.pathManager,
-                node => this.handlePathNodeSelection(node),
+                () => {},
                 {
                     connectionTextureKey: this.getPathTextureKeyForConfig(null),
                     wallTextureKey: this.getWallTextureKeyForConfig(null),
                     backgroundTextureKey: fallbackBackgroundTextureKey,
-                    outsideBackgroundEffect: null
+                    outsideBackgroundEffect: null,
+                    onPlayerArrive: node => this.handlePathNodeSelection(node)
                 }
             );
             this.updateZoneBackgroundTexture(fallbackBackgroundTextureKey);
@@ -4678,13 +4679,15 @@ export class GameScene extends Phaser.Scene {
         this.pathUI = new PathUI(
             this,
             this.pathManager,
-            node => this.handlePathNodeSelection(node),
+            // keep original onSelect as a no-op (we'll trigger real selection on arrival)
+            () => {},
             {
                 connectionTextureKey,
                 wallTextureKey,
                 backgroundTextureKey,
                 outsideBackgroundLayerKeys,
-                outsideBackgroundEffect
+                outsideBackgroundEffect,
+                onPlayerArrive: node => this.handlePathNodeSelection(node)
             }
         );
         this.currentPathNodeId = null;

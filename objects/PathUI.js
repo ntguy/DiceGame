@@ -520,7 +520,8 @@ export class PathUI {
             wallTextureKey,
             backgroundTextureKey,
             outsideBackgroundLayerKeys,
-            outsideBackgroundEffect
+            outsideBackgroundEffect,
+            onPlayerArrive
         } = {}
     ) {
         this.scene = scene;
@@ -556,6 +557,9 @@ export class PathUI {
 
         this.container = scene.add.container(0, 0);
         this.container.setDepth(PATH_DEPTHS.nodes);
+
+    // callback fired when the player token finishes moving to a node
+    this.onPlayerArrive = typeof onPlayerArrive === 'function' ? onPlayerArrive : null;
 
         this.connectionGraphics = scene.add.graphics();
         this.connectionGraphics.setDepth(PATH_DEPTHS.connections);
@@ -1689,7 +1693,94 @@ export class PathUI {
                     return;
                 }
 
-                this.onSelect(node);
+                // If the player is not currently moving, queue movement as before.
+                // If they are moving, do NOT change their movement — only register the desired node
+                // so its action will run if/when the player token later reaches it.
+                const wasMoving = this.isPlayerMoving();
+                if (!wasMoving) {
+                    this.queuePlayerMovementTo(node.id);
+                }
+
+                // Play click sound if available
+                try {
+                    if (this.scene && this.scene.sound && typeof this.scene.sound.play === 'function') {
+                        this.scene.sound.play('tick', { volume: 0.4 });
+                    }
+                } catch (e) {
+                    // ignore sound errors
+                }
+
+                // Remember the pending arrival target. If a previous pending arrival checker exists,
+                // remove it first so only the latest target is honored.
+                this._pendingArrivalNodeId = node.id;
+
+                if (this.scene && this.scene.events && this._arrivalTickFn) {
+                    try {
+                        this.scene.events.off('update', this._arrivalTickFn, this);
+                    } catch (e) {
+                        // ignore
+                    }
+                    this._arrivalTickFn = null;
+                }
+
+                const arrivalChecker = () => {
+                    if (!this.scene) {
+                        return;
+                    }
+
+                    const pendingId = this._pendingArrivalNodeId;
+                    if (!pendingId) {
+                        return;
+                    }
+
+                    // check if the player is at the pending node's position
+                    const currentPos = this.getPlayerPosition();
+                    const targetNode = this.pathManager ? this.pathManager.getNode(pendingId) : null;
+                    if (!targetNode) {
+                        // nothing to do
+                        this._pendingArrivalNodeId = null;
+                        if (this._arrivalTickFn) {
+                            this.scene.events.off('update', this._arrivalTickFn, this);
+                            this._arrivalTickFn = null;
+                        }
+                        return;
+                    }
+
+                    const targetPos = this.getNodePosition(targetNode);
+                    const arrived = Phaser.Math.Distance.Between(currentPos.x, currentPos.y, targetPos.x, targetPos.y) <= 1.0;
+
+                    if (!arrived) {
+                        return;
+                    }
+
+                    // arrived: clear pending and remove the listener
+                    this._pendingArrivalNodeId = null;
+                    if (this._arrivalTickFn) {
+                        this.scene.events.off('update', this._arrivalTickFn, this);
+                        this._arrivalTickFn = null;
+                    }
+
+                    // call provided onPlayerArrive handler if present, otherwise call original onSelect
+                    if (typeof this.onPlayerArrive === 'function') {
+                        try {
+                            this.onPlayerArrive(targetNode);
+                        } catch (err) {
+                            console.error('onPlayerArrive handler error', err);
+                        }
+                    } else if (typeof this.onSelect === 'function') {
+                        try {
+                            this.onSelect(targetNode);
+                        } catch (err) {
+                            console.error('onSelect handler error', err);
+                        }
+                    }
+                };
+
+                // attach to scene update as a simple polling hook
+                if (this.scene && this.scene.events) {
+                    this._arrivalTickFn = arrivalChecker;
+                    this.scene.events.on('update', arrivalChecker, this);
+                }
             });
 
             this.nodeRefs.set(node.id, {
@@ -2165,8 +2256,24 @@ export class PathUI {
         if (!this.isActive || !nodeId || !this.playerContainer) {
             return;
         }
+        // If a node has already been clicked and we're waiting for arrival, ignore other hovers.
+        // Allow hovering the same node but prevent changing hovered node to a different one.
+        if (this._pendingArrivalNodeId) {
+            if (this._pendingArrivalNodeId === nodeId) {
+                this.playerHoveredNodeId = nodeId;
+            }
+            return;
+        }
 
         if (this.playerHoveredNodeId === nodeId) {
+            return;
+        }
+
+        // If player is currently moving, do not change their movement on hover/click.
+        // This prevents pointerover/pointerup during travel from restarting or altering the token's route.
+        if (this.isPlayerMoving()) {
+            // still update hovered id so UI can reflect hover state, but don't queue movement
+            this.playerHoveredNodeId = nodeId;
             return;
         }
 
