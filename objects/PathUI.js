@@ -1645,8 +1645,7 @@ export class PathUI {
 
             const cube = this.scene.add.rectangle(0, 0, 56, 56, color, 1)
                 .setStrokeStyle(3, COLORS.whiteStroke, 0.9)
-                .setInteractive({ useHandCursor: true })
-                .setAngle(45);
+                .setInteractive({ useHandCursor: true });
 
             // hover handlers: preview player movement when hovering selectable nodes
             cube.on('pointerover', () => {
